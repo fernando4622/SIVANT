@@ -1,0 +1,52 @@
+form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.datos,
+.informacion {
+  display: grid;
+  gap: 1rem;
+}
+
+.contrasena {
+  position: relative;
+}
+
+.contrasena .control {
+  padding-right: 3.75rem;
+}
+
+.contrasena .boton-icono {
+  position: absolute;
+  right: 0.25rem;
+  top: 0.15rem;
+}
+
+dl {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0 0;
+}
+
+dd {
+  margin: 0;
+}
+
+.aviso p {
+  min-width: 0;
+}
+
+@media (max-width: 60rem) {
+  .columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

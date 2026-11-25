@@ -64,7 +64,7 @@ class SeguridadConfig {
                         .requestMatchers(HttpMethod.GET, API + "/mesas", API + "/cuentas", API + "/cuentas/*")
                         .hasAnyAuthority("MESERO", "CAJERO")
                         .requestMatchers(HttpMethod.POST, API + "/cuentas", API + "/cuentas/*/cierre",
-                                API + "/cuentas/*/comandas").hasAuthority("MESERO")
+                                API + "/cuentas/*/comandas", API + "/comandas/*/servicio").hasAuthority("MESERO")
                         .requestMatchers(HttpMethod.PUT, API + "/comandas/*/detalles").hasAuthority("MESERO")
                         .requestMatchers(HttpMethod.POST, API + "/comandas/*/cancelacion").hasAuthority("CAJERO")
                         .requestMatchers(HttpMethod.GET, API + "/cocina/cola").hasAuthority("COCINERO")

@@ -56,13 +56,14 @@ final class InventarioDtos {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record Historial(String id, TipoHistorial tipo, String existenciaId, String articulo, String unidadMedida,
             String cambio, String saldoAnterior, String saldoPosterior, OffsetDateTime fechaHora, String empleado,
-            String solicitudId, String motivo) {
+            String solicitudId, String comandaId, String motivo) {
 
         static Historial de(DatosInventario.Historial h) {
             return new Historial(h.id().toString(), h.tipo(), h.existenciaId().toString(), h.articulo(),
                     h.unidadMedida(), Decimales.cantidad(h.cambio()), Decimales.cantidad(h.saldoAnterior()),
                     opcional(h.saldoPosterior()), h.fechaHora(), h.empleado(),
-                    h.solicitudId() == null ? null : h.solicitudId().toString(), h.motivo());
+                    h.solicitudId() == null ? null : h.solicitudId().toString(),
+                    h.comandaId() == null ? null : h.comandaId().toString(), h.motivo());
         }
     }
 

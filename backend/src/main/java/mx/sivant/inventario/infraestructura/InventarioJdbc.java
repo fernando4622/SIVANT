@@ -5,8 +5,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import mx.sivant.infraestructura.api.Pagina;
 import mx.sivant.inventario.aplicacion.DatosInventario.Existencia;
@@ -44,12 +47,13 @@ public class InventarioJdbc {
             FROM (
                 SELECT m.id_movimiento AS id, m.tipo, m.id_existencia, m.saldo_posterior - m.saldo_anterior AS cambio,
                        m.saldo_anterior, m.saldo_posterior, m.fecha_hora, m.id_empleado,
-                       m.id_solicitud_ajuste AS id_solicitud, m.motivo
+                       m.id_solicitud_ajuste AS id_solicitud, d.id_comanda, m.motivo
                 FROM sivant.movimiento_inventario m
+                LEFT JOIN sivant.detalle_comanda d ON d.id_detalle = m.id_detalle_comanda
                 UNION ALL
                 SELECT s.id_solicitud, 'AJUSTE_RECHAZADO', s.id_existencia, s.cantidad_solicitada - s.cantidad_anterior,
                        s.cantidad_anterior, NULL, s.fecha_hora_resolucion, s.id_administrador,
-                       s.id_solicitud, s.justificacion
+                       s.id_solicitud, NULL, s.justificacion
                 FROM sivant.solicitud_ajuste s WHERE s.estado = 'RECHAZADA'
             ) h
             JOIN sivant.empleado p ON p.id_empleado = h.id_empleado
@@ -127,6 +131,36 @@ public class InventarioJdbc {
                 .param("fecha", OffsetDateTime.now(reloj)).param("motivo", motivo).query(Long.class).single();
     }
 
+    public void insertarConsumo(Long existencia, Long empleado, Long detalle, BigDecimal anterior,
+            BigDecimal posterior) {
+        sql.sql("""
+                INSERT INTO sivant.movimiento_inventario (id_existencia, id_empleado, id_detalle_comanda, tipo, cantidad,
+                    saldo_anterior, saldo_posterior, fecha_hora)
+                VALUES (?, ?, ?, 'CONSUMO_VENTA', ?, ?, ?, ?)
+                """).params(existencia, empleado, detalle, anterior.subtract(posterior), anterior, posterior,
+                OffsetDateTime.now(reloj)).update();
+    }
+
+    public Map<Long, Long> existenciasDeInsumos(Collection<Long> insumos) {
+        return existenciasPor("SELECT id_insumo, id_existencia FROM sivant.existencia_insumo WHERE id_insumo IN (:ids)",
+                insumos);
+    }
+
+    public Map<Long, Long> existenciasDeProductos(Collection<Long> productos) {
+        return existenciasPor("SELECT id_producto_reventa, id_existencia FROM sivant.existencia_producto "
+                + "WHERE id_producto_reventa IN (:ids)", productos);
+    }
+
+    private Map<Long, Long> existenciasPor(String consulta, Collection<Long> ids) {
+        Map<Long, Long> existencias = new HashMap<>();
+        if (!ids.isEmpty()) {
+            sql.sql(consulta).param("ids", ids).query(fila -> {
+                existencias.put(fila.getLong(1), fila.getLong(2));
+            });
+        }
+        return existencias;
+    }
+
     public Pagina<Historial> historial(Long existencia, String q, TipoHistorial tipo, OffsetDateTime desde,
             OffsetDateTime hasta, int pagina, int tamano) {
         long total = filtrar("SELECT count(*) " + HISTORIAL, existencia, q, tipo, desde, hasta).query(Long.class).single();
@@ -140,7 +174,7 @@ public class InventarioJdbc {
 
     private static final String SELECT_HISTORIAL = """
             SELECT h.id, h.tipo, h.id_existencia, a.nombre, a.unidad_medida, h.cambio, h.saldo_anterior, h.saldo_posterior,
-                   h.fecha_hora, p.nombre_completo, h.id_solicitud, h.motivo
+                   h.fecha_hora, p.nombre_completo, h.id_solicitud, h.id_comanda, h.motivo
             """;
 
     public Historial movimiento(Long id) {
@@ -206,7 +240,8 @@ public class InventarioJdbc {
     private static Historial historial(ResultSet f, int n) throws SQLException {
         return new Historial(f.getLong(1), TipoHistorial.valueOf(f.getString(2)), f.getLong(3), f.getString(4),
                 f.getString(5), f.getBigDecimal(6), f.getBigDecimal(7), f.getBigDecimal(8),
-                f.getObject(9, OffsetDateTime.class), f.getString(10), f.getObject(11, Long.class), f.getString(12));
+                f.getObject(9, OffsetDateTime.class), f.getString(10), f.getObject(11, Long.class), f.getObject(12, Long.class),
+                f.getString(13));
     }
 
     private static Solicitud solicitud(ResultSet f, int n) throws SQLException {

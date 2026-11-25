@@ -10,13 +10,15 @@ import mx.sivant.infraestructura.api.Pagina;
 import mx.sivant.infraestructura.idempotencia.Idempotencia;
 import mx.sivant.servicio.api.ServicioDtos.Apertura;
 import mx.sivant.servicio.api.ServicioDtos.Cancelacion;
-import mx.sivant.servicio.api.ServicioDtos.Cierre;
 import mx.sivant.servicio.api.ServicioDtos.Comanda;
 import mx.sivant.servicio.api.ServicioDtos.Cuenta;
 import mx.sivant.servicio.api.ServicioDtos.Edicion;
 import mx.sivant.servicio.api.ServicioDtos.Envio;
 import mx.sivant.servicio.api.ServicioDtos.Mesa;
 import mx.sivant.servicio.api.ServicioDtos.ResumenCuenta;
+import mx.sivant.servicio.api.ServicioDtos.Servida;
+import mx.sivant.servicio.api.ServicioDtos.SoloVersion;
+import mx.sivant.servicio.aplicacion.EntregaComandas;
 import mx.sivant.servicio.aplicacion.GestionCuentas;
 import mx.sivant.servicio.dominio.EstadoCuenta;
 import org.springframework.http.HttpStatus;
@@ -38,9 +40,11 @@ import org.springframework.web.bind.annotation.RestController;
 class ServicioController {
 
     private final GestionCuentas gestion;
+    private final EntregaComandas entrega;
 
-    ServicioController(GestionCuentas gestion) {
+    ServicioController(GestionCuentas gestion, EntregaComandas entrega) {
         this.gestion = gestion;
+        this.entrega = entrega;
     }
 
     @GetMapping("/mesas")
@@ -74,7 +78,7 @@ class ServicioController {
     @PostMapping("/cuentas/{id}/cierre")
     Cuenta cerrar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
             @RequestHeader(name = Idempotencia.ENCABEZADO, required = false) String clave,
-            @Valid @RequestBody Cierre cierre) {
+            @Valid @RequestBody SoloVersion cierre) {
         return Cuenta.de(gestion.cerrarSinCobro(actor, clave, id, cierre.version()), actor);
     }
 
@@ -90,6 +94,13 @@ class ServicioController {
     Cuenta editar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
             @Valid @RequestBody Edicion edicion) {
         return Cuenta.de(gestion.editar(actor, id, edicion.version(), edicion.lineas()), actor);
+    }
+
+    @PostMapping("/comandas/{id}/servicio")
+    Servida servir(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
+            @RequestHeader(name = Idempotencia.ENCABEZADO, required = false) String clave,
+            @Valid @RequestBody SoloVersion cuerpo) {
+        return Servida.de(entrega.servir(actor, clave, id, cuerpo.version()), actor);
     }
 
     @PostMapping("/comandas/{id}/cancelacion")

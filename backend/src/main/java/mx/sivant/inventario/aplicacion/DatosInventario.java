@@ -26,7 +26,7 @@ public final class DatosInventario {
     /** `cambio` tiene signo. En un ajuste rechazado es el cambio que no se aplicó y no hay saldo posterior. */
     public record Historial(Long id, TipoHistorial tipo, Long existenciaId, String articulo, String unidadMedida,
             BigDecimal cambio, BigDecimal saldoAnterior, BigDecimal saldoPosterior, OffsetDateTime fechaHora,
-            String empleado, Long solicitudId, String motivo) {
+            String empleado, Long solicitudId, Long comandaId, String motivo) {
     }
 
     /** `existenciaCambiada` indica que la solicitud ya no puede autorizarse. */

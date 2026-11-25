@@ -67,7 +67,7 @@ abstract class PruebaIntegracion {
     void limpiar() {
         // TRUNCATE no dispara la protección por fila de la auditoría.
         sql.execute("TRUNCATE sivant.auditoria, sivant.idempotencia_operacion, sivant.empleado, sivant.articulo, "
-                + "sivant.existencia_inventario CASCADE");
+                + "sivant.existencia_inventario, sivant.mesa CASCADE");
         administrador = crear("ADMINISTRADOR");
     }
 

@@ -7,9 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.time.Clock;
-import java.time.Duration;
-import mx.sivant.empleados.aplicacion.ConsultaCredenciales;
-import mx.sivant.empleados.aplicacion.CredencialEmpleado;
 import mx.sivant.identidad.aplicacion.EmpleadoPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -28,14 +25,12 @@ public class ValidacionSesionFilter extends OncePerRequestFilter {
     public static final String ULTIMA_ACTIVIDAD = "sivant.ultimaActividad";
     static final String MOTIVO_CIERRE = "sivant.motivoCierre";
 
-    private final ConsultaCredenciales credenciales;
+    private final ValidadorSesion validador;
     private final Clock reloj;
-    private final Duration inactividad;
 
-    ValidacionSesionFilter(ConsultaCredenciales credenciales, Clock reloj, Duration inactividad) {
-        this.credenciales = credenciales;
+    ValidacionSesionFilter(ValidadorSesion validador, Clock reloj) {
+        this.validador = validador;
         this.reloj = reloj;
-        this.inactividad = inactividad;
     }
 
     @Override
@@ -50,31 +45,26 @@ public class ValidacionSesionFilter extends OncePerRequestFilter {
 
     private void validar(HttpServletRequest solicitud, EmpleadoPrincipal principal) {
         HttpSession sesion = solicitud.getSession(false);
-        Long ultima = sesion == null ? null : (Long) sesion.getAttribute(ULTIMA_ACTIVIDAD);
-        long ahora = reloj.millis();
-        if (ultima == null || ahora - ultima >= inactividad.toMillis()) {
-            cerrar(solicitud, sesion, "SESION_EXPIRADA");
+        ValidadorSesion.Resultado resultado = validador.validar(sesion, principal);
+        if (!resultado.vigente()) {
+            if (sesion != null) {
+                sesion.invalidate();
+            }
+            SecurityContextHolder.clearContext();
+            solicitud.setAttribute(MOTIVO_CIERRE, resultado.motivo());
             return;
         }
-        CredencialEmpleado empleado = credenciales.porId(principal.id()).orElse(null);
-        if (empleado == null || !empleado.activo() || empleado.sesionVersion() != principal.sesionVersion()) {
-            cerrar(solicitud, sesion, "SESION_INVALIDADA");
-            return;
-        }
-        if (!Boolean.parseBoolean(solicitud.getHeader(ENCABEZADO_PASIVO))) {
-            sesion.setAttribute(ULTIMA_ACTIVIDAD, ahora);
+        if (!esPasiva(solicitud)) {
+            sesion.setAttribute(ULTIMA_ACTIVIDAD, reloj.millis());
         }
         // Los permisos de la solicitud salen del rol vigente en base de datos, no de la sesión.
         SecurityContext contexto = SecurityContextHolder.createEmptyContext();
-        contexto.setAuthentication(ProveedorEmpleado.autenticacion(empleado));
+        contexto.setAuthentication(ProveedorEmpleado.autenticacion(resultado.empleado()));
         SecurityContextHolder.setContext(contexto);
     }
 
-    private static void cerrar(HttpServletRequest solicitud, HttpSession sesion, String motivo) {
-        if (sesion != null) {
-            sesion.invalidate();
-        }
-        SecurityContextHolder.clearContext();
-        solicitud.setAttribute(MOTIVO_CIERRE, motivo);
+    /** La conexión WebSocket se abre y reintenta sola, y el navegador no permite agregarle encabezados. */
+    private static boolean esPasiva(HttpServletRequest solicitud) {
+        return Boolean.parseBoolean(solicitud.getHeader(ENCABEZADO_PASIVO)) || "/ws".equals(solicitud.getServletPath());
     }
 }

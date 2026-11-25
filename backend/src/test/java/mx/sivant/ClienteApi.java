@@ -60,6 +60,10 @@ class ClienteApi {
         return enviar("PATCH", ruta, cuerpo, false, true, null);
     }
 
+    Respuesta put(String ruta, Object cuerpo) {
+        return enviar("PUT", ruta, cuerpo, false, true, null);
+    }
+
     Respuesta sinCsrf(String metodo, String ruta, Object cuerpo) {
         return enviar(metodo, ruta, cuerpo, false, false, null);
     }

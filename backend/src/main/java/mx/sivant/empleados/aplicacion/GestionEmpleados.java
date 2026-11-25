@@ -12,6 +12,7 @@ import mx.sivant.empleados.infraestructura.EmpleadoRepository;
 import mx.sivant.empleados.infraestructura.FiltrosEmpleado;
 import mx.sivant.empleados.infraestructura.RolRepository;
 import mx.sivant.infraestructura.errores.ReglaNegocioException;
+import mx.sivant.servicio.aplicacion.CuentasDeEmpleado;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,13 +34,15 @@ public class GestionEmpleados {
     private final RolRepository roles;
     private final PasswordEncoder codificador;
     private final RegistroAuditoria auditoria;
+    private final CuentasDeEmpleado cuentas;
 
     public GestionEmpleados(EmpleadoRepository empleados, RolRepository roles, PasswordEncoder codificador,
-            RegistroAuditoria auditoria) {
+            RegistroAuditoria auditoria, CuentasDeEmpleado cuentas) {
         this.empleados = empleados;
         this.roles = roles;
         this.codificador = codificador;
         this.auditoria = auditoria;
+        this.cuentas = cuentas;
     }
 
     @Transactional
@@ -96,6 +99,7 @@ public class GestionEmpleados {
         }
         if (nuevoRol != null && !nuevoRol.getNombre().equals(empleado.getRol().getNombre())) {
             conservarAdministrador(empleado, administradores);
+            exigirSinCuentas(id);
             campos.put("rol", cambio(empleado.getRol().getNombre(), nuevoRol.getNombre()));
             empleado.cambiarRol(nuevoRol);
         }
@@ -119,6 +123,7 @@ public class GestionEmpleados {
             throw ReglaNegocioException.conflicto("EMPLEADO_INACTIVO", "El empleado ya está desactivado.");
         }
         conservarAdministrador(empleado, administradores);
+        exigirSinCuentas(id);
         empleado.desactivar();
         auditoria.registrar(actor, "EMPLEADO_DESACTIVADO", ENTIDAD, id, Map.of(
                 "estado", cambio(EstadoEmpleado.ACTIVO.name(), EstadoEmpleado.INACTIVO.name())));
@@ -134,6 +139,16 @@ public class GestionEmpleados {
         if (empleado.esAdministradorActivo() && administradores.size() == 1) {
             throw ReglaNegocioException.conflicto("ULTIMO_ADMINISTRADOR",
                     "Debe permanecer al menos un administrador activo.");
+        }
+    }
+
+    /** Quien abrió una cuenta es su responsable histórico: primero debe cerrarla. */
+    private void exigirSinCuentas(Long id) {
+        int abiertas = cuentas.abiertas(id);
+        if (abiertas > 0) {
+            throw ReglaNegocioException.conflicto("CUENTAS_ABIERTAS", abiertas == 1
+                    ? "El empleado tiene una cuenta abierta. Debe cerrarse antes."
+                    : "El empleado tiene " + abiertas + " cuentas abiertas. Deben cerrarse antes.");
         }
     }
 

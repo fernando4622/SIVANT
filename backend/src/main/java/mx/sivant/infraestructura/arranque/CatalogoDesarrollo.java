@@ -13,10 +13,11 @@ import mx.sivant.inventario.aplicacion.Existencias;
 import mx.sivant.inventario.dominio.TipoHistorial;
 import mx.sivant.inventario.infraestructura.InventarioJdbc;
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Insumos y productos ficticios. Existe únicamente en el perfil dev. */
+/** Mesas, insumos y productos ficticios. Existe únicamente en el perfil dev. */
 @Component
 @Profile("dev")
 class CatalogoDesarrollo {
@@ -25,17 +26,20 @@ class CatalogoDesarrollo {
     private final ProductoRepository productos;
     private final Existencias existencias;
     private final InventarioJdbc inventario;
+    private final JdbcClient sql;
 
     CatalogoDesarrollo(InsumoRepository insumos, ProductoRepository productos, Existencias existencias,
-            InventarioJdbc inventario) {
+            InventarioJdbc inventario, JdbcClient sql) {
         this.insumos = insumos;
         this.productos = productos;
         this.existencias = existencias;
         this.inventario = inventario;
+        this.sql = sql;
     }
 
     @Transactional
     public void crearSiFalta(Long almacenista) {
+        sql.sql("INSERT INTO sivant.mesa (numero) SELECT n FROM generate_series(1, 10) AS n ON CONFLICT DO NOTHING").update();
         if (insumos.count() > 0 || productos.count() > 0) {
             return;
         }

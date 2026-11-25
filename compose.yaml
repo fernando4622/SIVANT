@@ -1,0 +1,31 @@
+name: sivant
+
+services:
+  db:
+    image: postgres:18
+    container_name: sivant-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:?Copia .env.example a .env}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?Copia .env.example a .env}
+      POSTGRES_DB: postgres
+      SIVANT_DB_NAME: ${SIVANT_DB_NAME:?Copia .env.example a .env}
+      SIVANT_DB_USER: ${SIVANT_DB_USER:?Copia .env.example a .env}
+      SIVANT_DB_PASSWORD: ${SIVANT_DB_PASSWORD:?Copia .env.example a .env}
+      TZ: UTC
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    ports:
+      - "127.0.0.1:${SIVANT_DB_PORT:-5433}:5432"
+    volumes:
+      # Desde la imagen 18 el volumen se monta en /var/lib/postgresql.
+      - sivant-pgdata:/var/lib/postgresql
+      - ./database/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$SIVANT_DB_USER -d $$SIVANT_DB_NAME"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  sivant-pgdata:

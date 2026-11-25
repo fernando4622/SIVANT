@@ -1,10 +1,15 @@
 package mx.sivant;
 
+import java.math.BigDecimal;
 import java.util.Locale;
 import java.util.UUID;
+import mx.sivant.catalogo.dominio.Insumo;
+import mx.sivant.catalogo.dominio.UnidadMedida;
+import mx.sivant.catalogo.infraestructura.InsumoRepository;
 import mx.sivant.empleados.dominio.Empleado;
 import mx.sivant.empleados.infraestructura.EmpleadoRepository;
 import mx.sivant.empleados.infraestructura.RolRepository;
+import mx.sivant.inventario.aplicacion.Existencias;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +21,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** Servidor real en un puerto libre, HTTP con cookies y PostgreSQL 18. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -48,12 +54,20 @@ abstract class PruebaIntegracion {
     @Autowired
     RelojAjustable reloj;
 
+    @Autowired
+    TransactionTemplate transaccion;
+    @Autowired
+    InsumoRepository insumos;
+    @Autowired
+    Existencias existencias;
+
     Empleado administrador;
 
     @BeforeEach
     void limpiar() {
         // TRUNCATE no dispara la protección por fila de la auditoría.
-        sql.execute("TRUNCATE sivant.auditoria, sivant.empleado");
+        sql.execute("TRUNCATE sivant.auditoria, sivant.empleado, sivant.articulo, "
+                + "sivant.existencia_inventario CASCADE");
         administrador = crear("ADMINISTRADOR");
     }
 
@@ -64,6 +78,15 @@ abstract class PruebaIntegracion {
     Empleado crear(String nombre, String correo, String rol) {
         return empleados.save(new Empleado(nombre, correo, codificador.encode(CONTRASENA),
                 roles.findByNombre(rol).orElseThrow()));
+    }
+
+    /** Los insumos se preparan por carga autorizada, no por la API. */
+    Long crearInsumo(String nombre, String unidad) {
+        return transaccion.execute(t -> {
+            Insumo insumo = insumos.saveAndFlush(new Insumo(nombre, UnidadMedida.valueOf(unidad)));
+            existencias.crearParaInsumo(insumo.getId(), BigDecimal.TEN);
+            return insumo.getId();
+        });
     }
 
     Empleado recargar(Empleado e) {

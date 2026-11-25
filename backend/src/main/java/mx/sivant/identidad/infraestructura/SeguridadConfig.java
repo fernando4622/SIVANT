@@ -54,6 +54,8 @@ class SeguridadConfig {
                         .requestMatchers(HttpMethod.POST, API + "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, API + "/auth/me").authenticated()
                         .requestMatchers(API + "/empleados/**").hasAuthority("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, API + "/productos/**").hasAnyAuthority("ADMINISTRADOR", "MESERO")
+                        .requestMatchers(API + "/productos/**", API + "/insumos").hasAuthority("ADMINISTRADOR")
                         // Cada módulo nuevo declara aquí sus roles. Lo no declarado se rechaza.
                         .anyRequest().denyAll())
                 .securityContext(contexto -> contexto.securityContextRepository(contextos))

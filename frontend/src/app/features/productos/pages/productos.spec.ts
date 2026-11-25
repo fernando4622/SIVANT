@@ -34,6 +34,9 @@ describe('Gestionar productos', () => {
   let el: HTMLElement;
   const perfil = signal<{ id: string; nombre: string; rol: Rol }>({ id: '1', nombre: 'A', rol: 'ADMINISTRADOR' });
 
+  // La carga diferida de las pantallas no debe contar en el tiempo de cada caso.
+  beforeAll(() => Promise.all([import('./listado-productos'), import('./formulario-producto')]), 60_000);
+
   beforeEach(async () => {
     vi.resetAllMocks();
     perfil.set({ id: '1', nombre: 'A', rol: 'ADMINISTRADOR' });

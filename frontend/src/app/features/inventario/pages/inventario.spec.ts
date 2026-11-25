@@ -70,6 +70,9 @@ describe('Inventario', () => {
   let harness: RouterTestingHarness;
   let el: HTMLElement;
 
+  // La carga diferida de las pantallas no debe contar en el tiempo de cada caso.
+  beforeAll(() => Promise.all([import('./existencias'), import('./movimientos'), import('./detalle-existencia'), import('./ajustes'), import('./detalle-ajuste')]), 60_000);
+
   beforeEach(async () => {
     vi.resetAllMocks();
     perfil.set({ id: '1', nombre: 'P', rol: 'ALMACENISTA' });

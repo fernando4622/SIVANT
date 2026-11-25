@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, input, output, viewChild } from '@angular/core';
-import { Icono } from './icono';
+import { Icono, NombreIcono } from './icono';
 
 /** Diálogo modal nativo: conserva el foco dentro y se cierra con Escape. */
 @Component({
@@ -19,7 +19,7 @@ import { Icono } from './icono';
       <div class="acciones">
         <button type="button" class="boton" [disabled]="ocupado()" (click)="cerrar()">Cancelar</button>
         <button type="button" class="boton boton--peligro" [disabled]="ocupado()" (click)="confirmado.emit()">
-          <app-icono nombre="basura" />
+          <app-icono [nombre]="icono()" />
           {{ accion() }}
         </button>
       </div>
@@ -48,6 +48,7 @@ import { Icono } from './icono';
 export class Confirmacion {
   readonly titulo = input.required<string>();
   readonly accion = input.required<string>();
+  readonly icono = input<NombreIcono>('basura');
   readonly ocupado = input(false);
   readonly error = input<string | null>(null);
   readonly confirmado = output<void>();

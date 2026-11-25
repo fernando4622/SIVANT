@@ -78,8 +78,30 @@ nav {
 }
 
 .opcion--activa,
-.opcion--activa:hover {
+.opcion--activa:hover,
+.opcion--incluida,
+.opcion--incluida:hover {
   background: var(--azul);
+}
+
+.contador {
+  min-width: 1.8rem;
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--marino);
+  font-weight: 600;
+  text-align: center;
+}
+
+.emergente .aviso {
+  margin-bottom: 1.25rem;
+  border: 2px solid var(--azul);
+}
+
+.emergente .boton {
+  margin-top: 0.75rem;
 }
 
 .usuario {

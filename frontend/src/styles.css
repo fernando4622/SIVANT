@@ -266,6 +266,63 @@ textarea {
   }
 }
 
+/* Etiquetas de estado */
+.etiqueta {
+  white-space: nowrap;
+}
+
+.numero {
+  font-variant-numeric: tabular-nums;
+}
+
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.estado::before {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--verde);
+  content: '';
+}
+
+.estado--inactivo::before {
+  border: 2px solid var(--texto-suave);
+  background: transparent;
+}
+
+.etiqueta {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 0.25rem 0.85rem;
+  border-radius: 999px;
+  background: var(--cabecera);
+}
+
+.etiqueta--alerta {
+  background: var(--naranja-fondo);
+  color: var(--naranja);
+}
+
+.etiqueta--bien {
+  background: var(--verde-fondo);
+  color: var(--verde);
+}
+
+.etiqueta--mal {
+  background: var(--rojo-fondo);
+  color: var(--rojo);
+}
+
+.etiqueta--proceso {
+  background: var(--azul-avatar);
+  color: var(--azul-fuerte);
+}
+
 /* Formularios */
 .campo {
   display: grid;

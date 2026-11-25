@@ -20,15 +20,15 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
   ],
   MESERO: [
     { texto: 'Consultar el catálogo', ruta: '/productos' },
-    { texto: 'Abrir cuentas y registrar comandas' },
+    { texto: 'Abrir cuentas y registrar comandas', ruta: '/mesas' },
     { texto: 'Servir y cobrar' },
   ],
   CAJERO: [
-    { texto: 'Cancelar comandas' },
+    { texto: 'Cancelar comandas', ruta: '/mesas' },
     { texto: 'Consultar ventas' },
     { texto: 'Recibir efectivo y entregar fondo de cambio' },
   ],
-  COCINERO: [{ texto: 'Consultar la cola y preparar comandas' }],
+  COCINERO: [{ texto: 'Consultar la cola y preparar comandas', ruta: '/cocina' }],
   ALMACENISTA: [
     { texto: 'Consultar inventario y registrar movimientos', ruta: '/inventario' },
     { texto: 'Consultar solicitudes de ajuste', ruta: '/inventario/ajustes' },

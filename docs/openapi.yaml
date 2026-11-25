@@ -1,21 +1,27 @@
 openapi: 3.1.0
 info:
   title: API de SIVANT
-  version: 0.1.0
+  version: 0.2.0
   license:
     name: Uso interno
     identifier: LicenseRef-SIVANT
   description: |
-    Contrato de las fases 0 y 1: identidad y empleados (RF11 a RF14).
+    Contrato de las fases 0 a 2: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10) e inventario
+    (RF15 a RF18).
     Cada fase agrega sus operaciones antes de enlazar sus pantallas.
 
     ## Convenciones
     - **IDs**: cadenas decimales.
-    - **Dinero e inventario**: cadenas decimales (desde la fase 2). Cantidades de comanda: enteros.
-    - **Fechas**: ISO 8601 con offset. Los filtros por día usan `America/Mexico_City` como rango `[desde, hasta)`.
+    - **Dinero e inventario**: cadenas decimales. Cantidades de comanda: enteros.
+    - **Fechas**: ISO 8601 con offset. Los filtros por día usan `America/Mexico_City` e incluyen completo el día `hasta`.
     - **Paginación**: `page` inicia en 0; `size` es 25 por omisión y 100 como máximo. El orden es estable.
     - **Errores**: `application/problem+json` con `codigo` y, si aplica, `erroresCampo`.
     - **Campos desconocidos** en el cuerpo: se rechazan con 400.
+
+    ## Idempotencia
+    Los movimientos, las solicitudes de ajuste y su resolución exigen `Idempotency-Key`. Repetir la solicitud con la
+    misma clave y los mismos datos devuelve el resultado guardado sin aplicarla de nuevo; con otros datos responde 409.
+    Si la operación falló, la clave queda libre.
 
     ## Sesión
     La cookie `SIVANT_SESION` (HttpOnly, SameSite=Lax, Secure con HTTPS) identifica la sesión. Toda operación que
@@ -35,6 +41,10 @@ tags:
     description: Inicio y cierre de sesión, y perfil
   - name: Empleados
     description: RF11 a RF14. Solo ADMINISTRADOR
+  - name: Productos
+    description: RF07 a RF10
+  - name: Inventario
+    description: RF15 a RF18. Consultan ADMINISTRADOR y ALMACENISTA
 security:
   - sesion: []
 
@@ -263,6 +273,388 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
 
+  /productos:
+    post:
+      tags: [Productos]
+      operationId: registrarProducto
+      summary: Registrar producto (RF07)
+      description: |
+        Solo ADMINISTRADOR. PREPARADO exige `receta` y no admite `nivelMinimo`. REVENTA exige `nivelMinimo`, no admite
+        `receta` y crea su existencia en 0. Todo se guarda en una sola transacción.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AltaProducto' }
+      responses:
+        '201':
+          description: Producto registrado como activo
+          headers:
+            Location:
+              schema: { type: string, examples: [/api/v1/productos/3] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+    get:
+      tags: [Productos]
+      operationId: consultarProductos
+      summary: Consultar productos (RF08)
+      description: |
+        ADMINISTRADOR y MESERO. El mesero recibe siempre solo los activos, sin importar `activo`. El listado no incluye
+        `receta` ni `existencia`.
+      parameters:
+        - name: q
+          in: query
+          description: Coincidencia en el nombre
+          schema: { type: string }
+        - name: activo
+          in: query
+          schema: { type: boolean }
+        - name: tipo
+          in: query
+          schema: { $ref: '#/components/schemas/TipoProducto' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página de productos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaProductos' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /productos/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Productos]
+      operationId: obtenerProducto
+      summary: Consultar un producto (RF08)
+      description: |
+        ADMINISTRADOR recibe `receta` o `existencia`. MESERO no las recibe, y un producto inactivo le responde 404.
+      responses:
+        '200':
+          description: Producto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    patch:
+      tags: [Productos]
+      operationId: editarProducto
+      summary: Modificar producto (RF09)
+      description: Solo ADMINISTRADOR. El precio nuevo no cambia el de comandas ya registradas.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EdicionProducto' }
+      responses:
+        '200':
+          description: Producto actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /productos/{id}/desactivacion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Productos]
+      operationId: desactivarProducto
+      summary: Desactivar producto (RF10)
+      description: Solo ADMINISTRADOR. Conserva el registro y sus referencias.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Desactivacion' }
+      responses:
+        '200':
+          description: Producto inactivo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`PRODUCTO_INACTIVO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /insumos:
+    get:
+      tags: [Productos]
+      operationId: consultarInsumos
+      summary: Insumos activos para recetas
+      description: Solo ADMINISTRADOR. Los insumos se preparan por carga autorizada.
+      responses:
+        '200':
+          description: Insumos por nombre
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Insumo' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /inventario/existencias:
+    get:
+      tags: [Inventario]
+      operationId: consultarExistencias
+      summary: Consultar existencias (RF16)
+      description: ADMINISTRADOR y ALMACENISTA. Nivel bajo es `cantidadActual <= nivelMinimo`.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: tipo
+          in: query
+          schema: { type: string, enum: [INSUMO, PRODUCTO] }
+        - name: nivelBajo
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página de existencias
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaExistencias' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /inventario/existencias/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Inventario]
+      operationId: obtenerExistencia
+      summary: Consultar una existencia (RF16)
+      responses:
+        '200':
+          description: Existencia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Existencia' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /inventario/existencias/{id}/movimientos:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Inventario]
+      operationId: consultarMovimientosDeExistencia
+      summary: Historial de una existencia (RF16)
+      parameters:
+        - $ref: '#/components/parameters/TipoHistorial'
+        - $ref: '#/components/parameters/Desde'
+        - $ref: '#/components/parameters/Hasta'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Movimientos y ajustes rechazados, del más reciente al más antiguo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaHistorial' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    post:
+      tags: [Inventario]
+      operationId: registrarMovimiento
+      summary: Registrar movimiento (RF17)
+      description: Solo ALMACENISTA.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AltaMovimiento' }
+      responses:
+        '201':
+          description: Movimiento y existencia actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovimientoRegistrado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`EXISTENCIA_INSUFICIENTE` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /inventario/movimientos:
+    get:
+      tags: [Inventario]
+      operationId: consultarMovimientos
+      summary: Historial general (RF16)
+      parameters:
+        - name: q
+          in: query
+          description: Coincidencia en el artículo
+          schema: { type: string }
+        - $ref: '#/components/parameters/TipoHistorial'
+        - $ref: '#/components/parameters/Desde'
+        - $ref: '#/components/parameters/Hasta'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Movimientos y ajustes rechazados, del más reciente al más antiguo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaHistorial' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /inventario/ajustes:
+    post:
+      tags: [Inventario]
+      operationId: solicitarAjuste
+      summary: Solicitar ajuste (RF18)
+      description: Solo ALMACENISTA. `cantidadSolicitada` es la existencia final deseada. No cambia el saldo.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AltaAjuste' }
+      responses:
+        '201':
+          description: Solicitud PENDIENTE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudAjuste' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409':
+          description: '`IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+    get:
+      tags: [Inventario]
+      operationId: consultarAjustes
+      summary: Consultar solicitudes (RF15, RF18)
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoSolicitud' }
+        - name: existenciaId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página de solicitudes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaSolicitudes' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /inventario/ajustes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Inventario]
+      operationId: obtenerAjuste
+      summary: Consultar una solicitud (RF15)
+      responses:
+        '200':
+          description: Solicitud
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudAjuste' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /inventario/ajustes/{id}/resolucion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Inventario]
+      operationId: resolverAjuste
+      summary: Autorizar o rechazar ajuste (RF15)
+      description: |
+        Solo ADMINISTRADOR. Autorizar fija el saldo y registra un movimiento AJUSTE; exige que la existencia no haya
+        cambiado desde la solicitud. Rechazar conserva el saldo.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolucionAjuste' }
+      responses:
+        '200':
+          description: Solicitud resuelta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudAjuste' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`AJUSTE_RESUELTO`, `EXISTENCIA_CAMBIADA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
 components:
   securitySchemes:
     sesion:
@@ -280,6 +672,37 @@ components:
       in: path
       required: true
       schema: { $ref: '#/components/schemas/Id' }
+    IdRecurso:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Id' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    TipoHistorial:
+      name: tipo
+      in: query
+      schema: { $ref: '#/components/schemas/TipoHistorial' }
+    Desde:
+      name: desde
+      in: query
+      schema: { type: string, format: date }
+    Hasta:
+      name: hasta
+      in: query
+      description: Incluye el día completo
+      schema: { type: string, format: date }
+    ClaveIdempotencia:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, pattern: '^[A-Za-z0-9_-]{8,100}$' }
     SolicitudPasiva:
       name: X-Solicitud-Pasiva
       in: header
@@ -374,6 +797,217 @@ components:
         size: { type: integer }
         totalElementos: { type: integer }
         totalPaginas: { type: integer }
+    Dinero:
+      type: string
+      pattern: '^\d{1,12}(\.\d{1,2})?$'
+      examples: ['55.00']
+    Cantidad:
+      type: string
+      description: Sin signo en las entradas. En las respuestas puede ser negativa
+      pattern: '^-?\d{1,12}(\.\d{1,6})?$'
+      examples: ['18.5']
+    TipoProducto:
+      type: string
+      enum: [PREPARADO, REVENTA]
+    UnidadMedida:
+      type: string
+      enum: [PIEZA, GRAMO, KILOGRAMO, MILILITRO, LITRO]
+    AltaProducto:
+      type: object
+      additionalProperties: false
+      required: [nombre, descripcion, precioVenta, tipo, unidadMedida]
+      properties:
+        nombre: { type: string, minLength: 1, maxLength: 120 }
+        descripcion: { type: string, minLength: 1, maxLength: 500 }
+        precioVenta: { $ref: '#/components/schemas/Dinero' }
+        tipo: { $ref: '#/components/schemas/TipoProducto' }
+        unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+        receta:
+          type: array
+          description: Obligatoria para PREPARADO. Sin insumos repetidos y con cantidades mayores que cero
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [insumoId, cantidadRequerida]
+            properties:
+              insumoId: { $ref: '#/components/schemas/Id' }
+              cantidadRequerida: { $ref: '#/components/schemas/Cantidad' }
+        nivelMinimo:
+          description: Obligatorio para REVENTA
+          $ref: '#/components/schemas/Cantidad'
+    EdicionProducto:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nombre: { type: string, minLength: 1, maxLength: 120 }
+        descripcion: { type: string, minLength: 1, maxLength: 500 }
+        precioVenta: { $ref: '#/components/schemas/Dinero' }
+    Producto:
+      type: object
+      required: [id, nombre, descripcion, precioVenta, tipo, unidadMedida, activo]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        nombre: { type: string }
+        descripcion: { type: string }
+        precioVenta: { $ref: '#/components/schemas/Dinero' }
+        tipo: { $ref: '#/components/schemas/TipoProducto' }
+        unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+        activo: { type: boolean }
+        receta:
+          type: array
+          items:
+            type: object
+            properties:
+              insumoId: { $ref: '#/components/schemas/Id' }
+              nombre: { type: string }
+              unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+              cantidadRequerida: { $ref: '#/components/schemas/Cantidad' }
+        existencia:
+          type: object
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            cantidadActual: { $ref: '#/components/schemas/Cantidad' }
+            nivelMinimo: { $ref: '#/components/schemas/Cantidad' }
+    Insumo:
+      type: object
+      required: [id, nombre, unidadMedida]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        nombre: { type: string }
+        unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+    Pagina:
+      type: object
+      required: [contenido, page, size, totalElementos, totalPaginas]
+      properties:
+        page: { type: integer }
+        size: { type: integer }
+        totalElementos: { type: integer }
+        totalPaginas: { type: integer }
+    PaginaProductos:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/Producto' }
+    PaginaExistencias:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/Existencia' }
+    PaginaHistorial:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/Historial' }
+    PaginaSolicitudes:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/SolicitudAjuste' }
+    Existencia:
+      type: object
+      required: [id, articuloId, nombre, tipo, unidadMedida, activo, cantidadActual, nivelMinimo, nivelBajo, fechaActualizacion, version]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        articuloId: { $ref: '#/components/schemas/Id' }
+        nombre: { type: string }
+        tipo: { type: string, enum: [INSUMO, PRODUCTO] }
+        unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+        activo: { type: boolean }
+        cantidadActual: { $ref: '#/components/schemas/Cantidad' }
+        nivelMinimo: { $ref: '#/components/schemas/Cantidad' }
+        nivelBajo: { type: boolean }
+        fechaActualizacion: { type: string, format: date-time }
+        version: { type: integer }
+    TipoHistorial:
+      type: string
+      description: AJUSTE_RECHAZADO es una solicitud rechazada; no mueve la existencia
+      enum: [ENTRADA_MANUAL, SALIDA_MANUAL, AJUSTE, AJUSTE_RECHAZADO]
+    Historial:
+      type: object
+      required: [id, tipo, existenciaId, articulo, unidadMedida, cambio, saldoAnterior, fechaHora, empleado]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        tipo: { $ref: '#/components/schemas/TipoHistorial' }
+        existenciaId: { $ref: '#/components/schemas/Id' }
+        articulo: { type: string }
+        unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+        cambio: { $ref: '#/components/schemas/Cantidad' }
+        saldoAnterior: { $ref: '#/components/schemas/Cantidad' }
+        saldoPosterior:
+          description: Ausente en AJUSTE_RECHAZADO
+          $ref: '#/components/schemas/Cantidad'
+        fechaHora: { type: string, format: date-time }
+        empleado: { type: string }
+        solicitudId: { $ref: '#/components/schemas/Id' }
+        motivo: { type: string }
+    AltaMovimiento:
+      type: object
+      additionalProperties: false
+      required: [tipo, cantidad]
+      properties:
+        tipo: { type: string, enum: [ENTRADA_MANUAL, SALIDA_MANUAL] }
+        cantidad:
+          description: Mayor que cero
+          $ref: '#/components/schemas/Cantidad'
+    MovimientoRegistrado:
+      type: object
+      required: [movimiento, existencia]
+      properties:
+        movimiento: { $ref: '#/components/schemas/Historial' }
+        existencia: { $ref: '#/components/schemas/Existencia' }
+    EstadoSolicitud:
+      type: string
+      enum: [PENDIENTE, AUTORIZADA, RECHAZADA]
+    AltaAjuste:
+      type: object
+      additionalProperties: false
+      required: [existenciaId, cantidadSolicitada, justificacion]
+      properties:
+        existenciaId: { $ref: '#/components/schemas/Id' }
+        cantidadSolicitada:
+          description: No negativa y distinta de la existencia actual
+          $ref: '#/components/schemas/Cantidad'
+        justificacion: { type: string, minLength: 1, maxLength: 500 }
+    ResolucionAjuste:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [AUTORIZADA, RECHAZADA] }
+    SolicitudAjuste:
+      type: object
+      required: [id, existenciaId, articulo, unidadMedida, cantidadAnterior, cantidadSolicitada, cantidadActual, justificacion, estado, almacenista, fechaHoraSolicitud, existenciaCambiada]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        existenciaId: { $ref: '#/components/schemas/Id' }
+        articulo: { type: string }
+        unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+        cantidadAnterior: { $ref: '#/components/schemas/Cantidad' }
+        cantidadSolicitada: { $ref: '#/components/schemas/Cantidad' }
+        cantidadActual: { $ref: '#/components/schemas/Cantidad' }
+        justificacion: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+        almacenista: { type: string }
+        fechaHoraSolicitud: { type: string, format: date-time }
+        administrador: { type: string }
+        fechaHoraResolucion: { type: string, format: date-time }
+        existenciaCambiada:
+          type: boolean
+          description: Pendiente que ya no puede autorizarse porque la existencia cambió
     Problema:
       type: object
       required: [type, title, status, detail, instance, codigo]
@@ -398,6 +1032,11 @@ components:
             - CORREO_DUPLICADO
             - EMPLEADO_INACTIVO
             - ULTIMO_ADMINISTRADOR
+            - PRODUCTO_INACTIVO
+            - EXISTENCIA_INSUFICIENTE
+            - AJUSTE_RESUELTO
+            - EXISTENCIA_CAMBIADA
+            - IDEMPOTENCIA_CONFLICTO
             - ERROR_INTERNO
         erroresCampo:
           type: object

@@ -1,14 +1,14 @@
 openapi: 3.1.0
 info:
   title: API de SIVANT
-  version: 0.4.0
+  version: 0.5.0
   license:
     name: Uso interno
     identifier: LicenseRef-SIVANT
   description: |
-    Contrato de las fases 0 a 4: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
+    Contrato de las fases 0 a 5: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
     (RF15 a RF18), servicio y consumo (RF01 a RF03, RF23 y RF24) y
-    cocina (RF19 a RF21).
+    cocina (RF19 a RF21), y cobro y ventas (RF04 a RF06 y RF22).
     Cada fase agrega sus operaciones antes de enlazar sus pantallas.
 
     ## Convenciones
@@ -21,7 +21,7 @@ info:
 
     ## Idempotencia
     Los movimientos, las solicitudes de ajuste y su resolución, la apertura y el cierre de cuentas, el envío, la
-    cancelación y el servicio de comandas exigen `Idempotency-Key`. Repetir la solicitud con la
+    cancelación y el servicio de comandas, el cobro y la cancelación de ventas exigen `Idempotency-Key`. Repetir la solicitud con la
     misma clave y los mismos datos devuelve el resultado guardado sin aplicarla de nuevo; con otros datos responde 409.
     Si la operación falló, la clave queda libre.
 
@@ -64,6 +64,8 @@ tags:
     description: RF19 a RF21
   - name: Notificaciones
     description: Bandeja personal
+  - name: Ventas
+    description: RF04 a RF06 y RF22. Cobra el mesero; consultan ADMINISTRADOR y CAJERO; cancela ADMINISTRADOR
 security:
   - sesion: []
 
@@ -801,6 +803,53 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
 
+  /cuentas/{id}/cobro:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Ventas]
+      operationId: cobrarCuenta
+      summary: Cobrar la cuenta (RF04, RF05)
+      description: |
+        Solo el mesero responsable, con la cuenta abierta, al menos una comanda no cancelada y todas las no canceladas
+        servidas. `versionCuenta` y `totalEsperado` deben coincidir con lo que el mesero consultó. En una transacción
+        registra la venta COMPLETADA, su único pago por el total y cierra la cuenta, que libera la mesa.
+
+        El cargo con tarjeta se hace antes en la terminal. Si la respuesta no llega, se repite con la misma clave y la
+        misma referencia: no se registra dos veces. Si la cuenta cambió después del cargo (`VERSION_OBSOLETA` o
+        `TOTAL_CAMBIADO`), no se registra y el cargo se revierte en la terminal.
+
+        La referencia se guarda en mayúsculas, sin espacios alrededor. Es obligatoria con tarjeta, opcional con
+        transferencia y no se admite en efectivo. No puede repetirse con el mismo método el mismo día ni parecer el
+        número de una tarjeta.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Cobro' }
+      responses:
+        '201':
+          description: Venta, pago y cuenta cerrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CobroRegistrado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: >-
+            `CUENTA_CERRADA`, `VERSION_OBSOLETA`, `CUENTA_SIN_COMANDAS`, `COMANDAS_PENDIENTES`, `TOTAL_INVALIDO`,
+            `TOTAL_CAMBIADO`, `REFERENCIA_REPETIDA` o `IDEMPOTENCIA_CONFLICTO`
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
   /cuentas/{id}/comandas:
     parameters:
       - $ref: '#/components/parameters/IdRecurso'
@@ -1014,6 +1063,112 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/TransicionRechazada' }
+
+  /ventas:
+    get:
+      tags: [Ventas]
+      operationId: consultarVentas
+      summary: Historial de ventas (RF06)
+      description: |
+        Completadas y canceladas, de la más reciente a la más antigua. Solo las de los últimos 24 meses, desde el
+        inicio de ese día en la zona del negocio: un `desde` anterior se ajusta a ese límite.
+      parameters:
+        - $ref: '#/components/parameters/Desde'
+        - $ref: '#/components/parameters/Hasta'
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoVenta' }
+        - name: metodo
+          in: query
+          schema: { $ref: '#/components/schemas/MetodoPago' }
+        - name: meseroId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - name: mesaId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página de ventas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaVentas' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /ventas/opciones:
+    get:
+      tags: [Ventas]
+      operationId: consultarOpcionesVentas
+      summary: Meseros y mesas para filtrar (RF06)
+      description: Los que tienen ventas en la ventana consultable.
+      responses:
+        '200':
+          description: Opciones de filtro
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OpcionesVentas' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /ventas/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Ventas]
+      operationId: consultarVenta
+      summary: Detalle de venta (RF06)
+      description: Con el pago, las comandas de la cuenta y la cancelación. Fuera de la ventana responde 404.
+      responses:
+        '200':
+          description: Venta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Venta' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /ventas/{id}/cancelacion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Ventas]
+      operationId: cancelarVenta
+      summary: Cancelar venta (RF22)
+      description: |
+        Solo ADMINISTRADOR, sobre una venta COMPLETADA dentro de la ventana. Registra la devolución completa ya
+        realizada: el importe devuelto es el total. `referenciaReversion` es obligatoria con tarjeta y transferencia,
+        no se admite en efectivo y no puede repetirse el mismo día. Conserva el pago, la cuenta cerrada, las comandas y
+        los consumos de inventario.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelacionVenta' }
+      responses:
+        '200':
+          description: Venta CANCELADA con su pago original y la devolución
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Venta' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`VENTA_CANCELADA`, `REFERENCIA_REPETIDA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
 
   /notificaciones:
     get:
@@ -1532,9 +1687,19 @@ components:
         comandas:
           type: array
           items: { $ref: '#/components/schemas/Comanda' }
+        cobro:
+          description: Presente si la cuenta se cerró con un cobro
+          type: object
+          required: [fechaHora, metodo, total, estado]
+          properties:
+            fechaHora: { type: string, format: date-time }
+            metodo: { $ref: '#/components/schemas/MetodoPago' }
+            total: { $ref: '#/components/schemas/Dinero' }
+            referenciaExterna: { type: string }
+            estado: { $ref: '#/components/schemas/EstadoVenta' }
         acciones:
           type: array
-          items: { type: string, enum: [ENVIAR_COMANDA, CERRAR_SIN_COBRO] }
+          items: { type: string, enum: [ENVIAR_COMANDA, COBRAR, CERRAR_SIN_COBRO] }
     ResumenCuenta:
       type: object
       properties:
@@ -1590,6 +1755,128 @@ components:
               producto: { type: string }
               cantidad: { type: integer }
               observaciones: { type: string }
+    MetodoPago:
+      type: string
+      enum: [EFECTIVO, TARJETA, TRANSFERENCIA]
+    EstadoVenta:
+      type: string
+      enum: [COMPLETADA, CANCELADA]
+    Referencia:
+      type: string
+      description: >-
+        Referencia de la terminal o del banco. Se descartan los espacios alrededor y se guarda en mayúsculas. Se rechaza
+        si tiene de 13 a 19 dígitos que cumplen Luhn, porque sería el número de una tarjeta
+      pattern: '^ *[A-Za-z0-9-]{0,40} *$'
+    Cobro:
+      type: object
+      required: [versionCuenta, metodo, totalEsperado]
+      properties:
+        versionCuenta: { type: integer }
+        metodo: { $ref: '#/components/schemas/MetodoPago' }
+        referenciaExterna: { $ref: '#/components/schemas/Referencia' }
+        totalEsperado: { $ref: '#/components/schemas/Dinero' }
+    Pago:
+      type: object
+      required: [id, metodo, monto, fechaHora, mesero]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        metodo: { $ref: '#/components/schemas/MetodoPago' }
+        monto: { $ref: '#/components/schemas/Dinero' }
+        referenciaExterna: { type: string }
+        fechaHora: { type: string, format: date-time }
+        mesero: { type: string }
+    CobroRegistrado:
+      type: object
+      required: [venta, pago, cuenta]
+      properties:
+        venta:
+          type: object
+          required: [id, fechaHora, total, estado]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            fechaHora:
+              description: La misma que el cierre de la cuenta y el pago
+              type: string
+              format: date-time
+            total: { $ref: '#/components/schemas/Dinero' }
+            estado: { $ref: '#/components/schemas/EstadoVenta' }
+        pago: { $ref: '#/components/schemas/Pago' }
+        cuenta: { $ref: '#/components/schemas/Cuenta' }
+    ResumenVenta:
+      type: object
+      required: [id, fechaHora, mesa, mesero, metodo, total, estado]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        fechaHora: { type: string, format: date-time }
+        mesa: { type: integer }
+        mesero: { type: string }
+        metodo: { $ref: '#/components/schemas/MetodoPago' }
+        total: { $ref: '#/components/schemas/Dinero' }
+        estado: { $ref: '#/components/schemas/EstadoVenta' }
+    PaginaVentas:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/ResumenVenta' }
+    OpcionesVentas:
+      type: object
+      required: [meseros, mesas]
+      properties:
+        meseros:
+          type: array
+          items: { $ref: '#/components/schemas/OpcionVenta' }
+        mesas:
+          type: array
+          items: { $ref: '#/components/schemas/OpcionVenta' }
+    OpcionVenta:
+      type: object
+      required: [id, nombre]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        nombre: { type: string }
+    Venta:
+      type: object
+      required: [id, cuentaId, mesa, mesero, fechaHora, estado, total, pago, comandas, acciones]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        cuentaId: { $ref: '#/components/schemas/Id' }
+        mesa: { type: integer }
+        mesero: { type: string }
+        fechaHora: { type: string, format: date-time }
+        estado: { $ref: '#/components/schemas/EstadoVenta' }
+        total:
+          description: Importe histórico al cobrar
+          $ref: '#/components/schemas/Dinero'
+        pago: { $ref: '#/components/schemas/Pago' }
+        cancelacion:
+          type: object
+          required: [administrador, fechaHora, justificacion, montoDevuelto]
+          properties:
+            administrador: { type: string }
+            fechaHora: { type: string, format: date-time }
+            justificacion: { type: string }
+            montoDevuelto: { $ref: '#/components/schemas/Dinero' }
+            referenciaReversion: { type: string }
+        comandas:
+          description: Todas las de la cuenta, incluidas las canceladas
+          type: array
+          items: { $ref: '#/components/schemas/Comanda' }
+        acciones:
+          description: CANCELAR solo para ADMINISTRADOR en una venta COMPLETADA
+          type: array
+          items: { type: string, enum: [CANCELAR] }
+    CancelacionVenta:
+      type: object
+      required: [confirmado, justificacion]
+      properties:
+        confirmado:
+          description: Debe ser `true`
+          type: boolean
+        justificacion: { type: string, minLength: 1, maxLength: 500 }
+        referenciaReversion: { $ref: '#/components/schemas/Referencia' }
     Notificacion:
       type: object
       required: [id, tipo, mensaje, fechaHora, leida, contexto]
@@ -1661,6 +1948,12 @@ components:
             - ULTIMO_DETALLE
             - TRANSICION_INVALIDA
             - EXISTENCIA_FUERA_DE_RANGO
+            - CUENTA_SIN_COMANDAS
+            - COMANDAS_PENDIENTES
+            - TOTAL_INVALIDO
+            - TOTAL_CAMBIADO
+            - REFERENCIA_REPETIDA
+            - VENTA_CANCELADA
             - ERROR_INTERNO
         erroresCampo:
           type: object

@@ -1,4 +1,4 @@
-# Casos de prueba · Fases 0 a 4
+# Casos de prueba · Fases 0 a 5
 
 Casos derivados del diagrama de casos de uso, los RF implementados y los RNF08 (expiración de sesión), RNF09 (auditoría) y RNF10 (tiempo real).
 El identificador aparece en el nombre de la prueba automatizada, así que se puede buscar en el código o en el reporte.
@@ -15,9 +15,9 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 121 | 148 | 148 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 65 | 73 | 73 | 0 |
-| Navegador | Manual | 27 | 27 | 27 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 151 | 203 | 203 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 75 | 83 | 83 | 0 |
+| Navegador | Manual | 33 | 33 | 33 | 0 |
 
 Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
 pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
@@ -52,6 +52,10 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Tiempo real | RNF10 | CP-102 a CP-108, CP-121, CP-F38 a CP-F41, CP-M19, CP-M20 |
 | Marcar pedido servido | RF23 | CP-109 a CP-112, CP-F59, CP-F60, CP-M25 |
 | Descontar inventario (automático) | RF24 | CP-113 a CP-120, CP-F61 a CP-F65, CP-M26, CP-M27 |
+| Cobrar pedido | RF04 | CP-122 a CP-130, CP-150, CP-151, CP-F66, CP-F67, CP-F69, CP-F71, CP-M28, CP-M33 |
+| Autorizar pago con tarjeta (extiende Cobrar pedido) | RF05 | CP-131 a CP-135, CP-F68, CP-F70, CP-M29, CP-M30 |
+| Consultar historial de ventas | RF06 | CP-136 a CP-141, CP-F72, CP-F73, CP-M31, CP-M33 |
+| Cancelar venta | RF22 | CP-142 a CP-149, CP-150, CP-F74, CP-F75, CP-M32, CP-M33 |
 
 ## Precondiciones comunes
 
@@ -65,7 +69,7 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 7 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
+| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 8 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
 | CP-02 | P1 | Consultar la tabla `rol` | Exactamente ADMINISTRADOR, ALMACENISTA, CAJERO, COCINERO y MESERO | Aprobado |
 | CP-03 | P1 | 1. Insertar por SQL `uno@sivant.test`. 2. Insertar el mismo, uno con mayúsculas, uno con espacio inicial y uno vacío. 3. Insertar estado `BAJA`. 4. Borrar el rol MESERO en uso | El paso 1 se acepta; PostgreSQL rechaza todos los demás | Aprobado |
 
@@ -390,6 +394,72 @@ preparados: Capuchino (18.5 de café y 180 de leche) y Latte (250 de leche y 10 
 
 Se comprobó que CP-117 falla con un bloqueo mutuo de PostgreSQL si las existencias no se bloquean por ID.
 
+## Cobrar pedido · RF04
+
+Precondición común de la fase 5: la de la fase 3. «Cuenta servida» es una cuenta de Juan con dos aguas y una galleta
+servidas: 55.50, versión 1.
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-122 | Cuenta con una comanda servida y otra cancelada; después sube el precio del agua a 99 | Cobrar 55.50 en efectivo con la versión consultada | 201: venta COMPLETADA y pago por 55.50 sin referencia; cuenta CERRADA con la misma fecha que la venta, sin acciones y con su cobro; pago a nombre de Juan; auditado; otra cuenta puede abrir la mesa | Aprobado |
+| CP-123 | Cuenta vacía, después con una comanda enviada, en preparación y lista, y otra con su única comanda cancelada | Cobrar en cada estado | 409 `CUENTA_SIN_COMANDAS` o `COMANDAS_PENDIENTES` y sin acción COBRAR; al cancelar la pendiente, se cobra | Aprobado |
+| CP-124 | Cuenta servida; otra con un producto de precio 0 | Versión 0; total 55.49; total 0 | 409 `VERSION_OBSOLETA`, `TOTAL_CAMBIADO` y `TOTAL_INVALIDO`; sin venta | Aprobado |
+| CP-125 | Cuenta servida de Juan | Cobrar como Ana; cuenta inexistente; sin clave | 404, 404 y 400; sin venta | Aprobado |
+| CP-126 | Cuenta servida y sesión de cada otro rol | Cobrar | 403; sin venta | Aprobado (4 roles) |
+| CP-127 | Cuenta servida | Cuerpo vacío, método «CHEQUE», totales -1, 55.505, 1e3 y vacío, referencias «A B», «abc$» y de 41 caracteres | 400 con el error de cada campo | Aprobado |
+| CP-128 | Cuenta servida | Repetir con la misma clave, con la misma clave y otra referencia, con otra clave, y tres cobros a la vez | Mismo resultado; `IDEMPOTENCIA_CONFLICTO`; `CUENTA_CERRADA`; 201, 409 y 409; una venta y un pago por cuenta | Aprobado |
+| CP-129 | Cuenta servida, cuatro veces | Cobrar y enviar otra comanda a la vez; después cancelar una comanda y enviar otra | Gana uno: si gana el envío se cancela y se cobra; después del cobro, cancelar y enviar responden `CUENTA_CERRADA` | Aprobado |
+| CP-130 | Fallo simulado al guardar el pago | Cobrar con tarjeta y reintentar dos veces con la misma clave | 500; la cuenta sigue abierta, sin venta ni auditoría; el reintento registra una sola venta | Aprobado |
+
+## Autorizar pago con tarjeta · RF05
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-131 | Cuenta servida | Tarjeta sin referencia, vacía o con espacios; efectivo con referencia; tarjeta « ab-12 »; transferencia sin referencia y con «SPEI9» | 400 en los cuatro primeros; después se guarda «AB-12»; la transferencia se registra con o sin referencia | Aprobado |
+| CP-132 | Cuenta servida | Tarjeta y transferencia con 4111-1111-1111-1111; después tarjeta con un folio de 12 dígitos | 400 en ambas, sin el número en la respuesta ni en la auditoría; el folio se acepta | Aprobado |
+| CP-133 | Un cobro con tarjeta «778899» | Otra cuenta con la misma referencia; con transferencia; un día después con tarjeta | 409 `REFERENCIA_REPETIDA` en el campo y la cuenta sigue abierta; las otras dos se registran | Aprobado |
+| CP-134 | Dos cuentas servidas de meseros distintos | Cobrar ambas a la vez con la referencia «5050» | 201 y 409; un solo pago | Aprobado |
+| CP-135 | Cuenta servida a la que se agrega otra comanda servida | Cobrar con tarjeta «616161» y la versión anterior; después con la versión nueva y 75.50 | 409 `VERSION_OBSOLETA` sin registrar nada; después se registra con la misma referencia | Aprobado |
+| CP-F66 | Cuenta con COBRAR; con una comanda lista; cerrada con cobro cancelado | Abrir la cuenta | Botón «Cobrar $55.50»; sin botón y con la indicación de servir; método, referencia y «Cancelada» | Aprobado |
+| CP-F67 | Cuenta cobrable | Cobrar en efectivo | Envía versión, total y sin referencia; muestra el comprobante y la mesa libre | Aprobado |
+| CP-F68 | Cuenta cobrable | Tarjeta sin referencia, con espacios, con el número de una tarjeta, en transferencia y con « 778899 » | Errores sin llamar a la API; envía «778899» | Aprobado |
+| CP-F69 | Cuenta cobrable | Cobro con tarjeta sin conexión; salir, volver y reenviar | Conserva método, referencia y clave; avisa del intento sin confirmar; registra una vez | Aprobado |
+| CP-F70 | Cuenta cobrable | Cobro con tarjeta y 409 `VERSION_OBSOLETA`; salir y volver; «Ya lo revertí» | Indica revertir la referencia A1 por 55.50 y cobrar 75.50; se conserva al volver; después vuelve al formulario | Aprobado |
+| CP-F71 | Cuenta cobrable; cuenta ya cobrada | 409 `REFERENCIA_REPETIDA`; abrir el cobro de la cobrada | Marca el campo y muestra el motivo; «ya se cobró por $55.50» | Aprobado |
+
+## Consultar historial de ventas · RF06
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-136 | Ventas en efectivo, tarjeta (Ana, mesa 2, cancelada) y transferencia | Listar sin filtros y por estado, método, mesero, mesa y combinados; página 2 de tamaño 2; opciones | Orden de la más reciente; cada filtro devuelve lo esperado; total 3 con una fila; meseros y mesas ordenados | Aprobado |
+| CP-137 | Venta movida al último segundo y al inicio de un día | Filtrar ese día, el siguiente y hasta el anterior | Se incluye en el día, en la zona del negocio, y no en los otros | Aprobado |
+| CP-138 | Ventas justo en el límite de 24 meses y un segundo antes | Listar, con `desde=2000-01-01`, detalle y cancelación | Solo la de dentro; la de fuera responde 404 y sigue en la base | Aprobado |
+| CP-139 | Venta con una comanda servida con observación y otra cancelada | Detalle como cajero y administrador; venta inexistente | Pago, mesa, mesero, precios guardados y la cancelación de la comanda; CANCELAR solo para el administrador; 404 | Aprobado |
+| CP-140 | Venta y sesión de mesero, cocinero y almacenista; sin sesión | Listado, detalle y opciones | 403; 401 sin sesión | Aprobado (3 roles) |
+| CP-141 | Cajero | Filtros inválidos: fecha, estado, método, mesero, mesa, página, tamaño y rango invertido | 400 | Aprobado (8 valores) |
+| CP-F72 | Historial con filtros en la URL | Abrir `/ventas?estado=…&metodo=…&meseroId=…&desde=…` | Consulta con esos filtros, los muestra seleccionados y enlaza al detalle | Aprobado |
+| CP-F73 | Venta cancelada como cajero; completada como administrador | Abrir el detalle | Pago, comandas y cancelación; «Cancelar venta» solo si la API lo ofrece | Aprobado |
+
+## Cancelar venta · RF22
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-142 | Venta en efectivo | Cancelar con « Cobro equivocado » | Venta CANCELADA sin acciones; devolución por el total, motivo recortado y administrador; pago, cuenta, movimientos y existencias sin cambios; auditado; la cuenta muestra el cobro cancelado | Aprobado |
+| CP-143 | Venta con tarjeta y con transferencia | Sin referencia, vacía, con espacios y con «con espacio»; después « rev-1 » | 400; después se guarda «REV-1» | Aprobado (2 métodos) |
+| CP-144 | Ventas en efectivo, tarjeta y transferencia | Efectivo con referencia; tarjeta y transferencia con el número de una tarjeta | 400; sin cancelación | Aprobado |
+| CP-145 | Venta completada | Sin confirmar o con `false`; motivo vacío, en blanco o de 501; sin clave; inexistente | 400 en cada campo; 404; sin cancelación | Aprobado |
+| CP-146 | Venta y sesión de cada otro rol | Cancelar | 403; sin cancelación | Aprobado (4 roles) |
+| CP-147 | Venta en efectivo; otra con tarjeta | Repetir con la misma clave y con otra; tres cancelaciones a la vez | Mismo resultado y `VENTA_CANCELADA`; 200, 409 y 409, ambas con `VENTA_CANCELADA` | Aprobado |
+| CP-148 | Una devolución con «R1» | Cancelar otra venta con «r1» | 409 `REFERENCIA_REPETIDA`; la venta sigue completada | Aprobado |
+| CP-149 | Fallo simulado al guardar la devolución | Cancelar y reintentar con la misma clave | 500 y la venta sigue completada; el reintento la cancela | Aprobado |
+| CP-150 | Venta con tarjeta | Por SQL: borrar el pago, cambiar monto, total, estado sin devolución, quitar la referencia, cambiar a efectivo, referencia en blanco, segunda venta, segundo pago y devolución con referencia en efectivo | PostgreSQL rechaza cada una | Aprobado (10 sentencias) |
+| CP-151 | Cuenta servida y abierta | Por SQL: venta sin pago; venta y pago sobre la cuenta abierta | PostgreSQL rechaza ambas al confirmar | Aprobado |
+| CP-F74 | Venta con tarjeta como administrador | Enviar vacío; después motivo, «R-1» y confirmar | Pide motivo, referencia y confirmación; envía y vuelve al detalle | Aprobado |
+| CP-F75 | Venta en efectivo ya cancelada por otro | Motivo y confirmar | No pide referencia e indica entregar desde caja; muestra «ya está cancelada» y actualiza | Aprobado |
+
+Se comprobó que CP-124 falla si no se compara el total y que CP-147 falla si la venta no se bloquea antes de
+cancelarla.
+
 ## Recorrido en el navegador
 
 | ID | Precondición | Pasos y datos | Resultado obtenido | Estado |
@@ -421,6 +491,12 @@ Se comprobó que CP-117 falla con un bloqueo mutuo de PostgreSQL si las existenc
 | CP-M25 | Comanda lista | Marcar servida y confirmar | «La comanda 1 quedó servida», etiqueta Servida y sin botones | Aprobado |
 | CP-M26 | Almacenista en Inventario, Brownie con 11 | Se sirven 15 desde otra sesión | Sin recargar pasa a -4 y «Bajo», con aviso destacado y contador | Aprobado |
 | CP-M27 | Aviso anterior | Abrir avisos y su enlace, a 360 px, y marcarlo leído | «Faltan 4 pza»; el historial muestra «Consumo -15 pza» con la comanda; sin desplazamiento horizontal; queda leído | Aprobado |
+| CP-M28 | Cuenta 1 con una comanda enviada, como mesero | Abrir la cuenta; el cajero cancela la comanda desde otra sesión | Indica que deben estar servidas y no ofrece cobrar; sin recargar aparece «Cobrar $1,235.00» | Aprobado |
+| CP-M29 | Cuenta 4 servida por 40.00 | Tarjeta con 4111-1111-1111-1111 | «No captures el número de la tarjeta» y no se envía | Aprobado tras corregir |
+| CP-M30 | El paso anterior | Otra comanda desde otra sesión; registrar «778899»; recargar; «Ya lo revertí»; el cajero cancela la comanda; cobrar «778900» | Indica revertir 778899 por $40.00 y cobrar $60.00, también tras recargar; después pide servir; se registra la venta 2 por $40.00 | Aprobado |
+| CP-M31 | Administrador con tres ventas | Historial y `?metodo=TRANSFERENCIA` | Muestra las ventas; el filtro deja la venta 1 y las mesas 2 y 5 | Aprobado |
+| CP-M32 | Venta 2 con tarjeta | Cancelar con motivo y «rev-778900», sin confirmar y después confirmando | Pide confirmar; el detalle queda Cancelada, conserva el pago 778900 y muestra Rodrigo Herrera, $40.00 y «REV-778900» | Aprobado |
+| CP-M33 | Mesero y administrador | Cobro en efectivo de la cuenta 5, historial, detalles y cancelar a 360 px | Sin desplazamiento horizontal; los filtros en dos columnas | Aprobado tras corregir |
 
 ### Defectos encontrados
 
@@ -436,10 +512,15 @@ Se comprobó que CP-117 falla con un bloqueo mutuo de PostgreSQL si las existenc
 | CP-M24 | El selector de cantidad se estiraba en móvil | Se ajustó el estilo; no se repitió en el navegador |
 | CP-102, CP-103, CP-107 | El cliente de prueba no leía eventos JSON y otros casos pasaban sin recibir nada | Se corrigió y se exige recibir antes de comprobar el silencio |
 | CP-F65 | Los listados que se recargaban solos contaban como actividad y podían alargar la sesión | Las recargas automáticas se envían como pasivas |
+| CP-M29 | Una transferencia aceptaba como referencia el número de una tarjeta y lo guardaba | Se rechaza con cualquier método, también en la reversión; lo cubren CP-132, CP-144 y CP-F68 |
+| CP-M29 | El nombre del producto aparecía dentro de un recuadro en el cobro y en la cancelación de venta | El estilo usaba el nombre de una clase de la nueva comanda |
+| CP-M33 | A 360 px los filtros ocupaban la pantalla y las fechas se salían de su columna | Dos columnas y campos que se ajustan |
+| CP-147 | Sin el bloqueo de la venta, las cancelaciones simultáneas respondían `REFERENCIA_REPETIDA` y la prueba no lo detectaba | La prueba exige `VENTA_CANCELADA` |
 
 ## Sin cubrir
 
 - Los 45 minutos de inactividad en tiempo real: CP-10 y CP-11 usan un reloj simulado.
+- Un cargo real en una terminal: el recorrido usa referencias inventadas.
 - Operación con HTTPS (incluido WebSocket seguro) y en dispositivos físicos.
 - Tiempos de respuesta y sesiones simultáneas (RNF01 a RNF03), que el ROADMAP ubica en la fase 7.
 
@@ -449,5 +530,4 @@ Sus casos de prueba se escriben al implementar cada fase.
 
 | Caso de uso | Fase | RF |
 |---|---|---|
-| Cobrar pedido, autorizar pago con tarjeta, consultar y cancelar venta | 5 | RF04 a RF06, RF22 |
 | Registrar entrega de efectivo y entregar fondo de cambio | 6 | RF25, RF26 |

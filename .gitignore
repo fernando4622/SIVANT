@@ -23,3 +23,25 @@ frontend/.angular/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Credenciales y configuración local (nunca versionar valores reales)
+*.pem
+*.key
+*.p12
+*.jks
+.pgpass
+**/application-local.yml
+**/application-local.properties
+**/application-local.yaml
+compose.override.yaml
+database/**/*.local.*
+.claude/settings.local.json
+
+# Respaldos y datos de PostgreSQL
+*.dump
+*.backup
+database/data/
+
+# Registros y pruebas
+*.log
+frontend/coverage/

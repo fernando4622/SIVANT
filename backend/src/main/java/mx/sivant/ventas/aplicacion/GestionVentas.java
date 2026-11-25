@@ -117,9 +117,7 @@ public class GestionVentas {
         if (referencia == null) {
             throw ReglaNegocioException.invalido(campo, "Escribe la referencia de la reversión.");
         }
-        if (metodo == MetodoPago.TARJETA) {
-            Cobros.exigirSinTarjeta(campo, referencia);
-        }
+        Cobros.exigirSinTarjeta(campo, referencia);
     }
 
     private VentaConCuenta completa(Venta venta) {

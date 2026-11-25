@@ -9,6 +9,12 @@ export const rutasCuentas: Routes = [
     loadComponent: () => import('./pages/detalle-cuenta').then((m) => m.DetalleCuenta),
   },
   {
+    path: 'cobro',
+    title: 'Cobrar cuenta · SIVANT',
+    canActivate: [conRol('MESERO')],
+    loadComponent: () => import('../cobro/pages/cobrar-cuenta').then((m) => m.CobrarCuenta),
+  },
+  {
     path: 'comandas/nueva',
     title: 'Nueva comanda · SIVANT',
     canActivate: [conRol('MESERO')],

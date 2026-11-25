@@ -90,6 +90,18 @@
             <dt>Cierre:</dt>
             <dd>{{ fechaHora(cierre) }}</dd>
           }
+          @if (c.cobro; as cobro) {
+            <dt>Cobro:</dt>
+            <dd>{{ metodos[cobro.metodo] ?? cobro.metodo }}</dd>
+            @if (cobro.referenciaExterna; as referencia) {
+              <dt>Referencia:</dt>
+              <dd>{{ referencia }}</dd>
+            }
+            @if (cobro.estado === 'CANCELADA') {
+              <dt>Venta:</dt>
+              <dd>Cancelada</dd>
+            }
+          }
         </dl>
         <p class="total">
           <span>Total</span>
@@ -97,8 +109,16 @@
         </p>
       </section>
 
+      @if (c.acciones.includes('COBRAR')) {
+        <a class="boton boton--principal" [routerLink]="['/cuentas', c.id, 'cobro']">
+          <app-icono nombre="cobro" />
+          Cobrar {{ dinero(c.total) }}
+        </a>
+      } @else if (porServirAun()) {
+        <p class="campo__ayuda">Para cobrar, todas las comandas no canceladas deben estar servidas.</p>
+      }
       @if (c.acciones.includes('ENVIAR_COMANDA')) {
-        <a class="boton boton--principal" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
+        <a class="boton" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
           <app-icono nombre="mas" />
           Nueva comanda
         </a>

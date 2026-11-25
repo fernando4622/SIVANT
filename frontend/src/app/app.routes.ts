@@ -52,6 +52,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/productos/productos.routes').then((m) => m.rutasProductos),
       },
       {
+        path: 'ventas',
+        canActivate: [conRol('ADMINISTRADOR', 'CAJERO')],
+        loadChildren: () => import('./features/ventas/ventas.routes').then((m) => m.rutasVentas),
+      },
+      {
         path: 'inventario',
         canActivate: [conRol('ADMINISTRADOR', 'ALMACENISTA')],
         loadChildren: () => import('./features/inventario/inventario.routes').then((m) => m.rutasInventario),

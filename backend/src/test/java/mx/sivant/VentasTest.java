@@ -318,12 +318,14 @@ class VentasTest extends PruebaServicio {
         }
 
         @Test
-        @DisplayName("CP-132 Rechaza el número de la tarjeta y no lo conserva")
+        @DisplayName("CP-132 Rechaza el número de una tarjeta con cualquier método y no lo conserva")
         void numeroDeTarjeta() {
             String cuenta = cuentaServida(mesero, mesa1);
-            var r = cobrar(cuenta, "TARJETA", NUMERO_TARJETA);
-            assertThat(r.estado()).isEqualTo(400);
-            assertThat(r.texto()).doesNotContain("4111");
+            for (String metodo : List.of("TARJETA", "TRANSFERENCIA")) {
+                var r = cobrar(cuenta, metodo, NUMERO_TARJETA);
+                assertThat(r.campo("referenciaExterna")).as(metodo).contains("número de la tarjeta");
+                assertThat(r.texto()).doesNotContain("4111");
+            }
             sinCobrar(cuenta);
             assertThat(sql.queryForObject("SELECT count(*) FROM sivant.auditoria WHERE detalle::text LIKE '%4111%'",
                     Integer.class)).isZero();
@@ -544,12 +546,14 @@ class VentasTest extends PruebaServicio {
         }
 
         @Test
-        @DisplayName("CP-144 El efectivo no lleva referencia y la tarjeta no admite su número")
+        @DisplayName("CP-144 El efectivo no lleva referencia y ninguna reversión admite el número de una tarjeta")
         void referenciaIndebida() {
             assertThat(cancelarVenta(admin, venta("EFECTIVO", null), devolucion("X1")).campo("referenciaReversion"))
                     .isNotBlank();
             assertThat(cancelarVenta(admin, venta("TARJETA", "C1"), devolucion(NUMERO_TARJETA))
-                    .campo("referenciaReversion")).isNotBlank();
+                    .campo("referenciaReversion")).contains("número de la tarjeta");
+            assertThat(cancelarVenta(admin, venta("TRANSFERENCIA", null), devolucion(NUMERO_TARJETA))
+                    .campo("referenciaReversion")).contains("número de la tarjeta");
             assertThat(contar("cancelacion_venta")).isZero();
         }
 

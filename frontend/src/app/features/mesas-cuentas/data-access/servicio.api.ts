@@ -62,7 +62,9 @@ export interface Cuenta {
   version: number;
   total: string;
   comandas: Comanda[];
-  acciones: ('ENVIAR_COMANDA' | 'CERRAR_SIN_COBRO')[];
+  /** Presente si la cuenta se cerró con un cobro. */
+  cobro?: { fechaHora: string; metodo: string; total: string; referenciaExterna?: string; estado: string };
+  acciones: ('ENVIAR_COMANDA' | 'COBRAR' | 'CERRAR_SIN_COBRO')[];
 }
 
 export interface Servida {

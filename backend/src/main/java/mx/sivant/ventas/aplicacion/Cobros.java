@@ -74,17 +74,16 @@ public class Cobros {
         if (metodo == MetodoPago.EFECTIVO && referencia != null) {
             throw ReglaNegocioException.invalido(campo, "El efectivo no lleva referencia.");
         }
-        if (metodo == MetodoPago.TARJETA) {
-            if (referencia == null) {
-                throw ReglaNegocioException.invalido(campo, "Escribe la referencia de autorización.");
-            }
-            exigirSinTarjeta(campo, referencia);
+        if (metodo == MetodoPago.TARJETA && referencia == null) {
+            throw ReglaNegocioException.invalido(campo, "Escribe la referencia de autorización.");
         }
+        exigirSinTarjeta(campo, referencia);
         return referencia;
     }
 
+    /** Ninguna referencia puede ser el número de una tarjeta, sea cual sea el método. */
     static void exigirSinTarjeta(String campo, String referencia) {
-        if (Referencias.pareceTarjeta(referencia)) {
+        if (referencia != null && Referencias.pareceTarjeta(referencia)) {
             throw ReglaNegocioException.invalido(campo, "No captures el número de la tarjeta. Usa la referencia.");
         }
     }

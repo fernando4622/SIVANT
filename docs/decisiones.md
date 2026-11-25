@@ -1,4 +1,4 @@
-# Decisiones y diferencias · Fases 0 a 4
+# Decisiones y diferencias · Fases 0 a 5
 
 Los documentos `ROADMAP.md`, `arquitectura-sivant.md` y `modelo-datos-logico-relacional.md` se copiaron sin cambios.
 Aquí se registra lo que la implementación precisó o resolvió de otra forma.
@@ -42,6 +42,19 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Confirmar al servir | La pantalla pide confirmación | Descuenta inventario y no puede deshacerse |
 | `EXISTENCIA_ACTUALIZADA` | Evento al almacenista en cada cambio de saldo, también manual o por ajuste | Arquitectura prevé «cambios que requieren actualizar la consulta» |
 | Saldo fuera de rango | 409 `EXISTENCIA_FUERA_DE_RANGO` si superaría 12 enteros | Protege el límite de la columna |
+| **Cargo aprobado y la cuenta cambió** | Se rechaza (409 `VERSION_OBSOLETA` o `TOTAL_CAMBIADO`) y no se registra nada. La pantalla indica revertir el cargo con su referencia e importe hasta que el mesero lo confirma | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
+| **Referencia repetida** | No se admite la misma referencia con el mismo método el mismo día (zona del negocio) | Decisión del responsable del proyecto, 25 de noviembre de 2026. Los códigos de autorización se repiten con el tiempo |
+| Referencia de la reversión | La misma regla por día | El ROADMAP pide un procedimiento verificable para las devoluciones |
+| Fallo de red al cobrar | La pantalla conserva clave, método y referencia en la pestaña: al volver, reenvía sin registrar dos veces | Arquitectura pide reintentar con la misma referencia y clave |
+| Número de tarjeta | Se rechaza una referencia de 13 a 19 dígitos que cumpla Luhn, con cualquier método | Arquitectura excluye el número de tarjeta de formularios y registros. Puede rechazar una referencia válida con esa forma |
+| Formato de referencia | Hasta 40 letras, números o guiones; se guarda en mayúsculas | Evita duplicados que solo difieren en mayúsculas |
+| Momento del cobro | Solo con todas las comandas no canceladas servidas; cierra la cuenta y libera la mesa | Arquitectura, sección 9. Por eso al cancelar una venta no quedan comandas sin servir |
+| Fechas del cobro | Venta, pago y cierre de cuenta llevan la misma fecha | Una sola operación |
+| Importe devuelto | Siempre el total: lo fija el servidor | Arquitectura pide devolución completa |
+| Ventana de 24 meses | Desde el inicio de ese día en la zona del negocio. Aplica también al detalle y a la cancelación (404 fuera) | RF06. Las ventas anteriores se conservan |
+| `GET /ventas/opciones` | Se agrega: meseros y mesas con ventas en la ventana | Los filtros piden mesero y mesa, y el cajero no consulta empleados |
+| `cobro` y `COBRAR` en la cuenta | La cuenta indica si puede cobrarse y, cerrada, con qué método | El mesero ve el resultado aunque se pierda la respuesta |
+| Total máximo | 409 `TOTAL_INVALIDO` si el total es 0 o superaría 12 enteros | La venta exige total positivo |
 
 ## Diferencias con las interfaces de referencia
 
@@ -65,10 +78,14 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 | Diagrama | Regla vigente |
 |---|---|
 | «Pedido» | Comanda dentro de una cuenta |
+| «Autorizar pago con tarjeta» por el cajero (CU-05) | Lo registra el mesero responsable (RF05 vigente) |
+| «Registrar devolución» parcial con reposición de inventario (CU-15) | Cancelar venta con devolución completa y sin reponer inventario (RF22) |
 | «Registrar entrega de efectivo» asociado a mesero y cajero | La registra el cajero (arquitectura, sección 3) |
 | «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro |
 | Iniciar y cerrar sesión no aparecen | Se implementan como soporte de todos los actores |
 
-## Pendiente de las fases 0 a 4
+## Pendiente de las fases 0 a 5
 
 - `AGENTS.md` no está en el repositorio ni en los documentos recibidos, así que no se pudieron revisar sus reglas.
+- Una cuenta con comandas servidas cuyo total es 0 (productos con precio 0) no puede cobrarse ni cerrarse sin cobro.
+  Hace falta decidir si se prohíbe el precio 0 o se permite cerrarla.

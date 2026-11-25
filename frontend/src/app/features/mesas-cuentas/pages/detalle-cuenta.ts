@@ -7,6 +7,7 @@ import { TiempoReal } from '../../../core/realtime/tiempo-real';
 import { dinero, fechaHora } from '../../../shared/formato';
 import { Confirmacion } from '../../../shared/ui/confirmacion';
 import { Icono } from '../../../shared/ui/icono';
+import { NOMBRE_METODO } from '../../ventas/data-access/ventas.api';
 import { TarjetaComanda } from '../components/tarjeta-comanda';
 import { Comanda, Cuenta, Servida, ServicioApi } from '../data-access/servicio.api';
 
@@ -41,6 +42,16 @@ export class DetalleCuenta implements OnInit {
       .map((c) => c.articulo)
       .join(', '),
   );
+  /** La cuenta tiene consumo pendiente de servir: todavía no puede cobrarse. */
+  protected readonly porServirAun = computed(() => {
+    const cuenta = this.cuenta();
+    return (
+      !!cuenta &&
+      cuenta.estado === 'ABIERTA' &&
+      cuenta.comandas.some((c) => c.estado !== 'CANCELADA' && c.estado !== 'SERVIDA')
+    );
+  });
+  protected readonly metodos = NOMBRE_METODO as Partial<Record<string, string>>;
   protected readonly dinero = dinero;
   protected readonly fechaHora = fechaHora;
 

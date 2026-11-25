@@ -24,6 +24,7 @@ const OPCIONES: Opcion[] = [
   { ruta: '/cocina', texto: 'Cocina', icono: 'cocina', roles: ['COCINERO'] },
   { ruta: '/empleados', texto: 'Empleados', icono: 'empleados', roles: ['ADMINISTRADOR'] },
   { ruta: '/productos', texto: 'Productos', icono: 'productos', roles: ['ADMINISTRADOR', 'MESERO'] },
+  { ruta: '/ventas', texto: 'Ventas', icono: 'ventas', roles: ['ADMINISTRADOR', 'CAJERO'] },
   { ruta: '/inventario', texto: 'Inventario', icono: 'inventario', roles: ['ADMINISTRADOR', 'ALMACENISTA'] },
 ];
 

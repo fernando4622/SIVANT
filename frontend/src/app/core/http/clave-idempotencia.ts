@@ -15,6 +15,12 @@ export class ClaveIdempotencia {
     return this.clave;
   }
 
+  /** Retoma un intento guardado, por ejemplo después de recargar la pestaña. */
+  restaurar(clave: string, datos: unknown): void {
+    this.clave = clave;
+    this.datos = JSON.stringify(datos);
+  }
+
   /** Al completarse, la siguiente operación usa otra clave aunque lleve los mismos datos. */
   completar(): void {
     this.clave = null;

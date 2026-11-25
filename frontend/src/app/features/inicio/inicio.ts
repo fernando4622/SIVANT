@@ -14,7 +14,7 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
   ADMINISTRADOR: [
     { texto: 'Gestionar empleados', ruta: '/empleados' },
     { texto: 'Gestionar productos', ruta: '/productos' },
-    { texto: 'Consultar y cancelar ventas' },
+    { texto: 'Consultar y cancelar ventas', ruta: '/ventas' },
     { texto: 'Consultar inventario', ruta: '/inventario' },
     { texto: 'Resolver ajustes de inventario', ruta: '/inventario/ajustes' },
   ],
@@ -22,11 +22,11 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
     { texto: 'Consultar el catálogo', ruta: '/productos' },
     { texto: 'Abrir cuentas y registrar comandas', ruta: '/mesas' },
     { texto: 'Servir comandas', ruta: '/mesas' },
-    { texto: 'Cobrar cuentas' },
+    { texto: 'Cobrar cuentas', ruta: '/mesas' },
   ],
   CAJERO: [
     { texto: 'Cancelar comandas', ruta: '/mesas' },
-    { texto: 'Consultar ventas' },
+    { texto: 'Consultar ventas', ruta: '/ventas' },
     { texto: 'Recibir efectivo y entregar fondo de cambio' },
   ],
   COCINERO: [{ texto: 'Consultar la cola y preparar comandas', ruta: '/cocina' }],

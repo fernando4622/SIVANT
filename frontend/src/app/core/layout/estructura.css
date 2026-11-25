@@ -125,7 +125,7 @@ main:focus {
   outline: none;
 }
 
-@media (max-width: 60rem) {
+@media (max-width: 68rem) {
   :host {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;

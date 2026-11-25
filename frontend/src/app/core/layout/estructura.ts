@@ -16,6 +16,8 @@ interface Opcion {
 const OPCIONES: Opcion[] = [
   { ruta: '/inicio', texto: 'Inicio', icono: 'inicio' },
   { ruta: '/empleados', texto: 'Empleados', icono: 'empleados', roles: ['ADMINISTRADOR'] },
+  { ruta: '/productos', texto: 'Productos', icono: 'productos', roles: ['ADMINISTRADOR', 'MESERO'] },
+  { ruta: '/inventario', texto: 'Inventario', icono: 'inventario', roles: ['ADMINISTRADOR', 'ALMACENISTA'] },
 ];
 
 @Component({

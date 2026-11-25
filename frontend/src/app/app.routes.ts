@@ -24,6 +24,16 @@ export const routes: Routes = [
         canActivate: [conRol('ADMINISTRADOR')],
         loadChildren: () => import('./features/empleados/empleados.routes').then((m) => m.rutasEmpleados),
       },
+      {
+        path: 'productos',
+        canActivate: [conRol('ADMINISTRADOR', 'MESERO')],
+        loadChildren: () => import('./features/productos/productos.routes').then((m) => m.rutasProductos),
+      },
+      {
+        path: 'inventario',
+        canActivate: [conRol('ADMINISTRADOR', 'ALMACENISTA')],
+        loadChildren: () => import('./features/inventario/inventario.routes').then((m) => m.rutasInventario),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

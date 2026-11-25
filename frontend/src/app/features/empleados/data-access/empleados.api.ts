@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Rol } from '../../../core/auth/rol';
+import { Pagina, TAMANO_PAGINA } from '../../../shared/listado';
 
 export type EstadoEmpleado = 'ACTIVO' | 'INACTIVO';
 
@@ -11,14 +12,6 @@ export interface Empleado {
   correo: string;
   rol: Rol;
   estado: EstadoEmpleado;
-}
-
-export interface PaginaEmpleados {
-  contenido: Empleado[];
-  page: number;
-  size: number;
-  totalElementos: number;
-  totalPaginas: number;
 }
 
 export interface DatosEmpleado {
@@ -35,21 +28,20 @@ export interface FiltroEmpleados {
   page: number;
 }
 
-export const TAMANO_PAGINA = 10;
 const API = '/api/v1/empleados';
 
 @Injectable({ providedIn: 'root' })
 export class EmpleadosApi {
   private readonly http = inject(HttpClient);
 
-  listar(filtro: FiltroEmpleados): Observable<PaginaEmpleados> {
+  listar(filtro: FiltroEmpleados): Observable<Pagina<Empleado>> {
     let params = new HttpParams().set('page', filtro.page).set('size', TAMANO_PAGINA);
     for (const clave of ['q', 'rol', 'estado'] as const) {
       if (filtro[clave]) {
         params = params.set(clave, filtro[clave]);
       }
     }
-    return this.http.get<PaginaEmpleados>(API, { params });
+    return this.http.get<Pagina<Empleado>>(API, { params });
   }
 
   obtener(id: string): Observable<Empleado> {

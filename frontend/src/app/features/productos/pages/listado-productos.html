@@ -1,0 +1,122 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>{{ administra() ? 'Gestionar productos' : 'Catálogo' }}</h1>
+  @if (administra()) {
+    <a class="boton boton--principal" routerLink="/productos/nuevo">
+      <app-icono nombre="mas" />
+      Nuevo producto
+    </a>
+  }
+</div>
+
+<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+  <div class="buscador">
+    <app-icono nombre="buscar" />
+    <input
+      class="control"
+      type="search"
+      formControlName="q"
+      placeholder="Buscar producto…"
+      aria-label="Buscar por nombre"
+      maxlength="120"
+    />
+  </div>
+  <select class="control" formControlName="tipo" aria-label="Filtrar por tipo">
+    <option value="">Todos los tipos</option>
+    <option value="PREPARADO">Preparado</option>
+    <option value="REVENTA">Reventa</option>
+  </select>
+  @if (administra()) {
+    <select class="control" formControlName="activo" aria-label="Filtrar por estado">
+      <option value="">Todos los estados</option>
+      <option value="true">Activo</option>
+      <option value="false">Inactivo</option>
+    </select>
+  }
+</form>
+
+<p class="mensaje" role="status">{{ mensaje() }}</p>
+
+@if (listado.vista().error; as error) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ error }}</p>
+      <button type="button" class="boton" (click)="listado.recargar()">Reintentar</button>
+    </div>
+  </div>
+} @else if (listado.pagina(); as datos) {
+  @if (datos.contenido.length) {
+    <table [attr.aria-busy]="listado.vista().cargando">
+      <caption class="solo-lector">
+        Productos
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Nombre</th>
+          <th scope="col">Descripción</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Precio</th>
+          @if (administra()) {
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (producto of datos.contenido; track producto.id) {
+          <tr>
+            <th scope="row">{{ producto.nombre }}</th>
+            <td>{{ producto.descripcion }}</td>
+            <td data-etiqueta="Tipo">{{ nombreTipo[producto.tipo] }}</td>
+            <td data-etiqueta="Precio" class="numero">{{ dinero(producto.precioVenta) }}</td>
+            @if (administra()) {
+              <td data-etiqueta="Estado">
+                <span class="estado" [class.estado--inactivo]="!producto.activo">
+                  {{ producto.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="celda-acciones">
+                <a
+                  class="boton-icono"
+                  [routerLink]="['/productos', producto.id]"
+                  [attr.aria-label]="'Editar ' + producto.nombre"
+                  title="Editar"
+                >
+                  <app-icono nombre="editar" />
+                </a>
+                @if (producto.activo) {
+                  <button
+                    type="button"
+                    class="boton-icono boton-icono--peligro"
+                    [attr.aria-label]="'Desactivar ' + producto.nombre"
+                    title="Desactivar"
+                    (click)="pedirConfirmacion(producto)"
+                  >
+                    <app-icono nombre="basura" />
+                  </button>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+    <app-paginacion [datos]="datos" elementos="productos" (ir)="listado.irA($event)" />
+  } @else {
+    <p class="tarjeta">No hay productos que coincidan con la búsqueda.</p>
+  }
+} @else {
+  <p role="status">Cargando productos…</p>
+}
+
+<app-confirmacion
+  titulo="Desactivar producto"
+  accion="Desactivar"
+  [ocupado]="desactivando()"
+  [error]="errorDesactivacion()"
+  (confirmado)="desactivar()"
+>
+  <strong>{{ porDesactivar()?.nombre }}</strong> dejará de ofrecerse en nuevas comandas. Se conservan sus datos y su
+  historial.
+</app-confirmacion>

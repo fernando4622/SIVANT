@@ -25,6 +25,9 @@ describe('Gestionar empleados', () => {
   let harness: RouterTestingHarness;
   let el: HTMLElement;
 
+  // La carga diferida de las pantallas no debe contar en el tiempo de cada caso.
+  beforeAll(() => Promise.all([import('./listado-empleados'), import('./formulario-empleado')]), 60_000);
+
   beforeEach(async () => {
     vi.resetAllMocks();
     api.listar.mockReturnValue(pagina(ANA, CIRO));

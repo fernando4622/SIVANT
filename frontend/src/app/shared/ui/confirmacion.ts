@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, input, output, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import { Icono, NombreIcono } from './icono';
 
 /** Diálogo modal nativo: conserva el foco dentro y se cierra con Escape. */
@@ -17,8 +24,15 @@ import { Icono, NombreIcono } from './icono';
         <p class="campo__error" role="alert">{{ mensaje }}</p>
       }
       <div class="acciones">
-        <button type="button" class="boton" [disabled]="ocupado()" (click)="cerrar()">Cancelar</button>
-        <button type="button" class="boton boton--peligro" [disabled]="ocupado()" (click)="confirmado.emit()">
+        <button type="button" class="boton" [disabled]="ocupado()" (click)="cerrar()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          [class]="peligro() ? 'boton boton--peligro' : 'boton boton--principal'"
+          [disabled]="ocupado()"
+          (click)="confirmado.emit()"
+        >
           <app-icono [nombre]="icono()" />
           {{ accion() }}
         </button>
@@ -49,6 +63,8 @@ export class Confirmacion {
   readonly titulo = input.required<string>();
   readonly accion = input.required<string>();
   readonly icono = input<NombreIcono>('basura');
+  /** Falso en acciones habituales que no retiran nada. */
+  readonly peligro = input(true);
   readonly ocupado = input(false);
   readonly error = input<string | null>(null);
   readonly confirmado = output<void>();

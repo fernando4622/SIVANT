@@ -17,12 +17,13 @@ export interface Existencia {
   version: number;
 }
 
-export type TipoHistorial = 'ENTRADA_MANUAL' | 'SALIDA_MANUAL' | 'AJUSTE' | 'AJUSTE_RECHAZADO';
+export type TipoHistorial = 'ENTRADA_MANUAL' | 'SALIDA_MANUAL' | 'CONSUMO_VENTA' | 'AJUSTE' | 'AJUSTE_RECHAZADO';
 export type TipoMovimiento = 'ENTRADA_MANUAL' | 'SALIDA_MANUAL';
 
 export const NOMBRE_HISTORIAL: Record<TipoHistorial, string> = {
   ENTRADA_MANUAL: 'Entrada',
   SALIDA_MANUAL: 'Salida',
+  CONSUMO_VENTA: 'Consumo',
   AJUSTE: 'Ajuste',
   AJUSTE_RECHAZADO: 'Ajuste rechazado',
 };
@@ -39,6 +40,7 @@ export interface Historial {
   fechaHora: string;
   empleado: string;
   solicitudId?: string;
+  comandaId?: string;
   motivo?: string;
 }
 
@@ -87,25 +89,38 @@ function parametros(filtro: Filtro): HttpParams {
   return params;
 }
 
+function pasiva(automatica: boolean): Record<string, string> {
+  return automatica ? { 'X-Solicitud-Pasiva': 'true' } : {};
+}
+
 @Injectable({ providedIn: 'root' })
 export class InventarioApi {
   private readonly http = inject(HttpClient);
 
-  existencias(filtro: Filtro): Observable<Pagina<Existencia>> {
-    return this.http.get<Pagina<Existencia>>(`${API}/existencias`, { params: parametros(filtro) });
+  existencias(filtro: Filtro, automatica = false): Observable<Pagina<Existencia>> {
+    return this.http.get<Pagina<Existencia>>(`${API}/existencias`, {
+      params: parametros(filtro),
+      headers: pasiva(automatica),
+    });
   }
 
-  existencia(id: string): Observable<Existencia> {
-    return this.http.get<Existencia>(`${API}/existencias/${encodeURIComponent(id)}`);
+  existencia(id: string, automatica = false): Observable<Existencia> {
+    return this.http.get<Existencia>(`${API}/existencias/${encodeURIComponent(id)}`, {
+      headers: pasiva(automatica),
+    });
   }
 
-  movimientos(filtro: Filtro): Observable<Pagina<Historial>> {
-    return this.http.get<Pagina<Historial>>(`${API}/movimientos`, { params: parametros(filtro) });
+  movimientos(filtro: Filtro, automatica = false): Observable<Pagina<Historial>> {
+    return this.http.get<Pagina<Historial>>(`${API}/movimientos`, {
+      params: parametros(filtro),
+      headers: pasiva(automatica),
+    });
   }
 
-  movimientosDe(id: string, filtro: Filtro): Observable<Pagina<Historial>> {
+  movimientosDe(id: string, filtro: Filtro, automatica = false): Observable<Pagina<Historial>> {
     return this.http.get<Pagina<Historial>>(`${API}/existencias/${encodeURIComponent(id)}/movimientos`, {
       params: parametros(filtro),
+      headers: pasiva(automatica),
     });
   }
 
@@ -128,8 +143,11 @@ export class InventarioApi {
     return this.http.post<Solicitud>(`${API}/ajustes`, datos, { headers: { 'Idempotency-Key': clave } });
   }
 
-  ajustes(filtro: Filtro): Observable<Pagina<Solicitud>> {
-    return this.http.get<Pagina<Solicitud>>(`${API}/ajustes`, { params: parametros(filtro) });
+  ajustes(filtro: Filtro, automatica = false): Observable<Pagina<Solicitud>> {
+    return this.http.get<Pagina<Solicitud>>(`${API}/ajustes`, {
+      params: parametros(filtro),
+      headers: pasiva(automatica),
+    });
   }
 
   ajuste(id: string): Observable<Solicitud> {

@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { filter } from 'rxjs';
 import { Sesion } from '../../../core/auth/sesion';
 import { ClaveIdempotencia } from '../../../core/http/clave-idempotencia';
 import { leerProblema } from '../../../core/http/problema';
+import { TiempoReal } from '../../../core/realtime/tiempo-real';
 import {
   PATRON_CANTIDAD,
   PATRON_CANTIDAD_POSITIVA,
@@ -62,6 +65,19 @@ export class DetalleExistencia implements OnInit {
   protected readonly guardandoAjuste = signal(false);
   protected readonly errorAjuste = signal<string | null>(null);
 
+  constructor() {
+    inject(TiempoReal)
+      .cambios('EXISTENCIA_ACTUALIZADA')
+      .pipe(
+        filter((evento) => evento === null || evento.recursoId === this.id()),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        this.actualizarSaldo(true);
+        this.cargarHistorial(this.historial()?.page ?? 0, true);
+      });
+  }
+
   ngOnInit(): void {
     this.cargar();
   }
@@ -75,8 +91,8 @@ export class DetalleExistencia implements OnInit {
     this.cargarHistorial(0);
   }
 
-  protected cargarHistorial(page: number): void {
-    this.api.movimientosDe(this.id(), { page }).subscribe({
+  protected cargarHistorial(page: number, automatica = false): void {
+    this.api.movimientosDe(this.id(), { page }, automatica).subscribe({
       next: (pagina) => this.historial.set(pagina),
       error: (error: unknown) => this.errorCarga.set(leerProblema(error).detalle),
     });
@@ -143,8 +159,8 @@ export class DetalleExistencia implements OnInit {
   }
 
   /** Conserva lo capturado y muestra el saldo vigente. */
-  private actualizarSaldo(): void {
-    this.api.existencia(this.id()).subscribe({
+  private actualizarSaldo(automatica = false): void {
+    this.api.existencia(this.id(), automatica).subscribe({
       next: (existencia) => this.existencia.set(existencia),
       error: () => undefined,
     });

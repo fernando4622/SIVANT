@@ -51,6 +51,7 @@ describe('Mesas, cuentas y comandas', () => {
     enviar: vi.fn(),
     editar: vi.fn(),
     cancelar: vi.fn(),
+    servir: vi.fn(),
   };
   const productos = { listar: vi.fn() };
   const perfil = signal<{ id: string; nombre: string; rol: Rol }>({ id: '1', nombre: 'J', rol: 'MESERO' });
@@ -284,5 +285,51 @@ describe('Mesas, cuentas y comandas', () => {
     expect(sumaDinero([])).toBe('0.00');
     expect(sumaDinero(['0.10', '0.20'])).toBe('0.30');
     expect(sumaDinero(['999999999999.99', '0.01'])).toBe('1000000000000.00');
+  });
+
+  it('CP-F59 marcar servida pide confirmar, usa la versión y avisa si faltó inventario', async () => {
+    api.cuenta.mockReturnValue(
+      of({ ...CUENTA, comandas: [{ ...COMANDA, estado: 'LISTA', acciones: ['SERVIR'] }] }),
+    );
+    api.servir.mockReturnValue(
+      of({
+        comanda: { ...COMANDA, estado: 'SERVIDA' },
+        consumo: [
+          { articulo: 'Leche', unidadMedida: 'MILILITRO', cantidad: '360', insuficiente: true },
+          { articulo: 'Café', unidadMedida: 'GRAMO', cantidad: '37', insuficiente: false },
+        ],
+      }),
+    );
+    await abrir('/cuentas/3');
+    await pulsar('Marcar servida la comanda 7');
+    expect(api.servir).not.toHaveBeenCalled();
+    const dialogo = [...el.querySelectorAll('dialog')].find((d) => d.open)!;
+    expect(dialogo.textContent).toContain('Se descontará del inventario');
+    dialogo.querySelector<HTMLButtonElement>('.boton--principal')!.click();
+    await refrescar();
+    expect(api.servir).toHaveBeenCalledWith('7', 2, expect.any(String));
+    expect(el.textContent).toContain('La comanda 7 quedó servida.');
+    expect(el.textContent).toContain('existencia insuficiente de: Leche.');
+    expect(api.cuenta).toHaveBeenCalledTimes(2);
+  });
+
+  it('CP-F60 si la comanda cambió, el diálogo muestra el motivo; un fallo de red reutiliza la clave', async () => {
+    api.cuenta.mockReturnValue(
+      of({ ...CUENTA, comandas: [{ ...COMANDA, estado: 'LISTA', acciones: ['SERVIR'] }] }),
+    );
+    api.servir.mockReturnValueOnce(fallo(0, '', ''));
+    api.servir.mockReturnValue(fallo(409, 'TRANSICION_INVALIDA', 'Revisa su estado.'));
+    await abrir('/cuentas/3');
+    await pulsar('Marcar servida la comanda 7');
+    const confirmar = () => el.querySelector<HTMLButtonElement>('dialog[open] .boton--principal')!;
+    confirmar().click();
+    await refrescar();
+    expect(el.textContent).toContain('No hay conexión');
+    confirmar().click();
+    await refrescar();
+    const [primera, segunda] = api.servir.mock.calls;
+    expect(segunda[2]).toBe(primera[2]);
+    expect(el.textContent).toContain('Revisa su estado.');
+    expect(api.cuenta).toHaveBeenCalledTimes(2);
   });
 });

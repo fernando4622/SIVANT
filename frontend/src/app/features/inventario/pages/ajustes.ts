@@ -100,7 +100,9 @@ export class Ajustes {
   protected readonly nombre = NOMBRE_ESTADO;
   protected readonly clase = CLASE_ESTADO;
   protected readonly filtros = inject(NonNullableFormBuilder).group({ estado: '' });
-  protected readonly listado = crearListado((p, page) => this.api.ajustes({ estado: p.get('estado') ?? '', page }));
+  protected readonly listado = crearListado((p, page, automatica) =>
+    this.api.ajustes({ estado: p.get('estado') ?? '', page }, automatica),
+  );
 
   constructor() {
     conectarFiltros(this.filtros, this.listado);

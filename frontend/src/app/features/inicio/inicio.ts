@@ -21,7 +21,8 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
   MESERO: [
     { texto: 'Consultar el catálogo', ruta: '/productos' },
     { texto: 'Abrir cuentas y registrar comandas', ruta: '/mesas' },
-    { texto: 'Servir y cobrar' },
+    { texto: 'Servir comandas', ruta: '/mesas' },
+    { texto: 'Cobrar cuentas' },
   ],
   CAJERO: [
     { texto: 'Cancelar comandas', ruta: '/mesas' },

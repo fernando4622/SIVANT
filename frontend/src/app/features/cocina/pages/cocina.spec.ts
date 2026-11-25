@@ -161,12 +161,45 @@ describe('Cocina y avisos', () => {
     fixture = harness.fixture;
     el = fixture.nativeElement;
     await refrescar();
-    expect(notificaciones.listar).toHaveBeenCalledWith('false', 0, 10);
+    expect(notificaciones.listar).toHaveBeenCalledWith('false', 0, 10, false);
     expect(el.querySelector('a[href="/cuentas/3"]')).not.toBeNull();
     const marcar = el.querySelectorAll<HTMLButtonElement>('[aria-label^="Marcar como leído"]');
     expect(marcar).toHaveLength(1);
     marcar[0].click();
     await refrescar();
     expect(notificaciones.leer).toHaveBeenCalledWith('1');
+  });
+
+  it('CP-F64 el almacenista recibe el faltante destacado, con enlace a la existencia', async () => {
+    perfil.set({ id: '3', nombre: 'P', rol: 'ALMACENISTA' });
+    notificaciones.listar.mockReturnValue(
+      pagina({
+        ...aviso('4', 'ALERTA_INVENTARIO'),
+        contexto: { mesa: 5, comandaId: '7', existenciaId: '9', faltante: '1040.5', unidadMedida: 'MILILITRO' },
+      }),
+    );
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/notificaciones');
+    fixture = harness.fixture;
+    el = fixture.nativeElement;
+    await refrescar();
+    expect(TestBed.inject(Bandeja).reciente()?.id).toBe('4');
+    expect(el.querySelector('a[href="/inventario/existencias/9"]')).not.toBeNull();
+    expect(el.textContent).toContain('Faltan 1,040.5 ml');
+  });
+
+  it('CP-F65 un aviso nuevo recarga la pantalla de avisos sin contar como actividad', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/notificaciones');
+    fixture = harness.fixture;
+    el = fixture.nativeElement;
+    await refrescar();
+    notificaciones.listar.mockReturnValue(pagina(aviso('5', 'CANCELACION_COMANDA')));
+    eventos.next(null);
+    await refrescar();
+    expect(el.textContent).toContain('Aviso 5');
+    const posteriores = notificaciones.listar.mock.calls.slice(2);
+    expect(posteriores.length).toBeGreaterThan(0);
+    expect(posteriores.every((c) => c[3] === true)).toBe(true);
   });
 });

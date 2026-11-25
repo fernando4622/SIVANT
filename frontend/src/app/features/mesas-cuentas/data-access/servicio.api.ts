@@ -48,7 +48,7 @@ export interface Comanda {
   subtotal: string;
   detalles: Detalle[];
   cancelacion?: { cajero: string; fechaHora: string; justificacion: string };
-  acciones: ('EDITAR' | 'CANCELAR')[];
+  acciones: ('EDITAR' | 'CANCELAR' | 'SERVIR')[];
 }
 
 export interface Cuenta {
@@ -63,6 +63,11 @@ export interface Cuenta {
   total: string;
   comandas: Comanda[];
   acciones: ('ENVIAR_COMANDA' | 'CERRAR_SIN_COBRO')[];
+}
+
+export interface Servida {
+  comanda: Comanda;
+  consumo: { articulo: string; unidadMedida: string; cantidad: string; insuficiente: boolean }[];
 }
 
 export interface LineaNueva {
@@ -99,6 +104,14 @@ export class ServicioApi {
 
   editar(comanda: string, version: number, detalles: { detalleId: string; cantidad: number }[]): Observable<Cuenta> {
     return this.http.put<Cuenta>(`${API}/comandas/${encodeURIComponent(comanda)}/detalles`, { version, detalles });
+  }
+
+  servir(comanda: string, version: number, clave: string): Observable<Servida> {
+    return this.http.post<Servida>(
+      `${API}/comandas/${encodeURIComponent(comanda)}/servicio`,
+      { version },
+      con(clave),
+    );
   }
 
   cancelar(comanda: string, version: number, justificacion: string, clave: string): Observable<Comanda> {

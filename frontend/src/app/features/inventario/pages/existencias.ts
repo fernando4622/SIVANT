@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { debounceTime } from 'rxjs';
+import { TiempoReal } from '../../../core/realtime/tiempo-real';
 import { cantidad, unidad } from '../../../shared/formato';
 import { conectarFiltros, crearListado } from '../../../shared/listado';
 import { Icono } from '../../../shared/ui/icono';
@@ -21,17 +24,28 @@ export class Existencias {
 
   protected readonly cantidad = cantidad;
   protected readonly unidad = unidad;
-  protected readonly filtros = inject(NonNullableFormBuilder).group({ q: '', tipo: '', nivelBajo: '' });
-  protected readonly listado = crearListado((p, page) =>
-    this.api.existencias({
-      q: p.get('q') ?? '',
-      tipo: p.get('tipo') ?? '',
-      nivelBajo: p.get('nivelBajo') ?? '',
-      page,
-    }),
+  protected readonly filtros = inject(NonNullableFormBuilder).group({
+    q: '',
+    tipo: '',
+    nivelBajo: '',
+  });
+  protected readonly listado = crearListado((p, page, automatica) =>
+    this.api.existencias(
+      {
+        q: p.get('q') ?? '',
+        tipo: p.get('tipo') ?? '',
+        nivelBajo: p.get('nivelBajo') ?? '',
+        page,
+      },
+      automatica,
+    ),
   );
 
   constructor() {
     conectarFiltros(this.filtros, this.listado);
+    inject(TiempoReal)
+      .cambios('EXISTENCIA_ACTUALIZADA')
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe(() => this.listado.recargar(true));
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { ClaveIdempotencia } from '../../../core/http/clave-idempotencia';
@@ -8,7 +8,7 @@ import { dinero, fechaHora } from '../../../shared/formato';
 import { Confirmacion } from '../../../shared/ui/confirmacion';
 import { Icono } from '../../../shared/ui/icono';
 import { TarjetaComanda } from '../components/tarjeta-comanda';
-import { Cuenta, ServicioApi } from '../data-access/servicio.api';
+import { Comanda, Cuenta, Servida, ServicioApi } from '../data-access/servicio.api';
 
 @Component({
   selector: 'app-detalle-cuenta',
@@ -23,12 +23,24 @@ export class DetalleCuenta implements OnInit {
   private readonly api = inject(ServicioApi);
   private readonly router = inject(Router);
   private readonly clave = new ClaveIdempotencia();
-  private readonly confirmacion = viewChild.required(Confirmacion);
+  private readonly claveServicio = new ClaveIdempotencia();
+  private readonly confirmacionCierre = viewChild.required<Confirmacion>('cierre');
+  private readonly confirmacionServicio = viewChild.required<Confirmacion>('servicio');
 
   protected readonly cuenta = signal<Cuenta | null>(null);
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly cerrando = signal(false);
   protected readonly errorCierre = signal<string | null>(null);
+  protected readonly porServir = signal<Comanda | null>(null);
+  protected readonly sirviendo = signal(false);
+  protected readonly errorServicio = signal<string | null>(null);
+  protected readonly servida = signal<Servida | null>(null);
+  protected readonly faltantes = computed(() =>
+    (this.servida()?.consumo ?? [])
+      .filter((c) => c.insuficiente)
+      .map((c) => c.articulo)
+      .join(', '),
+  );
   protected readonly dinero = dinero;
   protected readonly fechaHora = fechaHora;
 
@@ -53,9 +65,43 @@ export class DetalleCuenta implements OnInit {
     });
   }
 
+  protected pedirServicio(comanda: Comanda): void {
+    this.errorServicio.set(null);
+    this.servida.set(null);
+    this.porServir.set(comanda);
+    this.confirmacionServicio().abrir();
+  }
+
+  /** RF23. El descuento de inventario ocurre en el servidor (RF24). */
+  protected servir(): void {
+    const comanda = this.porServir();
+    if (!comanda || this.sirviendo()) {
+      return;
+    }
+    this.sirviendo.set(true);
+    const clave = this.claveServicio.para([comanda.id, comanda.version]);
+    this.api.servir(comanda.id, comanda.version, clave).subscribe({
+      next: (servida) => {
+        this.claveServicio.completar();
+        this.sirviendo.set(false);
+        this.confirmacionServicio().cerrar();
+        this.servida.set(servida);
+        this.cargar();
+      },
+      error: (error: unknown) => {
+        const problema = leerProblema(error);
+        this.sirviendo.set(false);
+        this.errorServicio.set(problema.detalle);
+        if (problema.estado === 409) {
+          this.cargar();
+        }
+      },
+    });
+  }
+
   protected pedirCierre(): void {
     this.errorCierre.set(null);
-    this.confirmacion().abrir();
+    this.confirmacionCierre().abrir();
   }
 
   protected cerrar(): void {
@@ -66,7 +112,7 @@ export class DetalleCuenta implements OnInit {
     this.cerrando.set(true);
     this.api.cerrarSinCobro(cuenta.id, cuenta.version, this.clave.para(cuenta.version)).subscribe({
       next: () => {
-        this.confirmacion().cerrar();
+        this.confirmacionCierre().cerrar();
         void this.router.navigateByUrl('/mesas');
       },
       error: (error: unknown) => {

@@ -128,6 +128,28 @@ class TiempoRealTest extends PruebaServicio {
     }
 
     @Test
+    @DisplayName("CP-121 Almacén recibe cambios y alertas de consumo; cocina, la salida de la cola")
+    void consumo() throws Exception {
+        Canal almacen = suscribir(sesionDe(crear("ALMACENISTA")), "/topic/inventario");
+        Canal cocina = suscribir(cocinero, "/topic/cocina");
+        String id = comandaNueva(cuentaNueva()).get("id").asString();
+        preparar(id, 0);
+        lista(id, 1);
+        assertThat(mesero.postConClave("/comandas/" + id + "/servicio", clave(), Map.of("version", 2)).estado())
+                .isEqualTo(200);
+        List<String> tipos = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            tipos.add(almacen.siguiente().get("tipo").asString());
+            if (i < 3) {
+                cocina.siguiente();
+            }
+        }
+        assertThat(tipos).containsExactlyInAnyOrder("EXISTENCIA_ACTUALIZADA", "ALERTA_INVENTARIO",
+                "EXISTENCIA_ACTUALIZADA", "ALERTA_INVENTARIO");
+        assertThat(cocina.siguiente().get("tipo").asString()).isEqualTo("COMANDA_SERVIDA");
+    }
+
+    @Test
     @DisplayName("CP-104 Cada rol solo puede suscribirse a sus destinos")
     void destinos() throws Exception {
         for (String destino : List.of("/topic/cocina", "/topic/inventario", "/topic/otro", "/queue/notificaciones",

@@ -35,6 +35,11 @@ public class Avisos {
         notificaciones.insertarPorComanda(comanda, null, rol, tipo, mensaje, contexto);
     }
 
+    public void notificarRolPorExistencia(String rol, TipoNotificacion tipo, Long existencia, String mensaje,
+            Map<String, ?> contexto) {
+        notificaciones.insertarPorExistencia(existencia, rol, tipo, mensaje, contexto);
+    }
+
     public void notificarEmpleadoPorComanda(Long empleado, TipoNotificacion tipo, Long comanda, String mensaje,
             Map<String, ?> contexto) {
         notificaciones.insertarPorComanda(comanda, empleado, null, tipo, mensaje, contexto);

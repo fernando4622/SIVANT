@@ -35,15 +35,25 @@ public class NotificacionesJdbc {
 
     public void insertarPorComanda(Long comanda, Long empleado, String rol, TipoNotificacion tipo, String mensaje,
             Map<String, ?> contexto) {
+        insertar(comanda, null, empleado, rol, tipo, mensaje, contexto);
+    }
+
+    public void insertarPorExistencia(Long existencia, String rol, TipoNotificacion tipo, String mensaje,
+            Map<String, ?> contexto) {
+        insertar(null, existencia, null, rol, tipo, mensaje, contexto);
+    }
+
+    private void insertar(Long comanda, Long existencia, Long empleado, String rol, TipoNotificacion tipo,
+            String mensaje, Map<String, ?> contexto) {
         sql.sql("""
-                INSERT INTO sivant.notificacion (id_comanda, id_empleado_destino, id_rol_destinatario, tipo, mensaje,
-                    fecha_hora, contexto)
-                VALUES (:comanda, CAST(:empleado AS bigint),
+                INSERT INTO sivant.notificacion (id_comanda, id_existencia, id_empleado_destino, id_rol_destinatario,
+                    tipo, mensaje, fecha_hora, contexto)
+                VALUES (CAST(:comanda AS bigint), CAST(:existencia AS bigint), CAST(:empleado AS bigint),
                     (SELECT id_rol FROM sivant.rol WHERE nombre = CAST(:rol AS text)),
                     :tipo, :mensaje, :fecha, CAST(:contexto AS jsonb))
-                """).param("comanda", comanda).param("empleado", empleado).param("rol", rol)
-                .param("tipo", tipo.name()).param("mensaje", mensaje).param("fecha", OffsetDateTime.now(reloj))
-                .param("contexto", json.writeValueAsString(contexto)).update();
+                """).param("comanda", comanda).param("existencia", existencia).param("empleado", empleado)
+                .param("rol", rol).param("tipo", tipo.name()).param("mensaje", mensaje)
+                .param("fecha", OffsetDateTime.now(reloj)).param("contexto", json.writeValueAsString(contexto)).update();
     }
 
     public Pagina<DatosNotificacion> bandeja(Long empleado, Boolean leida, int pagina, int tamano) {

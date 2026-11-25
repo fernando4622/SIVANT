@@ -20,6 +20,7 @@ import mx.sivant.inventario.dominio.TipoHistorial;
 import mx.sivant.inventario.dominio.TipoMovimientoManual;
 import mx.sivant.inventario.infraestructura.InventarioJdbc;
 import mx.sivant.inventario.infraestructura.InventarioJdbc.SolicitudBloqueada;
+import mx.sivant.notificaciones.aplicacion.Avisos;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,16 +32,19 @@ public class GestionInventario {
     private static final String CONSULTA = "hasAnyAuthority('ADMINISTRADOR', 'ALMACENISTA')";
     private static final ZoneId ZONA_NEGOCIO = ZoneId.of("America/Mexico_City");
     /** numeric(18,6) admite 12 enteros. */
-    private static final BigDecimal SALDO_MAXIMO = new BigDecimal("1000000000000");
+    static final BigDecimal SALDO_MAXIMO = new BigDecimal("1000000000000");
 
     private final InventarioJdbc inventario;
     private final Idempotencia idempotencia;
     private final RegistroAuditoria auditoria;
+    private final Avisos avisos;
 
-    public GestionInventario(InventarioJdbc inventario, Idempotencia idempotencia, RegistroAuditoria auditoria) {
+    public GestionInventario(InventarioJdbc inventario, Idempotencia idempotencia, RegistroAuditoria auditoria,
+            Avisos avisos) {
         this.inventario = inventario;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
+        this.avisos = avisos;
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +105,7 @@ public class GestionInventario {
             }
         }
         inventario.cambiarSaldo(id, posterior);
+        publicarCambio(existencia);
         Long movimiento = inventario.insertarMovimiento(id, actor, null, registro, anterior, posterior, null);
         auditoria.registrar(actor, "MOVIMIENTO_REGISTRADO", "EXISTENCIA", id, Map.of("movimiento", movimiento,
                 "tipo", registro.name(), "saldoAnterior", anterior.toPlainString(),
@@ -162,6 +167,7 @@ public class GestionInventario {
                         "La existencia cambió desde la solicitud. Recházala y pide una nueva.");
             }
             inventario.cambiarSaldo(existencia.id(), solicitud.cantidadSolicitada());
+            publicarCambio(existencia);
             inventario.insertarMovimiento(existencia.id(), actor, id, TipoHistorial.AJUSTE,
                     existencia.cantidadActual(), solicitud.cantidadSolicitada(), solicitud.justificacion());
         }
@@ -169,6 +175,10 @@ public class GestionInventario {
         auditoria.registrar(actor, "AJUSTE_" + decision.name(), "SOLICITUD_AJUSTE", id,
                 Map.of("existencia", solicitud.existenciaId()));
         return solicitud(id);
+    }
+
+    private void publicarCambio(Existencia anterior) {
+        avisos.publicarEnTema(Avisos.TEMA_INVENTARIO, "EXISTENCIA_ACTUALIZADA", anterior.id(), anterior.version() + 1);
     }
 
     private static OffsetDateTime inicio(LocalDate dia) {

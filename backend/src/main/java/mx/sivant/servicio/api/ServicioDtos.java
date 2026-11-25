@@ -15,6 +15,7 @@ import java.util.List;
 import mx.sivant.identidad.aplicacion.EmpleadoPrincipal;
 import mx.sivant.infraestructura.api.Decimales;
 import mx.sivant.servicio.aplicacion.DatosServicio;
+import mx.sivant.servicio.aplicacion.EntregaComandas;
 import mx.sivant.servicio.aplicacion.GestionCuentas;
 import mx.sivant.servicio.dominio.EstadoComanda;
 import mx.sivant.servicio.dominio.EstadoCuenta;
@@ -34,7 +35,7 @@ public final class ServicioDtos {
             @Pattern(regexp = ID, message = "Selecciona una mesa.") String mesaId) {
     }
 
-    record Cierre(@NotNull(message = "Indica la versión.") Integer version) {
+    record SoloVersion(@NotNull(message = "Indica la versión.") Integer version) {
     }
 
     record LineaNueva(
@@ -124,6 +125,9 @@ public final class ServicioDtos {
             if (cuentaAbierta && actor.rol().equals("MESERO") && c.estado().esEditable()) {
                 acciones.add("EDITAR");
             }
+            if (actor.rol().equals("MESERO") && c.estado().puedePasarA(EstadoComanda.SERVIDA)) {
+                acciones.add("SERVIR");
+            }
             if (cuentaAbierta && actor.rol().equals("CAJERO") && c.estado().esCancelable()) {
                 acciones.add("CANCELAR");
             }
@@ -131,6 +135,19 @@ public final class ServicioDtos {
                     Decimales.dinero(c.subtotal()), c.detalles().stream().map(Detalle::de).toList(),
                     c.cancelacion() == null ? null : new CancelacionRespuesta(c.cancelacion().cajero(),
                             c.cancelacion().fechaHora(), c.cancelacion().justificacion()), acciones);
+        }
+    }
+
+    /** El mesero ve qué se descontó, sin los saldos del inventario. */
+    record Consumo(String articulo, String unidadMedida, String cantidad, boolean insuficiente) {
+    }
+
+    record Servida(Comanda comanda, List<Consumo> consumo) {
+
+        static Servida de(EntregaComandas.Servida s, EmpleadoPrincipal actor) {
+            return new Servida(Comanda.de(s.comanda(), s.cuentaAbierta(), actor), s.consumo().stream()
+                    .map(c -> new Consumo(c.articulo(), c.unidadMedida(), Decimales.cantidad(c.cantidad()),
+                            c.insuficiente())).toList());
         }
     }
 

@@ -2,9 +2,10 @@
 
 Sistema de ventas e inventario para Jiva House. Angular, Spring Boot (Java 21) y PostgreSQL 18.
 
-**Estado:** fases 0 a 3 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
+**Estado:** fases 0 a 4 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
 roles, empleados (RF11 a RF14), productos y recetas (RF07 a RF10), inventario (RF15 a RF18),
-mesas, cuentas y comandas (RF01 a RF03) y cocina con avisos en tiempo real (RF19 a RF21).
+mesas, cuentas y comandas (RF01 a RF03), cocina con avisos en tiempo real (RF19 a RF21) y
+entrega con descuento de inventario (RF23 y RF24).
 
 ## Estructura
 
@@ -119,6 +120,8 @@ Recorrido sugerido:
     momento.
 11. Como mesero, modifica una comanda en preparación: cocina recibe el aviso. Como cajero, entra a la cuenta desde
     **Mesas** y cancela una comanda con justificación.
+12. Como mesero, marca servida una comanda lista. Si pide más de lo registrado en inventario, se sirve igual y el
+    almacenista recibe la alerta.
 
 El perfil `dev` también carga mesas, insumos, productos y existencias ficticias.
 

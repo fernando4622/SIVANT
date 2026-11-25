@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Icono } from '../../shared/ui/icono';
 import { Logo } from '../../shared/ui/logo';
 import { leerProblema } from '../http/problema';
+import { correoRecordado } from './correo-recordado';
 import { Sesion } from './sesion';
 
 const MOTIVOS: Record<string, string> = {
@@ -26,10 +27,15 @@ export class Login {
   private readonly sesion = inject(Sesion);
   private readonly router = inject(Router);
 
+  private readonly recordado = correoRecordado.leer();
+
   protected readonly formulario = inject(NonNullableFormBuilder).group({
-    correo: ['', Validators.required],
+    correo: [this.recordado, Validators.required],
     contrasena: ['', Validators.required],
+    recordar: [this.recordado !== ''],
   });
+  protected readonly verContrasena = signal(false);
+  protected readonly ayuda = signal(false);
   protected readonly enviando = signal(false);
   protected readonly enviado = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -45,12 +51,16 @@ export class Login {
       return;
     }
     this.enviando.set(true);
-    const { correo, contrasena } = this.formulario.getRawValue();
+    const { correo, contrasena, recordar } = this.formulario.getRawValue();
     this.sesion.iniciar(correo, contrasena).subscribe({
-      next: () => void this.router.navigateByUrl(this.destino()),
+      next: () => {
+        correoRecordado.guardar(recordar ? correo.trim() : null);
+        void this.router.navigateByUrl(this.destino());
+      },
       error: (error: unknown) => {
         this.enviando.set(false);
         this.error.set(leerProblema(error).detalle);
+        this.verContrasena.set(false);
         this.formulario.controls.contrasena.reset();
         this.enviado.set(false);
       },

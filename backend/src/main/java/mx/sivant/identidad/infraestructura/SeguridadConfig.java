@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.List;
-import mx.sivant.empleados.aplicacion.ConsultaCredenciales;
 import mx.sivant.infraestructura.errores.Problemas;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -44,8 +43,8 @@ class SeguridadConfig {
     private static final String API = "/api/v1";
 
     @Bean
-    SecurityFilterChain cadena(HttpSecurity http, ConsultaCredenciales credenciales, Clock reloj,
-            PropiedadesSesion sesion, SecurityContextRepository contextos, CsrfTokenRepository csrf,
+    SecurityFilterChain cadena(HttpSecurity http, ValidadorSesion validador, Clock reloj,
+            SecurityContextRepository contextos, CsrfTokenRepository csrf,
             JsonMapper json) throws Exception {
         http
                 .authorizeHttpRequests(rutas -> rutas
@@ -60,6 +59,17 @@ class SeguridadConfig {
                         .hasAnyAuthority("ADMINISTRADOR", "ALMACENISTA")
                         .requestMatchers(API + "/inventario/ajustes/*/resolucion").hasAuthority("ADMINISTRADOR")
                         .requestMatchers(API + "/inventario/**").hasAuthority("ALMACENISTA")
+                        .requestMatchers(HttpMethod.GET, "/ws").authenticated()
+                        .requestMatchers(API + "/notificaciones/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, API + "/mesas", API + "/cuentas", API + "/cuentas/*")
+                        .hasAnyAuthority("MESERO", "CAJERO")
+                        .requestMatchers(HttpMethod.POST, API + "/cuentas", API + "/cuentas/*/cierre",
+                                API + "/cuentas/*/comandas").hasAuthority("MESERO")
+                        .requestMatchers(HttpMethod.PUT, API + "/comandas/*/detalles").hasAuthority("MESERO")
+                        .requestMatchers(HttpMethod.POST, API + "/comandas/*/cancelacion").hasAuthority("CAJERO")
+                        .requestMatchers(HttpMethod.GET, API + "/cocina/cola").hasAuthority("COCINERO")
+                        .requestMatchers(HttpMethod.POST, API + "/comandas/*/preparacion", API + "/comandas/*/lista")
+                        .hasAuthority("COCINERO")
                         // Cada módulo nuevo declara aquí sus roles. Lo no declarado se rechaza.
                         .anyRequest().denyAll())
                 .securityContext(contexto -> contexto.securityContextRepository(contextos))
@@ -76,7 +86,7 @@ class SeguridadConfig {
                 .requestCache(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .addFilterBefore(new ValidacionSesionFilter(credenciales, reloj, sesion.inactividad()),
+                .addFilterBefore(new ValidacionSesionFilter(validador, reloj),
                         AnonymousAuthenticationFilter.class);
         return http.build();
     }

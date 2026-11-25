@@ -2,8 +2,8 @@
 
 Sistema de ventas e inventario para Jiva House. Angular, Spring Boot (Java 21) y PostgreSQL 18.
 
-**Estado:** fases 0 y 1 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
-roles y gestión de empleados (RF11 a RF14).
+**Estado:** fases 0 a 2 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
+roles, empleados (RF11 a RF14), productos y recetas (RF07 a RF10) e inventario (RF15 a RF18).
 
 ## Estructura
 
@@ -107,6 +107,29 @@ Recorrido sugerido:
 4. Como administrador, desactiva a ese empleado. Su ventana vuelve al inicio de sesión en un minuto o en su siguiente
    operación, y ya no puede entrar.
 5. Entra como mesero y abre `http://localhost:4200/empleados`: regresa a su inicio. La API también lo rechaza con 403.
+6. Como almacenista, abre **Inventario**, entra a un artículo, registra una salida mayor que la existencia (se rechaza),
+   una entrada y solicita un ajuste.
+7. Como administrador, abre **Inventario > Ajustes** y autoriza o rechaza la solicitud. El resultado aparece en
+   **Movimientos**.
+8. Como administrador, registra un producto preparado con receta y otro de reventa, cambia un precio y desactiva uno.
+   Como mesero, comprueba que el catálogo solo muestra los activos.
+
+El perfil `dev` también carga insumos, productos y existencias ficticias.
+
+## Cargar insumos
+
+Los insumos no se registran desde la aplicación. Edita la lista de `database/cargas/insumos.sql` y ejecútala después
+del primer arranque de la API. Con Docker:
+
+```powershell
+docker compose cp database/cargas/insumos.sql db:/tmp/insumos.sql
+```
+
+```powershell
+docker compose exec db sh -c 'PGPASSWORD=$SIVANT_DB_PASSWORD psql -h 127.0.0.1 -U $SIVANT_DB_USER -d $SIVANT_DB_NAME -f /tmp/insumos.sql'
+```
+
+Los insumos inician con existencia 0.
 
 ## Pruebas
 

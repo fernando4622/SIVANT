@@ -1,6 +1,6 @@
-# Casos de prueba · Fases 0 y 1
+# Casos de prueba · Fases 0 a 2
 
-Casos derivados del diagrama de casos de uso, los RF11 a RF14 y los RNF08 (expiración de sesión) y RNF09 (auditoría).
+Casos derivados del diagrama de casos de uso, los RF07 a RF18 implementados y los RNF08 (expiración de sesión) y RNF09 (auditoría).
 El identificador aparece en el nombre de la prueba automatizada, así que se puede buscar en el código o en el reporte.
 
 | Prefijo | Tipo | Entorno |
@@ -15,25 +15,33 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 41 | 48 | 48 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 17 | 25 | 25 | 0 |
-| Navegador | Manual | 9 | 9 | 9 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 72 | 86 | 86 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 37 | 45 | 45 | 0 |
+| Navegador | Manual | 17 | 17 | 17 | 0 |
 
-Algunos casos se ejecutan varias veces, una por rol o por valor. El recorrido manual se hizo antes de agregar la
-auditoría, que no cambia pantallas ni respuestas de la API.
+Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
+pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 
 ## Trazabilidad
 
 | Caso de uso | Requisito | Casos |
 |---|---|---|
 | Soporte: arranque | Fase 0 | CP-01 a CP-03 |
-| Iniciar y cerrar sesión (soporte) | RNF08 | CP-04 a CP-11, CP-F01, CP-F02, CP-F04, CP-F06 a CP-F09, CP-M01 a CP-M03, CP-M08 |
+| Iniciar y cerrar sesión (soporte) | RNF08 | CP-04 a CP-11, CP-F01, CP-F02, CP-F04, CP-F06 a CP-F09, CP-F34 a CP-F37, CP-M01 a CP-M03, CP-M08, CP-M16, CP-M17 |
 | Generalización de Empleado en cinco actores | Permisos | CP-12 a CP-15, CP-F03, CP-F05, CP-M07 |
 | Registrar empleado | RF11 | CP-16 a CP-19, CP-F14, CP-F15, CP-M04 |
 | Consultar empleado | RF12 | CP-20 a CP-23, CP-F10, CP-F13, CP-M09 |
 | Editar empleado | RF13 | CP-24 a CP-29, CP-F16, CP-F17 |
 | Desactivar empleado | RF14 | CP-30 a CP-34, CP-F11, CP-F12, CP-M05, CP-M06 |
 | Auditoría de los anteriores | RNF09 | CP-35 a CP-41 |
+| Registrar producto | RF07 | CP-42 a CP-46, CP-F20, CP-F21, CP-M13 |
+| Consultar producto | RF08 | CP-47 a CP-49, CP-F18, CP-F19, CP-M15 |
+| Modificar producto | RF09 | CP-50, CP-51, CP-F22, CP-F23, CP-M14 |
+| Desactivar producto | RF10 | CP-52, CP-53, CP-M14 |
+| Consultar inventario | RF16 | CP-54 a CP-56, CP-F24 a CP-F26, CP-M10 |
+| Registrar movimiento de inventario | RF17 | CP-57 a CP-63, CP-72, CP-F27, CP-F28, CP-M11 |
+| Ajustar inventario | RF18 | CP-64, CP-65, CP-F29, CP-F33, CP-M11 |
+| Autorizar ajuste de inventario | RF15 | CP-66 a CP-71, CP-F30 a CP-F32, CP-M12 |
 
 ## Precondiciones comunes
 
@@ -47,7 +55,7 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1, 2 y 3 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
+| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 5 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
 | CP-02 | P1 | Consultar la tabla `rol` | Exactamente ADMINISTRADOR, ALMACENISTA, CAJERO, COCINERO y MESERO | Aprobado |
 | CP-03 | P1 | 1. Insertar por SQL `uno@sivant.test`. 2. Insertar el mismo, uno con mayúsculas, uno con espacio inicial y uno vacío. 3. Insertar estado `BAJA`. 4. Borrar el rol MESERO en uso | El paso 1 se acepta; PostgreSQL rechaza todos los demás | Aprobado |
 
@@ -70,6 +78,10 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 | CP-F07 | Sesión de cajero | 1. Logout sin conexión. 2. Logout con conexión | 1. Conserva la sesión. 2. Borra el perfil y deja de consultar | Aprobado |
 | CP-F08 | Pantalla de login | Enviar vacío | No llama a la API; muestra un error por campo | Aprobado |
 | CP-F09 | Pantalla de login con `volver` | Entrar con `/empleados?page=1`, `//sitio.externo`, `/\sitio.externo`, `https://sitio.externo` y sin valor | Solo el primero se respeta; los demás van a `/inicio` | Aprobado (5 valores) |
+| CP-F34 | Login sin correo recordado | Marcar «Recordarme», entrar y volver a abrir | Guarda solo el correo, nunca la contraseña, y lo propone | Aprobado |
+| CP-F35 | Correo recordado | 1. Entrar sin «Recordarme». 2. Marcarlo con un login rechazado | 1. Olvida el correo. 2. No guarda nada | Aprobado |
+| CP-F36 | Login | Elegir «¿Olvidaste tu contraseña?» | Indica pedirla al administrador; no llama a la API | Aprobado |
+| CP-F37 | Login | Usar el botón del ojo dos veces | Muestra y oculta la contraseña | Aprobado |
 
 ## Actores · Autorización
 
@@ -141,6 +153,95 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 | CP-40 | Un registro de auditoría | Por SQL: modificarlo, eliminarlo y eliminar a su responsable | PostgreSQL rechaza las tres | Aprobado |
 | CP-41 | Sin transacción | Registrar auditoría | Se rechaza y no se guarda | Aprobado |
 
+## Registrar producto · RF07
+
+Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y «Leche» preparados por carga autorizada.
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-42 | Insumos | Alta de un preparado con dos insumos | 201 con `Location`; nombre sin espacios; precio como cadena `55.00`; receta guardada; sin existencia propia | Aprobado |
+| CP-43 | P2 | Alta de reventa con nivel mínimo 5 | 201; existencia creada en 0 con mínimo 5; sin receta | Aprobado |
+| CP-44 | Insumos | Alta vacía; seis precios inválidos; preparado sin receta, con insumo repetido, inexistente o en cero, o con nivel mínimo; reventa sin mínimo o con receta | 400 con error en el campo; no se guarda nada | Aprobado |
+| CP-45 | Insumos | Por SQL: preparado sin receta, reventa sin existencia, artículo sin subtipo, existencia sin artículo, borrar una receta completa o una existencia de insumo | PostgreSQL rechaza todos | Aprobado |
+| CP-46 | Insumos | Consultar insumos | Lista los disponibles | Aprobado |
+| CP-F20 | Formulario de alta | Enviar vacío; cantidad 0; insumo repetido; datos correctos con coma decimal | Muestra cada error sin llamar a la API; al final envía `60.5` y `18.5` | Aprobado |
+| CP-F21 | Formulario de alta | Elegir Reventa y enviar sin nivel mínimo; después con 5 | Pide el nivel mínimo; luego envía sin receta y vuelve al listado | Aprobado |
+
+## Consultar producto · RF08
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-47 | Dos preparados activos y una reventa inactiva | Filtrar por estado, tipo y nombre; buscar `%`; paginar; tipo inexistente; `size=101` | Solo coincidencias y en orden; `%` literal; 400 en los inválidos | Aprobado |
+| CP-48 | Igual y sesión de MESERO | Pedir inactivos; detalle de un inactivo; detalle de un activo | Solo activos; 404; sin receta ni existencia | Aprobado |
+| CP-49 | P2 | ID inexistente y `abc` | 404 y 400 | Aprobado |
+| CP-F18 | Un activo y un inactivo | Abrir con filtros en la URL | Consulta con esos filtros; precio `$1,055.00`; solo el activo ofrece desactivar | Aprobado |
+| CP-F19 | Sesión de mesero | Abrir el catálogo e intentar la edición | Sin acciones; regresa a inicio | Aprobado |
+
+## Modificar producto · RF09
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-50 | Un preparado | Cambiar solo el precio a `60.5` | 200 con `60.50`; conserva nombre y receta; queda en auditoría | Aprobado |
+| CP-51 | Un preparado | Edición vacía; nombre en blanco; precio negativo; campo `activo`; ID inexistente | 400 en las cuatro primeras; 404 en la última | Aprobado |
+| CP-F22 | Formulario de edición | Guardar sin cambios; cambiar solo el precio | No llama a la API; después envía solo el precio | Aprobado |
+| CP-F23 | Formulario de edición | La API responde 400 en `nombre` | Marca el campo y conserva lo capturado | Aprobado |
+
+## Desactivar producto · RF10
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-52 | Una reventa | 1. Sin confirmar. 2. Confirmar. 3. Consultar. 4. Repetir | 1. 400 y sigue activo. 2. Inactivo. 3. Conserva datos. 4. 409 `PRODUCTO_INACTIVO` | Aprobado |
+| CP-53 | Una reventa y sesión de cada rol no administrador | Alta, edición, desactivación e insumos; consultar productos | 403 en las cuatro sin cambios; consultar solo lo permite al mesero | Aprobado (4 roles) |
+
+## Consultar inventario · RF16
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-54 | Dos insumos y una reventa | Listar; buscar sin distinguir mayúsculas; filtrar por tipo y nivel bajo; buscar `%`; ID inexistente | Unidad, existencia, mínimo y nivel correctos; igual al mínimo cuenta como bajo; 404 | Aprobado |
+| CP-55 | Tres movimientos | Historial por existencia, artículo, tipo y fechas; rango invertido; fecha inválida | Más reciente primero, con cambio, saldos y responsable; 400 en los inválidos | Aprobado |
+| CP-56 | Movimiento a las 05:59:59Z del 11 de marzo | Filtrar el 10 y el 11 de marzo | Aparece solo el 10: se usa la zona de Ciudad de México | Aprobado |
+| CP-F24 | Existencia de 1200.5 g | Abrir con filtro de nivel bajo | Muestra `1,200.5 g` y «Bajo»; no pierde precisión en cantidades grandes | Aprobado |
+| CP-F25 | Un ajuste rechazado | Abrir movimientos | Cantidad tachada y «Sin cambio» en el saldo | Aprobado |
+| CP-F26 | Sesión de administrador | Abrir el detalle de una existencia | Consulta sin formularios | Aprobado |
+
+## Registrar movimiento de inventario · RF17
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-57 | Sesión de ALMACENISTA | Entrada y salida de 100.5 | 201; saldo, versión, historial y auditoría actualizados | Aprobado |
+| CP-58 | Existencia de 5 | Salida de 5.000001 | 409 `EXISTENCIA_INSUFICIENTE`; saldo 5 y sin movimiento | Aprobado |
+| CP-59 | Existencia de 10 | Seis salidas simultáneas de 4 | Dos 201 y cuatro 409; saldo 2 | Aprobado |
+| CP-60 | Existencia de -3 | Salida de 1; entrada de 2 | 409; 201 con saldo -1 | Aprobado |
+| CP-61 | Sesión de ALMACENISTA | Cantidades inválidas; tipos AJUSTE y CONSUMO_VENTA; existencia inexistente; saldo fuera de rango; sin clave | 400, 400, 404, 400 y 400 | Aprobado |
+| CP-62 | Sesión de ALMACENISTA | Repetir con la misma clave; con otros datos; cuatro simultáneas con la misma clave | Misma respuesta sin aplicar de nuevo; 409 `IDEMPOTENCIA_CONFLICTO`; se aplica una vez | Aprobado |
+| CP-63 | Existencia en 0 | Salida rechazada; entrada; repetir la salida con la misma clave | 409 y después 201 | Aprobado |
+| CP-F27 | Detalle de existencia | Fallo de red, reintento y otra operación igual | El reintento usa la misma clave; la operación siguiente, otra | Aprobado |
+| CP-F28 | Detalle de existencia | La API rechaza la salida | Muestra el motivo, conserva la cantidad y actualiza el saldo | Aprobado |
+
+## Ajustar inventario · RF18
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-64 | Existencia de 20 | Solicitar 15.5 con justificación | 201 PENDIENTE; la existencia sigue en 20; aparece al filtrar por estado | Aprobado |
+| CP-65 | Existencia de 20 | Sin diferencia; sin justificación; negativa; existencia inexistente; sin clave | 400 en todas; no se guarda | Aprobado |
+| CP-F29 | Detalle de existencia | Enviar sin justificación; después completa | Muestra el error; luego lleva al detalle de la solicitud | Aprobado |
+| CP-F33 | Una solicitud | Filtrar por estado | Lista con ese estado | Aprobado |
+
+## Autorizar ajuste de inventario · RF15
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-66 | Existencia de 20 y solicitud de 15 | Autorizar | Saldo 15; movimiento AJUSTE de -5 con solicitud, motivo, responsable y fecha | Aprobado |
+| CP-67 | Igual | Rechazar | Saldo 20; queda en el historial con responsable y sin movimiento | Aprobado |
+| CP-68 | Igual, con movimientos posteriores | Autorizar; rechazar; nueva solicitud y autorizar | 409 `EXISTENCIA_CAMBIADA` y sigue pendiente; 200; saldo 15 | Aprobado |
+| CP-69 | Igual y dos administradores | Dos autorizaciones y un rechazo simultáneos | Una 200 y dos 409; a lo sumo un movimiento | Aprobado |
+| CP-70 | Igual | Decisión inválida; inexistente; resolver dos veces | 400, 404 y 409 `AJUSTE_RESUELTO` | Aprobado |
+| CP-71 | Solicitud pendiente y sesión de cada rol | Consultas, movimiento, solicitud y resolución | Consultan administrador y almacenista; operan almacenista; resuelve administrador; los demás 403 | Aprobado (5 roles) |
+| CP-72 | Almacenista con sesión, desactivado después | Registrar un movimiento | 401; saldo intacto | Aprobado |
+| CP-F30 | Sesión de almacenista | Abrir una solicitud pendiente | Informa que está pendiente, sin botones | Aprobado |
+| CP-F31 | Sesión de administrador | Autorizar | Muestra quién y cuándo; retira los botones | Aprobado |
+| CP-F32 | Sesión de administrador | Autorizar y recibir 409 | Muestra el motivo; solo permite rechazar | Aprobado |
+
 ## Recorrido en el navegador
 
 | ID | Precondición | Pasos y datos | Resultado obtenido | Estado |
@@ -154,6 +255,14 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 | CP-M07 | Sesión de mesero | Abrir `/empleados` | Regresa a `/inicio`; su menú solo muestra Inicio | Aprobado |
 | CP-M08 | Sesión cerrada | Con el foco en el correo, capturar, pasar a la contraseña con Tab y enviar con Enter | Inicia sesión | Aprobado |
 | CP-M09 | Sesión de administrador | Ver el listado a 360, 800 y 1000 px | Sin desplazamiento horizontal; texto de 16 px (12 pt) o más | Aprobado tras corregir |
+| CP-M10 | Sesión de almacenista | Abrir inventario y el detalle del Brownie | Muestra existencias, unidad y niveles; el detalle permite mover y ajustar | Aprobado |
+| CP-M11 | Brownie con 4 piezas | Salida de 9; entrada de 9; solicitar 11 con justificación | Rechaza y conserva el 9; queda en 13; la solicitud queda pendiente | Aprobado |
+| CP-M12 | Solicitud anterior y sesión de administrador | Autorizar y abrir movimientos | Existencia 11; «Ajuste -2 pza» con referencia | Aprobado |
+| CP-M13 | Sesión de administrador | Alta de «Galleta de prueba» a 18,5 con 12.5 g de azúcar | Aparece a $18.50 con su receta | Aprobado |
+| CP-M14 | Producto anterior | Cambiar a 20 y desactivar con confirmación | $20.00 y después Inactivo | Aprobado |
+| CP-M15 | Sesión de mesero | Abrir el catálogo y después `/inventario` | Solo activos y sin acciones; regresa a inicio | Aprobado |
+| CP-M16 | Sesión cerrada | Enviar vacío; pedir ayuda; entrar con «Recordarme»; salir | Errores por campo y ayuda; al volver propone el correo sin contraseña | Aprobado |
+| CP-M17 | Administrador | Productos, inventario, movimientos, ajustes, alta y empleados a 360 px; movimientos a 790, 980 y 1095 px; productos y empleados a 980 px; acceso a 360 y 1400 px | Sin desplazamiento horizontal | Aprobado tras corregir |
 
 ### Defectos encontrados
 
@@ -161,6 +270,10 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 |---|---|---|
 | CP-M09 | A 360 px el encabezado oculto de la tabla ensanchaba la página a 402 px | Se ajustó el estilo y se repitió el caso |
 | CP-M04 | El error de correo aparecía dos veces | El mensaje general indica revisar los datos marcados. No se repitió en el navegador; CP-F15 cubre el error por campo |
+| CP-M17 | Las columnas de los listados partían palabras, como «Entrad-a» | Las celdas ya no se estrechan por debajo de una palabra |
+| CP-M17 | Movimientos se desbordaba 20 px a 980 px | El menú lateral se pliega antes |
+| CP-M17 | A 360 px se cortaba «Ingresa tu contraseña» | Se ajustó el margen interno |
+| CP-F10, CP-F18 | Fallaban por tiempo con el equipo cargado | Las pantallas se precargan antes de los casos |
 
 ## Sin cubrir
 
@@ -174,8 +287,6 @@ Sus casos de prueba se escriben al implementar cada fase.
 
 | Caso de uso | Fase | RF |
 |---|---|---|
-| Registrar, consultar, modificar y desactivar producto | 2 | RF07 a RF10 |
-| Consultar inventario, registrar movimiento, ajustar y autorizar ajuste | 2 | RF15 a RF18 |
 | Registrar, modificar y cancelar pedido | 3 | RF01 a RF03 |
 | Consultar cola, marcar en preparación y marcar listo | 3 | RF19 a RF21 |
 | Marcar pedido servido | 4 | RF23, RF24 |

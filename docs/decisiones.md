@@ -1,4 +1,4 @@
-# Decisiones y diferencias · Fases 0 y 1
+# Decisiones y diferencias · Fases 0 a 2
 
 Los documentos `ROADMAP.md`, `arquitectura-sivant.md` y `modelo-datos-logico-relacional.md` se copiaron sin cambios.
 Aquí se registra lo que la implementación precisó o resolvió de otra forma.
@@ -17,6 +17,17 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Rutas no declaradas | Se rechazan (401 o 403) | Un módulo nuevo debe declarar sus roles para quedar accesible |
 | Migración de mesas | Se deja para la fase 3 | El ROADMAP ubica ahí las mesas; arquitectura las menciona junto a identidad |
 | Auditoría de cambios (RNF09) | Tabla `AUDITORIA`, adicional al modelo: responsable, fecha y hora, acción, entidad, registro y detalle JSON. Se guarda en la misma transacción que el cambio y un trigger impide modificarla o borrarla. De la contraseña solo consta que cambió. Los inicios de sesión quedan en el registro de la aplicación | RNF09 pide auditar todos los cambios y el modelo no tenía dónde guardarlos |
+| «Recordarme» en el acceso | Guarda solo el correo en el navegador. No alarga la sesión | RNF08 limita la sesión a 45 minutos y los dispositivos son compartidos |
+| «¿Olvidaste tu contraseña?» | Indica pedir una nueva al administrador | Ningún RF define recuperación; RF13 permite al administrador cambiarla |
+| `GET /insumos`, `GET /inventario/movimientos`, `GET /inventario/existencias/:id`, `GET /inventario/ajustes/:id` | Se agregan al contrato | Los piden la selección de insumos y las interfaces de referencia |
+| Historial de inventario | Incluye los ajustes rechazados como `AJUSTE_RECHAZADO`, sin saldo posterior | RF15 pide conservar las decisiones en el historial |
+| Filtro por días | Incluye completo el día `hasta` | Es lo que espera quien elige una fecha final |
+| Solicitudes simultáneas | Puede haber varias pendientes de la misma existencia. Autorizar una impide autorizar las demás | Arquitectura valida la versión de la existencia |
+| `CONSUMO_VENTA` y `id_detalle_comanda` | Se agregan en la fase 4 | Dependen de `DETALLE_COMANDA` |
+| Insumos | Se cargan con `database/cargas/insumos.sql` e inician en 0 | Su pantalla se definirá después |
+| Receta y nivel mínimo | No se editan desde la aplicación | El contrato de RF09 solo cambia nombre, descripción y precio |
+| WebSocket de inventario | Se agrega con el primer aviso (fases 3 y 4) | En esta fase no hay alertas |
+| Nombre de producto | Puede repetirse | Ningún RF ni el modelo exigen unicidad |
 
 ## Diferencias con las interfaces de referencia
 
@@ -44,7 +55,7 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 | «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro |
 | Iniciar y cerrar sesión no aparecen | Se implementan como soporte de todos los actores |
 
-## Pendiente de las fases 0 y 1
+## Pendiente de las fases 0 a 2
 
 - `AGENTS.md` no está en el repositorio ni en los documentos recibidos, así que no se pudieron revisar sus reglas.
 - La regla sobre cuentas a cargo al desactivar o cambiar de rol depende de las cuentas (fase 3).

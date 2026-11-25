@@ -9,6 +9,16 @@ export function dinero(decimal: string): string {
   return `$${conSeparadores(decimal)}`;
 }
 
+/** Suma exacta en centavos. El importe definitivo lo calcula siempre la API. */
+export function sumaDinero(importes: string[]): string {
+  const centavos = importes.reduce((total, importe) => {
+    const [entero, fraccion = ''] = importe.split('.');
+    return total + BigInt(entero + fraccion.padEnd(2, '0'));
+  }, 0n);
+  const texto = centavos.toString().padStart(3, '0');
+  return `${texto.slice(0, -2)}.${texto.slice(-2)}`;
+}
+
 export function cantidad(decimal: string): string {
   return conSeparadores(decimal);
 }

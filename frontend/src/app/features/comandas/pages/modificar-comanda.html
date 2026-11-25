@@ -1,0 +1,92 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" [routerLink]="['/cuentas', id()]" aria-label="Volver a la cuenta">
+    <app-icono nombre="atras" [tamano]="30" />
+  </a>
+  <h1>Modificar comanda</h1>
+  @if (cuenta(); as c) {
+    <span class="mesa">Mesa {{ c.mesa }}</span>
+  }
+</div>
+
+@if (errorCarga(); as mensaje) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <p>{{ mensaje }}</p>
+  </div>
+} @else if (comanda(); as c) {
+  <div class="columnas">
+    <section class="tarjeta" aria-labelledby="titulo-comanda">
+      <div class="encabezado-comanda">
+        <h2 id="titulo-comanda">Comanda {{ c.id }}</h2>
+        <span [class]="clase[c.estado]">{{ nombre[c.estado] }}</span>
+      </div>
+      <p>{{ fechaHora(c.fechaHoraEnvio) }}</p>
+      <ul class="lineas">
+        @for (d of lineas(); track d.id) {
+          <li>
+            <div class="linea">
+              <span class="linea__nombre">
+                {{ d.producto }}
+                @if (d.observaciones) {
+                  <small>{{ d.observaciones }}</small>
+                }
+              </span>
+              <strong>{{ dinero(d.precioUnitario) }}</strong>
+              <app-paso-cantidad [nombre]="d.producto" [cantidad]="cantidades()[d.id]" (cambio)="cambiar(d.id, $event)" />
+              <button
+                type="button"
+                class="boton-icono boton-icono--peligro"
+                [attr.aria-label]="'Eliminar ' + d.producto"
+                [disabled]="lineas().length === 1"
+                (click)="quitar(d.id)"
+              >
+                <app-icono nombre="basura" />
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+      <p class="total">
+        <span>Subtotal</span>
+        <strong>{{ dinero(total()) }}</strong>
+      </p>
+    </section>
+
+    <div class="pila">
+      @if (!editable()) {
+        <div class="aviso aviso--error">
+          <app-icono nombre="info" [tamano]="32" />
+          <p>Esta comanda ya no puede modificarse.</p>
+        </div>
+      } @else if (c.estado === 'EN_PREPARACION') {
+        <div class="aviso">
+          <app-icono nombre="info" [tamano]="32" />
+          <p>La comanda está en preparación: cocina recibirá un aviso del cambio.</p>
+        </div>
+      }
+      <div class="aviso">
+        <app-icono nombre="info" [tamano]="32" />
+        <p>
+          Para agregar productos registra una comanda nueva. Para retirar la comanda completa, pide al cajero cancelarla.
+        </p>
+      </div>
+      @if (error(); as mensaje) {
+        <p class="campo__error" role="alert">{{ mensaje }}</p>
+      }
+      <div class="acciones">
+        <a class="boton" [routerLink]="['/cuentas', id()]">Cancelar</a>
+        <button
+          type="button"
+          class="boton boton--principal"
+          [disabled]="guardando() || !editable() || lineas().length === 0"
+          (click)="guardar()"
+        >
+          <app-icono nombre="guardar" />
+          {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+        </button>
+      </div>
+    </div>
+  </div>
+} @else {
+  <p role="status">Cargando comanda…</p>
+}

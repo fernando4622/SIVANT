@@ -1,0 +1,90 @@
+<div class="pantalla__encabezado">
+  <h1>Cocina</h1>
+  <span class="conexion" [class.conexion--caida]="!tiempoReal.conectado()" role="status">
+    {{ tiempoReal.conectado() ? 'En línea' : 'Sin conexión en vivo' }}
+  </span>
+  <button type="button" class="boton" (click)="actualizar()">Actualizar</button>
+</div>
+
+@if (error(); as mensaje) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <p>{{ mensaje }}</p>
+  </div>
+}
+
+@if (bandeja.pendientes().length) {
+  <section class="avisos" aria-labelledby="titulo-avisos">
+    <h2 id="titulo-avisos">Avisos</h2>
+    <ul>
+      @for (aviso of bandeja.pendientes(); track aviso.id) {
+        <li class="aviso" [class.aviso--error]="aviso.tipo === 'CANCELACION_COMANDA'">
+          <app-icono nombre="campana" />
+          <p>
+            {{ aviso.mensaje }} <span class="hora">{{ fechaHora(aviso.fechaHora) }}</span>
+          </p>
+          <button type="button" class="boton" (click)="bandeja.leer(aviso.id)">Entendido</button>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<div class="pildoras" role="group" aria-label="Filtrar por estado">
+  @for (f of filtros; track f.valor) {
+    <button
+      type="button"
+      class="pildora"
+      [class.pildora--activa]="filtro() === f.valor"
+      [attr.aria-pressed]="filtro() === f.valor"
+      (click)="filtro.set(f.valor)"
+    >
+      {{ f.texto }} ({{ contar(f.valor) }})
+    </button>
+  }
+</div>
+
+@if (cola()) {
+  <ol class="cola">
+    @for (c of visibles(); track c.id) {
+      <li class="tarjeta">
+        <header>
+          <h2>Mesa {{ c.mesa }}</h2>
+          <span [class]="clase[c.estado]">{{ nombre[c.estado] }}</span>
+        </header>
+        <p class="datos">Comanda {{ c.id }} · Cuenta {{ c.cuentaId }}</p>
+        <p class="datos">{{ fechaHora(c.fechaHoraEnvio) }} · {{ c.mesero }}</p>
+        <ul class="productos">
+          @for (d of c.detalles; track d.id) {
+            <li>
+              <strong>{{ d.cantidad }} ×</strong>
+              <span>
+                {{ d.producto }}
+                @if (d.observaciones) {
+                  <span class="observaciones">{{ d.observaciones }}</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+        @if (c.estado === 'ENVIADA') {
+          <button type="button" class="boton" [disabled]="ocupada() !== null" (click)="avanzar(c)">
+            <app-icono nombre="cocina" />
+            Iniciar preparación
+          </button>
+        } @else if (c.estado === 'EN_PREPARACION') {
+          <button type="button" class="boton boton--principal" [disabled]="ocupada() !== null" (click)="avanzar(c)">
+            <app-icono nombre="palomita" />
+            Marcar lista
+          </button>
+        } @else {
+          <p class="espera">Esperando al mesero</p>
+        }
+      </li>
+    } @empty {
+      <li class="tarjeta">No hay comandas.</li>
+    }
+  </ol>
+} @else if (!error()) {
+  <p role="status">Cargando cola…</p>
+}

@@ -62,7 +62,7 @@ export class Sesion {
   private abrir(perfil: Perfil): void {
     this.perfilActual.set(perfil);
     clearInterval(this.vigilancia);
-    this.vigilancia = setInterval(() => this.vigilar(), INTERVALO_VIGILANCIA);
+    this.vigilancia = setInterval(() => this.comprobar(), INTERVALO_VIGILANCIA);
   }
 
   private olvidar(): void {
@@ -70,8 +70,8 @@ export class Sesion {
     clearInterval(this.vigilancia);
   }
 
-  /** Detecta el cierre por inactividad. El encabezado evita que esta consulta cuente como actividad. */
-  private vigilar(): void {
+  /** Detecta que la sesión terminó en el servidor. El encabezado evita que esta consulta cuente como actividad. */
+  comprobar(): void {
     this.http
       .get<Perfil>(`${API}/me`, { headers: { 'X-Solicitud-Pasiva': 'true' } })
       .pipe(catchError(() => of(null)))

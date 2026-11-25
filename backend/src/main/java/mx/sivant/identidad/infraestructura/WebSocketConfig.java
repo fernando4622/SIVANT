@@ -14,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.socket.WebSocketHandler;
@@ -54,7 +55,13 @@ class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registro) {
-        registro.enableSimpleBroker("/topic", "/queue");
+        ThreadPoolTaskScheduler latidos = new ThreadPoolTaskScheduler();
+        latidos.setThreadNamePrefix("latidos-ws-");
+        latidos.setDaemon(true);
+        latidos.initialize();
+        // Cliente y servidor detectan en segundos una conexión caída.
+        registro.enableSimpleBroker("/topic", "/queue").setHeartbeatValue(new long[] {10_000, 10_000})
+                .setTaskScheduler(latidos);
         registro.setUserDestinationPrefix("/user");
     }
 

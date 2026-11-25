@@ -1,0 +1,125 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" [routerLink]="['/cuentas', id()]" aria-label="Volver a la cuenta">
+    <app-icono nombre="atras" [tamano]="30" />
+  </a>
+  <h1>Nueva comanda</h1>
+  @if (cuenta(); as c) {
+    <span class="mesa">Mesa {{ c.mesa }}</span>
+  }
+</div>
+
+<div class="columnas">
+  <section class="tarjeta" aria-labelledby="titulo-comanda">
+    <h2 id="titulo-comanda">Comanda</h2>
+    <ul class="lineas">
+      @for (l of lineas(); track l.clave) {
+        <li>
+          <div class="linea">
+            <span class="linea__nombre">{{ l.producto.nombre }}</span>
+            <strong>{{ dinero(l.producto.precioVenta) }}</strong>
+            <app-paso-cantidad
+              [nombre]="l.producto.nombre"
+              [cantidad]="l.cantidad"
+              (cambio)="cambiarCantidad(l.clave, $event)"
+            />
+            <button
+              type="button"
+              class="boton-icono boton-icono--peligro"
+              [attr.aria-label]="'Eliminar ' + l.producto.nombre"
+              (click)="quitar(l.clave)"
+            >
+              <app-icono nombre="basura" />
+            </button>
+          </div>
+          <input
+            #nota
+            class="control"
+            maxlength="200"
+            placeholder="Observaciones (opcional)"
+            [value]="l.observaciones"
+            [attr.aria-label]="'Observaciones de ' + l.producto.nombre"
+            (input)="anotar(l.clave, nota.value)"
+          />
+        </li>
+      } @empty {
+        <li>Elige productos del catálogo.</li>
+      }
+    </ul>
+    <p class="total">
+      <span>Subtotal</span>
+      <strong>{{ dinero(total()) }}</strong>
+    </p>
+
+    @if (error(); as mensaje) {
+      <p class="campo__error" role="alert">{{ mensaje }}</p>
+    }
+
+    <div class="acciones">
+      <a class="boton" [routerLink]="['/cuentas', id()]">Cancelar</a>
+      <button
+        type="button"
+        class="boton boton--principal"
+        [disabled]="enviando() || lineas().length === 0"
+        (click)="enviar()"
+      >
+        <app-icono nombre="enviar" />
+        {{ enviando() ? 'Enviando…' : 'Enviar a cocina' }}
+      </button>
+    </div>
+  </section>
+
+  <section aria-labelledby="titulo-catalogo">
+    <h2 id="titulo-catalogo">Agregar productos</h2>
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input
+        #q
+        class="control"
+        type="search"
+        placeholder="Buscar producto…"
+        aria-label="Buscar producto"
+        maxlength="120"
+        (input)="buscar(q.value)"
+      />
+    </div>
+    <div class="pildoras" role="group" aria-label="Tipo de producto">
+      @for (t of tipos; track t.valor) {
+        <button
+          type="button"
+          class="pildora"
+          [class.pildora--activa]="filtro().tipo === t.valor"
+          [attr.aria-pressed]="filtro().tipo === t.valor"
+          (click)="filtrarTipo(t.valor)"
+        >
+          {{ t.texto }}
+        </button>
+      }
+    </div>
+
+    @if (errorCatalogo(); as mensaje) {
+      <p class="campo__error" role="alert">{{ mensaje }}</p>
+    }
+    @if (catalogo(); as c) {
+      <div class="catalogo">
+        @for (p of c.contenido; track p.id) {
+          <button type="button" class="producto" [attr.aria-label]="'Agregar ' + p.nombre" (click)="agregar(p)">
+            <span>{{ p.nombre }}</span>
+            <strong>{{ dinero(p.precioVenta) }}</strong>
+          </button>
+        } @empty {
+          <p>No hay productos que coincidan.</p>
+        }
+      </div>
+      @if (c.totalPaginas > 1) {
+        <div class="acciones">
+          <button type="button" class="boton" [disabled]="c.page === 0" (click)="irA(c.page - 1)">Anteriores</button>
+          <button type="button" class="boton" [disabled]="c.page + 1 >= c.totalPaginas" (click)="irA(c.page + 1)">
+            Siguientes
+          </button>
+        </div>
+      }
+    } @else {
+      <p role="status">Cargando catálogo…</p>
+    }
+  </section>
+</div>

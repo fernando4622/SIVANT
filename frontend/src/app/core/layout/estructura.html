@@ -21,6 +21,7 @@
         <a
           class="opcion"
           [routerLink]="opcion.ruta"
+          [class.opcion--incluida]="opcion.incluye && url().startsWith(opcion.incluye + '/')"
           routerLinkActive="opcion--activa"
           ariaCurrentWhenActive="page"
           (click)="menuAbierto.set(false)"
@@ -29,6 +30,19 @@
           {{ opcion.texto }}
         </a>
       }
+      <a
+        class="opcion"
+        routerLink="/notificaciones"
+        routerLinkActive="opcion--activa"
+        ariaCurrentWhenActive="page"
+        (click)="menuAbierto.set(false)"
+      >
+        <app-icono nombre="campana" />
+        Avisos
+        @if (bandeja.noLeidas(); as total) {
+          <span class="contador">{{ total }}<span class="solo-lector"> sin leer</span></span>
+        }
+      </a>
     </nav>
 
     <div class="usuario">
@@ -49,5 +63,16 @@
 </header>
 
 <main #contenido id="contenido" tabindex="-1">
+  <div class="emergente" role="status">
+    @if (bandeja.reciente(); as aviso) {
+      <div class="aviso">
+        <app-icono nombre="campana" [tamano]="28" />
+        <div>
+          <p>{{ aviso.mensaje }}</p>
+          <button type="button" class="boton" (click)="bandeja.leer(aviso.id)">Entendido</button>
+        </div>
+      </div>
+    }
+  </div>
   <router-outlet />
 </main>

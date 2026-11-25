@@ -113,14 +113,14 @@ public final class ServicioDtos {
         }
     }
 
-    record CancelacionRespuesta(String cajero, OffsetDateTime fechaHora, String justificacion) {
+    public record CancelacionRespuesta(String cajero, OffsetDateTime fechaHora, String justificacion) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record Comanda(String id, String cuentaId, EstadoComanda estado, OffsetDateTime fechaHoraEnvio, int version,
+    public record Comanda(String id, String cuentaId, EstadoComanda estado, OffsetDateTime fechaHoraEnvio, int version,
             String subtotal, List<Detalle> detalles, CancelacionRespuesta cancelacion, List<String> acciones) {
 
-        static Comanda de(DatosServicio.Comanda c, boolean cuentaAbierta, EmpleadoPrincipal actor) {
+        public static Comanda de(DatosServicio.Comanda c, boolean cuentaAbierta, EmpleadoPrincipal actor) {
             List<String> acciones = new ArrayList<>();
             if (cuentaAbierta && actor.rol().equals("MESERO") && c.estado().esEditable()) {
                 acciones.add("EDITAR");
@@ -152,21 +152,34 @@ public final class ServicioDtos {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record Cuenta(String id, String mesaId, int mesa, String mesero, EstadoCuenta estado,
-            OffsetDateTime fechaHoraApertura, OffsetDateTime fechaHoraCierre, int version, String total,
-            List<Comanda> comandas, List<String> acciones) {
+    public record Cobro(OffsetDateTime fechaHora, String metodo, String total, String referenciaExterna,
+            String estado) {
 
-        static Cuenta de(DatosServicio.Cuenta c, EmpleadoPrincipal actor) {
+        static Cobro de(DatosServicio.Cobro c) {
+            return new Cobro(c.fechaHora(), c.metodo(), Decimales.dinero(c.total()), c.referenciaExterna(), c.estado());
+        }
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Cuenta(String id, String mesaId, int mesa, String mesero, EstadoCuenta estado,
+            OffsetDateTime fechaHoraApertura, OffsetDateTime fechaHoraCierre, int version, String total,
+            List<Comanda> comandas, Cobro cobro, List<String> acciones) {
+
+        public static Cuenta de(DatosServicio.Cuenta c, EmpleadoPrincipal actor) {
             List<String> acciones = new ArrayList<>();
             if (c.abierta() && c.meseroId().equals(actor.id())) {
                 acciones.add("ENVIAR_COMANDA");
+                if (c.cobrable()) {
+                    acciones.add("COBRAR");
+                }
                 if (!c.tieneComandasVigentes()) {
                     acciones.add("CERRAR_SIN_COBRO");
                 }
             }
             return new Cuenta(c.id().toString(), c.mesaId().toString(), c.mesa(), c.mesero(), c.estado(),
                     c.fechaHoraApertura(), c.fechaHoraCierre(), c.version(), Decimales.dinero(c.total()),
-                    c.comandas().stream().map(o -> Comanda.de(o, c.abierta(), actor)).toList(), acciones);
+                    c.comandas().stream().map(o -> Comanda.de(o, c.abierta(), actor)).toList(),
+                    c.cobro() == null ? null : Cobro.de(c.cobro()), acciones);
         }
     }
 }

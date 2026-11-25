@@ -64,12 +64,15 @@ class SeguridadConfig {
                         .requestMatchers(HttpMethod.GET, API + "/mesas", API + "/cuentas", API + "/cuentas/*")
                         .hasAnyAuthority("MESERO", "CAJERO")
                         .requestMatchers(HttpMethod.POST, API + "/cuentas", API + "/cuentas/*/cierre",
-                                API + "/cuentas/*/comandas", API + "/comandas/*/servicio").hasAuthority("MESERO")
+                                API + "/cuentas/*/comandas", API + "/comandas/*/servicio",
+                                API + "/cuentas/*/cobro").hasAuthority("MESERO")
                         .requestMatchers(HttpMethod.PUT, API + "/comandas/*/detalles").hasAuthority("MESERO")
                         .requestMatchers(HttpMethod.POST, API + "/comandas/*/cancelacion").hasAuthority("CAJERO")
                         .requestMatchers(HttpMethod.GET, API + "/cocina/cola").hasAuthority("COCINERO")
                         .requestMatchers(HttpMethod.POST, API + "/comandas/*/preparacion", API + "/comandas/*/lista")
                         .hasAuthority("COCINERO")
+                        .requestMatchers(HttpMethod.GET, API + "/ventas/**").hasAnyAuthority("ADMINISTRADOR", "CAJERO")
+                        .requestMatchers(HttpMethod.POST, API + "/ventas/*/cancelacion").hasAuthority("ADMINISTRADOR")
                         // Cada módulo nuevo declara aquí sus roles. Lo no declarado se rechaza.
                         .anyRequest().denyAll())
                 .securityContext(contexto -> contexto.securityContextRepository(contextos))

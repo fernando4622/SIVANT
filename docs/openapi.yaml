@@ -1,13 +1,14 @@
 openapi: 3.1.0
 info:
   title: API de SIVANT
-  version: 0.3.0
+  version: 0.4.0
   license:
     name: Uso interno
     identifier: LicenseRef-SIVANT
   description: |
-    Contrato de las fases 0 a 3: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
-    (RF15 a RF18), servicio (RF01 a RF03) y cocina (RF19 a RF21).
+    Contrato de las fases 0 a 4: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
+    (RF15 a RF18), servicio y consumo (RF01 a RF03, RF23 y RF24) y
+    cocina (RF19 a RF21).
     Cada fase agrega sus operaciones antes de enlazar sus pantallas.
 
     ## Convenciones
@@ -19,8 +20,8 @@ info:
     - **Campos desconocidos** en el cuerpo: se rechazan con 400.
 
     ## Idempotencia
-    Los movimientos, las solicitudes de ajuste y su resolución, la apertura y el cierre de cuentas, el envío y la
-    cancelación de comandas exigen `Idempotency-Key`. Repetir la solicitud con la
+    Los movimientos, las solicitudes de ajuste y su resolución, la apertura y el cierre de cuentas, el envío, la
+    cancelación y el servicio de comandas exigen `Idempotency-Key`. Repetir la solicitud con la
     misma clave y los mismos datos devuelve el resultado guardado sin aplicarla de nuevo; con otros datos responde 409.
     Si la operación falló, la clave queda libre.
 
@@ -37,8 +38,8 @@ info:
     `/ws` (STOMP sobre WebSocket, mismo origen) se autentica con la sesión HTTP y solo admite suscripciones:
     - `/user/queue/notificaciones`: cualquier empleado. `COMANDA_LISTA` y `COMANDA_ACTUALIZADA` al mesero responsable.
     - `/topic/cocina`: COCINERO. `COMANDA_ENVIADA`, `MODIFICACION_COMANDA`, `CANCELACION_COMANDA`,
-      `COMANDA_EN_PREPARACION` y `COMANDA_LISTA`.
-    - `/topic/inventario`: ALMACENISTA. Sin eventos hasta la fase 4.
+      `COMANDA_EN_PREPARACION`, `COMANDA_LISTA` y `COMANDA_SERVIDA`.
+    - `/topic/inventario`: ALMACENISTA. `EXISTENCIA_ACTUALIZADA` y `ALERTA_INVENTARIO`.
 
     Cada evento trae `eventoId`, `tipo`, `recursoId`, `version` y `fechaHora`, y se publica tras confirmar la
     transacción. El estado se consulta por REST. La conexión no cuenta como actividad y deja de recibir eventos cuando
@@ -58,7 +59,7 @@ tags:
   - name: Inventario
     description: RF15 a RF18. Consultan ADMINISTRADOR y ALMACENISTA
   - name: Servicio
-    description: RF01 a RF03
+    description: RF01 a RF03, RF23 y RF24
   - name: Cocina
     description: RF19 a RF21
   - name: Notificaciones
@@ -904,6 +905,43 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
 
+  /comandas/{id}/servicio:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Servicio]
+      operationId: servirComanda
+      summary: Marcar servida y descontar inventario (RF23, RF24)
+      description: |
+        Solo el mesero responsable, desde LISTA. En una sola transacción registra la transición, un movimiento
+        `CONSUMO_VENTA` por detalle y existencia, y una alerta para ALMACENISTA por cada existencia insuficiente. Una
+        existencia insuficiente no impide servir y puede quedar negativa.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SoloVersion' }
+      responses:
+        '200':
+          description: Comanda SERVIDA y consumo aplicado, sin saldos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComandaServida' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`TRANSICION_INVALIDA`, `VERSION_OBSOLETA`, `EXISTENCIA_FUERA_DE_RANGO` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
   /cocina/cola:
     get:
       tags: [Cocina]
@@ -1298,7 +1336,7 @@ components:
     TipoHistorial:
       type: string
       description: AJUSTE_RECHAZADO es una solicitud rechazada; no mueve la existencia
-      enum: [ENTRADA_MANUAL, SALIDA_MANUAL, AJUSTE, AJUSTE_RECHAZADO]
+      enum: [ENTRADA_MANUAL, SALIDA_MANUAL, CONSUMO_VENTA, AJUSTE, AJUSTE_RECHAZADO]
     Historial:
       type: object
       required: [id, tipo, existenciaId, articulo, unidadMedida, cambio, saldoAnterior, fechaHora, empleado]
@@ -1316,6 +1354,9 @@ components:
         fechaHora: { type: string, format: date-time }
         empleado: { type: string }
         solicitudId: { $ref: '#/components/schemas/Id' }
+        comandaId:
+          description: Presente en CONSUMO_VENTA
+          $ref: '#/components/schemas/Id'
         motivo: { type: string }
     AltaMovimiento:
       type: object
@@ -1472,7 +1513,7 @@ components:
         acciones:
           type: array
           description: Operaciones disponibles para el usuario
-          items: { type: string, enum: [EDITAR, CANCELAR] }
+          items: { type: string, enum: [EDITAR, CANCELAR, SERVIR] }
     Cuenta:
       type: object
       required: [id, mesaId, mesa, mesero, estado, fechaHoraApertura, version, total, comandas, acciones]
@@ -1512,6 +1553,23 @@ components:
             contenido:
               type: array
               items: { $ref: '#/components/schemas/ResumenCuenta' }
+    ComandaServida:
+      type: object
+      required: [comanda, consumo]
+      properties:
+        comanda: { $ref: '#/components/schemas/Comanda' }
+        consumo:
+          type: array
+          items:
+            type: object
+            required: [articulo, unidadMedida, cantidad, insuficiente]
+            properties:
+              articulo: { type: string }
+              unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
+              cantidad: { $ref: '#/components/schemas/Cantidad' }
+              insuficiente:
+                type: boolean
+                description: Se generó una alerta para almacén
     ComandaCocina:
       type: object
       required: [id, cuentaId, mesa, mesero, estado, fechaHoraEnvio, version, detalles]
@@ -1550,6 +1608,11 @@ components:
             mesa: { type: integer }
             cuentaId: { $ref: '#/components/schemas/Id' }
             comandaId: { $ref: '#/components/schemas/Id' }
+            existenciaId:
+              description: Con `faltante` y `unidadMedida`, en ALERTA_INVENTARIO
+              $ref: '#/components/schemas/Id'
+            faltante: { $ref: '#/components/schemas/Cantidad' }
+            unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
     PaginaNotificaciones:
       allOf:
         - $ref: '#/components/schemas/Pagina'
@@ -1597,6 +1660,7 @@ components:
             - COMANDA_NO_CANCELABLE
             - ULTIMO_DETALLE
             - TRANSICION_INVALIDA
+            - EXISTENCIA_FUERA_DE_RANGO
             - ERROR_INTERNO
         erroresCampo:
           type: object

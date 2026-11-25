@@ -1,4 +1,4 @@
-# Casos de prueba · Fases 0 a 3
+# Casos de prueba · Fases 0 a 4
 
 Casos derivados del diagrama de casos de uso, los RF implementados y los RNF08 (expiración de sesión), RNF09 (auditoría) y RNF10 (tiempo real).
 El identificador aparece en el nombre de la prueba automatizada, así que se puede buscar en el código o en el reporte.
@@ -15,9 +15,9 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 108 | 131 | 131 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 58 | 66 | 66 | 0 |
-| Navegador | Manual | 24 | 24 | 24 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 121 | 148 | 148 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 65 | 73 | 73 | 0 |
+| Navegador | Manual | 27 | 27 | 27 | 0 |
 
 Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
 pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
@@ -49,7 +49,9 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Consultar cola de pedidos | RF19 | CP-92, CP-93, CP-F52, CP-F55, CP-M20 |
 | Marcar pedido en preparación | RF20 | CP-94 a CP-97, CP-F53, CP-F54, CP-M20 |
 | Marcar pedido listo y avisos | RF21 | CP-98 a CP-101, CP-F56 a CP-F58, CP-M19 |
-| Tiempo real | RNF10 | CP-102 a CP-108, CP-F38 a CP-F41, CP-M19, CP-M20 |
+| Tiempo real | RNF10 | CP-102 a CP-108, CP-121, CP-F38 a CP-F41, CP-M19, CP-M20 |
+| Marcar pedido servido | RF23 | CP-109 a CP-112, CP-F59, CP-F60, CP-M25 |
+| Descontar inventario (automático) | RF24 | CP-113 a CP-120, CP-F61 a CP-F65, CP-M26, CP-M27 |
 
 ## Precondiciones comunes
 
@@ -63,7 +65,7 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 6 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
+| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 7 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
 | CP-02 | P1 | Consultar la tabla `rol` | Exactamente ADMINISTRADOR, ALMACENISTA, CAJERO, COCINERO y MESERO | Aprobado |
 | CP-03 | P1 | 1. Insertar por SQL `uno@sivant.test`. 2. Insertar el mismo, uno con mayúsculas, uno con espacio inicial y uno vacío. 3. Insertar estado `BAJA`. 4. Borrar el rol MESERO en uso | El paso 1 se acepta; PostgreSQL rechaza todos los demás | Aprobado |
 
@@ -332,7 +334,7 @@ sin azúcar enviadas por Juan en la mesa 1.
 | CP-100 | Aviso de Juan | Otras personas lo marcan; inexistente; sin sesión | 404, 404 y 401 | Aprobado |
 | CP-101 | Comanda y sesión de cada rol no cocinero | Cola, preparación y lista | 403 sin cambios | Aprobado (4 roles) |
 | CP-F56 | Aviso sin leer | «Entendido» en cocina | Lo marca y desaparece | Aprobado |
-| CP-F57 | Dos avisos | Abrir la bandeja y recibir un evento | Cuenta los no leídos; destaca solo pedidos listos | Aprobado |
+| CP-F57 | Dos avisos | Abrir la bandeja y recibir un evento | Cuenta los no leídos; destaca los pedidos listos y los faltantes | Aprobado |
 | CP-F58 | Pantalla de avisos | Filtrar y marcar | Consulta con el filtro; enlaza la cuenta del mesero; marca lectura | Aprobado |
 
 ## Tiempo real · RNF10
@@ -352,6 +354,41 @@ sin azúcar enviadas por Juan en la mesa 1.
 | CP-F41 | Conectado | Actualizar el perfil; cerrar sesión | No reconecta; se desconecta | Aprobado |
 
 Se comprobó que CP-107 y CP-108 fallan si se anula la validación de mensajes salientes.
+
+## Marcar pedido servido · RF23
+
+Precondición común de la fase 4: la de la fase 3, más «Café» y «Leche» con 1000 cada uno, «Agua» con 10, y dos
+preparados: Capuchino (18.5 de café y 180 de leche) y Latte (250 de leche y 10 de café).
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-109 | Comanda lista | Juan la sirve | `SERVIDA`, versión 3, sin acciones; historial con Juan y fecha; sale de la cola; el total no cambia; la respuesta no incluye saldos | Aprobado |
+| CP-110 | Comanda enviada, en preparación y lista | Servir en cada estado; versión anterior; otro mesero; inexistente; sin clave | 409, 409, 409 `VERSION_OBSOLETA`, 404, 404 y 400; sin consumo | Aprobado |
+| CP-111 | Comanda servida | Editar, cancelar y cerrar sin cobro | 409 en las tres | Aprobado |
+| CP-112 | Comanda lista y sesión de cada otro rol | Servir | 403; sigue lista y sin consumo | Aprobado (4 roles) |
+| CP-F59 | Cuenta con comanda lista | Marcar servida y confirmar | Pide confirmación, envía la versión e informa el faltante | Aprobado |
+| CP-F60 | Diálogo abierto | Fallo de red, reintento y 409 | Reutiliza la clave; muestra el motivo y actualiza | Aprobado |
+
+## Descontar inventario · RF24
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-113 | Lista: 3 capuchinos y 2 aguas | Servir | Café 944.5, leche 460 y agua 8; tres movimientos con saldos, responsable y comanda; sin alertas; auditado | Aprobado |
+| CP-114 | Lista: 3 capuchinos y 2 lattes | Servir | Leche -40 porque la demanda se suma; una sola alerta con faltante 40; saldos encadenados | Aprobado |
+| CP-115 | Agua con 10 | Servir 10; después 3 y 3 | 0 sin alerta; -3 y -6 con una alerta cada una, faltante 3; solo almacén las recibe; aparece como nivel bajo | Aprobado |
+| CP-116 | Comanda lista | Repetir con la misma clave, con otra y tres a la vez | Un solo descuento; las demás 409 | Aprobado |
+| CP-117 | Recetas con insumos en orden inverso | Dos servicios y una salida manual simultáneos, cuatro veces | Todos se completan, sin bloqueos mutuos; café 882 y leche -720 | Aprobado |
+| CP-118 | Fallo simulado al guardar avisos o movimientos | Servir y reintentar | 500; comanda lista, saldos, historial y avisos intactos; la misma clave se puede reintentar | Aprobado (2 fallos) |
+| CP-119 | Solicitud de ajuste pendiente | Servir y autorizar | 409 `EXISTENCIA_CAMBIADA` | Aprobado |
+| CP-120 | Un consumo | Por SQL: repetirlo y registrarlo sin detalle | PostgreSQL rechaza ambos | Aprobado |
+| CP-121 | Almacenista y cocinero conectados | Servir sin existencias | Almacén recibe cambios y alertas; cocina, `COMANDA_SERVIDA` | Aprobado |
+| CP-F61 | Listado de existencias | Dos cambios seguidos y después filtrar | Una recarga que no cuenta como actividad; filtrar sí cuenta | Aprobado |
+| CP-F62 | Detalle de existencia con datos capturados | Cambio de otra existencia, de la propia y reconexión | Solo se actualiza en las dos últimas y conserva lo capturado | Aprobado |
+| CP-F63 | Consumo en el historial | Abrir movimientos | Muestra «Consumo», el saldo y la comanda | Aprobado |
+| CP-F64 | Alerta de inventario | Abrir avisos como almacenista | Aviso destacado, faltante y enlace a la existencia | Aprobado |
+| CP-F65 | Pantalla de avisos | Llega un aviso nuevo | Se recarga sin contar como actividad | Aprobado |
+
+Se comprobó que CP-117 falla con un bloqueo mutuo de PostgreSQL si las existencias no se bloquean por ID.
 
 ## Recorrido en el navegador
 
@@ -381,6 +418,9 @@ Se comprobó que CP-107 y CP-108 fallan si se anula la validación de mensajes s
 | CP-M22 | Sesión de cajero | Cancelar sin y con justificación | Exige el motivo; queda cancelada con responsable y el total baja | Aprobado |
 | CP-M23 | Mesero | Abrir la mesa 7 y cerrarla sin cobro | Confirma y queda libre | Aprobado |
 | CP-M24 | Mesero, cajero y cocinero | Mesas, cuenta, nueva, modificar, cocina y avisos a 360 px | Sin desplazamiento horizontal | Aprobado |
+| CP-M25 | Comanda lista | Marcar servida y confirmar | «La comanda 1 quedó servida», etiqueta Servida y sin botones | Aprobado |
+| CP-M26 | Almacenista en Inventario, Brownie con 11 | Se sirven 15 desde otra sesión | Sin recargar pasa a -4 y «Bajo», con aviso destacado y contador | Aprobado |
+| CP-M27 | Aviso anterior | Abrir avisos y su enlace, a 360 px, y marcarlo leído | «Faltan 4 pza»; el historial muestra «Consumo -15 pza» con la comanda; sin desplazamiento horizontal; queda leído | Aprobado |
 
 ### Defectos encontrados
 
@@ -395,6 +435,7 @@ Se comprobó que CP-107 y CP-108 fallan si se anula la validación de mensajes s
 | CP-M18 | «Mesas» no quedaba resaltado dentro de una cuenta | Se separó la clase de la opción incluida |
 | CP-M24 | El selector de cantidad se estiraba en móvil | Se ajustó el estilo; no se repitió en el navegador |
 | CP-102, CP-103, CP-107 | El cliente de prueba no leía eventos JSON y otros casos pasaban sin recibir nada | Se corrigió y se exige recibir antes de comprobar el silencio |
+| CP-F65 | Los listados que se recargaban solos contaban como actividad y podían alargar la sesión | Las recargas automáticas se envían como pasivas |
 
 ## Sin cubrir
 
@@ -408,6 +449,5 @@ Sus casos de prueba se escriben al implementar cada fase.
 
 | Caso de uso | Fase | RF |
 |---|---|---|
-| Marcar pedido servido | 4 | RF23, RF24 |
 | Cobrar pedido, autorizar pago con tarjeta, consultar y cancelar venta | 5 | RF04 a RF06, RF22 |
 | Registrar entrega de efectivo y entregar fondo de cambio | 6 | RF25, RF26 |

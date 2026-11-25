@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Sesion } from '../../../core/auth/sesion';
 import { Bandeja } from '../../../core/notificaciones/bandeja';
 import { NotificacionesApi } from '../../../core/notificaciones/notificaciones.api';
-import { fechaHora } from '../../../shared/formato';
+import { cantidad, fechaHora, unidad } from '../../../shared/formato';
 import { TAMANO_PAGINA, conectarFiltros, crearListado } from '../../../shared/listado';
 import { Icono } from '../../../shared/ui/icono';
 import { Paginacion } from '../../../shared/ui/paginacion';
@@ -51,6 +51,9 @@ import { Paginacion } from '../../../shared/ui/paginacion';
                 <p>
                   @if (esMesero() && n.contexto.cuentaId) {
                     <a [routerLink]="['/cuentas', n.contexto.cuentaId]">{{ n.mensaje }}</a>
+                  } @else if (n.contexto.existenciaId) {
+                    <a [routerLink]="['/inventario/existencias', n.contexto.existenciaId]">{{ n.mensaje }}</a>
+                    Faltan {{ cantidad(n.contexto.faltante ?? '0') }} {{ unidad(n.contexto.unidadMedida ?? '') }}.
                   } @else {
                     {{ n.mensaje }}
                   }
@@ -123,8 +126,12 @@ export class Notificaciones {
   protected readonly bandeja = inject(Bandeja);
   protected readonly esMesero = computed(() => this.sesion.perfil()?.rol === 'MESERO');
   protected readonly fechaHora = fechaHora;
+  protected readonly cantidad = cantidad;
+  protected readonly unidad = unidad;
   protected readonly filtros = inject(NonNullableFormBuilder).group({ leida: '' });
-  protected readonly listado = crearListado((p, page) => this.api.listar(p.get('leida') ?? '', page, TAMANO_PAGINA));
+  protected readonly listado = crearListado((p, page, automatica) =>
+    this.api.listar(p.get('leida') ?? '', page, TAMANO_PAGINA, automatica),
+  );
 
   constructor() {
     conectarFiltros(this.filtros, this.listado);
@@ -134,7 +141,7 @@ export class Notificaciones {
       this.bandeja.pendientes();
       untracked(() => {
         if (!primera) {
-          this.listado.recargar();
+          this.listado.recargar(true);
         }
         primera = false;
       });

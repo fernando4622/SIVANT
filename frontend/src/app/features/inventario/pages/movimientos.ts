@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { debounceTime } from 'rxjs';
+import { TiempoReal } from '../../../core/realtime/tiempo-real';
 import { conectarFiltros, crearListado } from '../../../shared/listado';
 import { Icono } from '../../../shared/ui/icono';
 import { Paginacion } from '../../../shared/ui/paginacion';
@@ -67,7 +70,10 @@ import { InventarioApi, NOMBRE_HISTORIAL } from '../data-access/inventario.api';
       </div>
     } @else if (listado.pagina(); as datos) {
       @if (datos.contenido.length) {
-        <app-tabla-historial [movimientos]="datos.contenido" [cargando]="listado.vista().cargando" />
+        <app-tabla-historial
+          [movimientos]="datos.contenido"
+          [cargando]="listado.vista().cargando"
+        />
         <app-paginacion [datos]="datos" elementos="movimientos" (ir)="listado.irA($event)" />
       } @else {
         <p class="tarjeta">No hay movimientos que coincidan con la búsqueda.</p>
@@ -89,18 +95,30 @@ export class Movimientos {
   private readonly api = inject(InventarioApi);
 
   protected readonly tipos = Object.entries(NOMBRE_HISTORIAL);
-  protected readonly filtros = inject(NonNullableFormBuilder).group({ q: '', tipo: '', desde: '', hasta: '' });
-  protected readonly listado = crearListado((p, page) =>
-    this.api.movimientos({
-      q: p.get('q') ?? '',
-      tipo: p.get('tipo') ?? '',
-      desde: p.get('desde') ?? '',
-      hasta: p.get('hasta') ?? '',
-      page,
-    }),
+  protected readonly filtros = inject(NonNullableFormBuilder).group({
+    q: '',
+    tipo: '',
+    desde: '',
+    hasta: '',
+  });
+  protected readonly listado = crearListado((p, page, automatica) =>
+    this.api.movimientos(
+      {
+        q: p.get('q') ?? '',
+        tipo: p.get('tipo') ?? '',
+        desde: p.get('desde') ?? '',
+        hasta: p.get('hasta') ?? '',
+        page,
+      },
+      automatica,
+    ),
   );
 
   constructor() {
     conectarFiltros(this.filtros, this.listado);
+    inject(TiempoReal)
+      .cambios('EXISTENCIA_ACTUALIZADA')
+      .pipe(debounceTime(300), takeUntilDestroyed())
+      .subscribe(() => this.listado.recargar(true));
   }
 }

@@ -2,7 +2,7 @@ import { Signal, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Params, Router } from '@angular/router';
-import { BehaviorSubject, Observable, catchError, combineLatest, debounceTime, map, of, startWith, switchMap } from 'rxjs';
+import { Observable, Subject, catchError, debounceTime, map, merge, of, startWith, switchMap } from 'rxjs';
 import { leerProblema } from '../core/http/problema';
 
 export interface Pagina<T> {
@@ -25,7 +25,8 @@ export interface Listado<T> {
   vista: Signal<Vista<T>>;
   /** Mientras llega la siguiente página se conserva la anterior a la vista. */
   pagina: Signal<Pagina<T> | undefined>;
-  recargar(): void;
+  /** `automatica` indica que el usuario no lo pidió: no cuenta como actividad. */
+  recargar(automatica?: boolean): void;
   irA(page: number): void;
   /** Cambia filtros en la URL y regresa a la primera página. */
   filtrar(filtros: Record<string, string>): void;
@@ -33,17 +34,20 @@ export interface Listado<T> {
 
 /** Los filtros viven en la URL: se conservan al recargar o volver. Se usa en un contexto de inyección. */
 export function crearListado<T>(
-  consultar: (parametros: ParamMap, page: number) => Observable<Pagina<T>>,
+  consultar: (parametros: ParamMap, page: number, automatica: boolean) => Observable<Pagina<T>>,
 ): Listado<T> {
   const ruta = inject(ActivatedRoute);
   const router = inject(Router);
-  const recarga = new BehaviorSubject<void>(undefined);
+  const recarga = new Subject<boolean>();
   const pagina = signal<Pagina<T> | undefined>(undefined);
 
   const vista = toSignal(
-    combineLatest([ruta.queryParamMap, recarga]).pipe(
-      switchMap(([parametros]) =>
-        consultar(parametros, Math.max(0, Math.trunc(Number(parametros.get('page') ?? 0)) || 0)).pipe(
+    merge(
+      ruta.queryParamMap.pipe(map((parametros) => ({ parametros, automatica: false }))),
+      recarga.pipe(map((automatica) => ({ parametros: ruta.snapshot.queryParamMap, automatica }))),
+    ).pipe(
+      switchMap(({ parametros, automatica }) =>
+        consultar(parametros, Math.max(0, Math.trunc(Number(parametros.get('page') ?? 0)) || 0), automatica).pipe(
           map((resultado): Vista<T> => ({ cargando: false, pagina: resultado })),
           catchError((error: unknown) => of<Vista<T>>({ cargando: false, error: leerProblema(error).detalle })),
           startWith<Vista<T>>({ cargando: true }),
@@ -72,7 +76,7 @@ export function crearListado<T>(
   return {
     vista,
     pagina,
-    recargar: () => recarga.next(),
+    recargar: (automatica = false) => recarga.next(automatica),
     irA,
     filtrar: (filtros) =>
       navegar({ ...Object.fromEntries(Object.entries(filtros).map(([k, v]) => [k, v.trim() || null])), page: null }),

@@ -13,7 +13,14 @@ export interface Notificacion {
   fechaHora: string;
   leida: boolean;
   comandaId?: string;
-  contexto: { mesa?: number; cuentaId?: string; comandaId?: string };
+  contexto: {
+    mesa?: number;
+    cuentaId?: string;
+    comandaId?: string;
+    existenciaId?: string;
+    faltante?: string;
+    unidadMedida?: string;
+  };
 }
 
 const API = '/api/v1/notificaciones';

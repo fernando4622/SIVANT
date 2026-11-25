@@ -16,6 +16,20 @@
   </div>
 }
 
+<div role="status">
+  @if (servida(); as s) {
+    <div class="aviso">
+      <app-icono nombre="palomita" [tamano]="28" />
+      <p>
+        La comanda {{ s.comanda.id }} quedó servida.
+        @if (faltantes()) {
+          Se avisó a almacén por existencia insuficiente de: {{ faltantes() }}.
+        }
+      </p>
+    </div>
+  }
+</div>
+
 @if (cuenta(); as c) {
   <div class="columnas">
     <div class="pila">
@@ -32,6 +46,17 @@
                   <app-icono nombre="editar" />
                   Modificar
                 </a>
+              }
+              @if (comanda.acciones.includes('SERVIR')) {
+                <button
+                  type="button"
+                  class="boton boton--principal"
+                  [attr.aria-label]="'Marcar servida la comanda ' + comanda.id"
+                  (click)="pedirServicio(comanda)"
+                >
+                  <app-icono nombre="palomita" />
+                  Marcar servida
+                </button>
               }
               @if (comanda.acciones.includes('CANCELAR')) {
                 <a
@@ -88,6 +113,20 @@
 }
 
 <app-confirmacion
+  #servicio
+  titulo="Marcar servida"
+  accion="Marcar servida"
+  icono="palomita"
+  [peligro]="false"
+  [ocupado]="sirviendo()"
+  [error]="errorServicio()"
+  (confirmado)="servir()"
+>
+  La comanda {{ porServir()?.id }} se entregó al cliente. Se descontará del inventario y ya no podrá cancelarse.
+</app-confirmacion>
+
+<app-confirmacion
+  #cierre
   titulo="Cerrar sin cobro"
   accion="Cerrar cuenta"
   icono="palomita"

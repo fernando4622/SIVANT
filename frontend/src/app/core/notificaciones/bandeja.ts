@@ -5,6 +5,7 @@ import { TiempoReal } from '../realtime/tiempo-real';
 import { Notificacion, NotificacionesApi } from './notificaciones.api';
 
 const TIPOS = ['COMANDA_LISTA', 'MODIFICACION_COMANDA', 'CANCELACION_COMANDA', 'ALERTA_INVENTARIO'];
+const EMERGENTES = ['COMANDA_LISTA', 'ALERTA_INVENTARIO'];
 const VISIBLES = 20;
 
 /** Avisos sin leer, disponibles desde cualquier pantalla. Persisten en el servidor. */
@@ -17,8 +18,8 @@ export class Bandeja {
   readonly pendientes = signal<Notificacion[]>([]);
   readonly noLeidas = signal(0);
   readonly error = signal(false);
-  /** El aviso emergente se limita a pedidos listos: el mesero debe verlo en cualquier pantalla. */
-  readonly reciente = computed(() => this.pendientes().find((n) => n.tipo === 'COMANDA_LISTA') ?? null);
+  /** Avisos que deben verse en cualquier pantalla: pedidos listos (mesero) y faltantes (almacenista). */
+  readonly reciente = computed(() => this.pendientes().find((n) => EMERGENTES.includes(n.tipo)) ?? null);
 
   constructor() {
     this.consulta

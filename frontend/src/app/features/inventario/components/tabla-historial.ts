@@ -53,6 +53,8 @@ import { Historial, NOMBRE_HISTORIAL } from '../data-access/inventario.api';
             <td data-etiqueta="Referencia">
               @if (m.solicitudId) {
                 <a [routerLink]="['/inventario/ajustes', m.solicitudId]">Ajuste {{ m.solicitudId }}</a>
+              } @else if (m.comandaId) {
+                Comanda {{ m.comandaId }}
               } @else {
                 —
               }

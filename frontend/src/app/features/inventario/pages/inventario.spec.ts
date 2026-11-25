@@ -3,9 +3,10 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { Rol } from '../../../core/auth/rol';
 import { Sesion } from '../../../core/auth/sesion';
+import { TiempoReal } from '../../../core/realtime/tiempo-real';
 import { cambio, cantidad, fechaHora } from '../../../shared/formato';
 import { Existencia, Historial, InventarioApi, Solicitud } from '../data-access/inventario.api';
 import { rutasInventario } from '../inventario.routes';
@@ -67,6 +68,7 @@ describe('Inventario', () => {
     resolver: vi.fn(),
   };
   const perfil = signal<{ id: string; nombre: string; rol: Rol }>({ id: '1', nombre: 'P', rol: 'ALMACENISTA' });
+  let eventos: Subject<{ recursoId: string } | null>;
   let harness: RouterTestingHarness;
   let el: HTMLElement;
 
@@ -75,6 +77,7 @@ describe('Inventario', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    eventos = new Subject();
     perfil.set({ id: '1', nombre: 'P', rol: 'ALMACENISTA' });
     api.existencias.mockReturnValue(pagina(CAFE));
     api.existencia.mockReturnValue(of(CAFE));
@@ -87,6 +90,7 @@ describe('Inventario', () => {
         provideRouter([{ path: 'inventario', children: rutasInventario }], withComponentInputBinding()),
         { provide: InventarioApi, useValue: api },
         { provide: Sesion, useValue: { perfil } },
+        { provide: TiempoReal, useValue: { cambios: () => eventos } },
       ],
     });
     harness = await RouterTestingHarness.create();
@@ -121,7 +125,7 @@ describe('Inventario', () => {
 
   it('CP-F24 muestra cantidades, unidad y nivel bajo sin perder precisión', async () => {
     await abrir('/inventario?nivelBajo=true');
-    expect(api.existencias).toHaveBeenCalledWith({ q: '', tipo: '', nivelBajo: 'true', page: 0 });
+    expect(api.existencias).toHaveBeenCalledWith({ q: '', tipo: '', nivelBajo: 'true', page: 0 }, false);
     expect(el.textContent).toContain('1,200.5 g');
     expect(el.textContent).toContain('Bajo');
     expect(cantidad('999999999999.123456')).toBe('999,999,999,999.123456');
@@ -230,7 +234,55 @@ describe('Inventario', () => {
 
   it('CP-F33 lista solicitudes por estado', async () => {
     await abrir('/inventario/ajustes?estado=PENDIENTE');
-    expect(api.ajustes).toHaveBeenCalledWith({ estado: 'PENDIENTE', page: 0 });
+    expect(api.ajustes).toHaveBeenCalledWith({ estado: 'PENDIENTE', page: 0 }, false);
     expect(el.textContent).toContain('Pendiente');
+  });
+
+  it('CP-F61 un cambio actualiza el listado sin contar como actividad; filtrar después sí cuenta', async () => {
+    await abrir('/inventario');
+    api.existencias.mockReturnValue(pagina({ ...CAFE, cantidadActual: '-6' }));
+    eventos.next({ recursoId: '5' });
+    eventos.next({ recursoId: '6' });
+    await vi.waitFor(async () => {
+      await refrescar();
+      expect(el.textContent).toContain('-6 g');
+    });
+    expect(api.existencias).toHaveBeenCalledTimes(2);
+    expect(api.existencias.mock.lastCall![1]).toBe(true);
+    await harness.navigateByUrl('/inventario?tipo=INSUMO');
+    await refrescar();
+    expect(api.existencias.mock.lastCall![1]).toBe(false);
+  });
+
+  it('CP-F62 el detalle se actualiza solo con cambios de su existencia o al reconectar', async () => {
+    await abrir('/inventario/existencias/5');
+    await escribir('cantidad', '4');
+    eventos.next({ recursoId: '99' });
+    expect(api.existencia).toHaveBeenCalledTimes(1);
+    eventos.next({ recursoId: '5' });
+    expect(api.existencia).toHaveBeenLastCalledWith('5', true);
+    expect(api.movimientosDe).toHaveBeenLastCalledWith('5', { page: 0 }, true);
+    eventos.next(null);
+    expect(api.existencia).toHaveBeenCalledTimes(3);
+    expect(el.querySelector<HTMLInputElement>('#cantidad')!.value).toBe('4');
+  });
+
+  it('CP-F63 el historial muestra el consumo con su comanda', async () => {
+    api.movimientos.mockReturnValue(
+      pagina({
+        ...RECHAZADO,
+        tipo: 'CONSUMO_VENTA',
+        solicitudId: undefined,
+        comandaId: '7',
+        cambio: '-55.5',
+        saldoPosterior: '-35.5',
+      }),
+    );
+    await abrir('/inventario/movimientos');
+    const fila = el.querySelector('tbody tr')!.textContent!;
+    expect(fila).toContain('Consumo');
+    expect(fila).toContain('-55.5 g');
+    expect(fila).toContain('-35.5');
+    expect(fila).toContain('Comanda 7');
   });
 });

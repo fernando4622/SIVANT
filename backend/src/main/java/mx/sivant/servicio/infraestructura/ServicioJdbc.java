@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import mx.sivant.infraestructura.api.Pagina;
 import mx.sivant.servicio.aplicacion.CuentasDeEmpleado;
 import mx.sivant.servicio.aplicacion.DatosServicio.Cancelacion;
+import mx.sivant.servicio.aplicacion.DatosServicio.Cobro;
 import mx.sivant.servicio.aplicacion.DatosServicio.Comanda;
 import mx.sivant.servicio.aplicacion.DatosServicio.Cuenta;
 import mx.sivant.servicio.aplicacion.DatosServicio.Detalle;
@@ -125,14 +126,18 @@ public class ServicioJdbc implements CuentasDeEmpleado {
     public Optional<Cuenta> cuenta(Long id) {
         return sql.sql("""
                 SELECT c.id_cuenta, c.id_mesa, m.numero, c.id_mesero, e.nombre_completo, c.estado, c.fecha_hora_apertura,
-                       c.fecha_hora_cierre, c.version
+                       c.fecha_hora_cierre, c.version, v.fecha_hora, p.metodo, v.total, p.referencia_externa, v.estado
                 FROM sivant.cuenta c
                 JOIN sivant.mesa m USING (id_mesa)
                 JOIN sivant.empleado e ON e.id_empleado = c.id_mesero
+                LEFT JOIN sivant.venta v USING (id_cuenta)
+                LEFT JOIN sivant.pago p USING (id_venta)
                 WHERE c.id_cuenta = ?
                 """).param(id).query((f, n) -> new Cuenta(f.getLong(1), f.getLong(2), f.getInt(3), f.getLong(4),
                 f.getString(5), EstadoCuenta.valueOf(f.getString(6)), f.getObject(7, OffsetDateTime.class),
-                f.getObject(8, OffsetDateTime.class), f.getInt(9), comandasDe(f.getLong(1)))).optional();
+                f.getObject(8, OffsetDateTime.class), f.getInt(9), comandasDe(f.getLong(1)),
+                f.getString(11) == null ? null : new Cobro(f.getObject(10, OffsetDateTime.class), f.getString(11),
+                        f.getBigDecimal(12), f.getString(13), f.getString(14)))).optional();
     }
 
     // --- Comandas

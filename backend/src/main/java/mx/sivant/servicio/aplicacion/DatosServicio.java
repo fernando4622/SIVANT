@@ -20,7 +20,8 @@ public final class DatosServicio {
     }
 
     public record Cuenta(Long id, Long mesaId, int mesa, Long meseroId, String mesero, EstadoCuenta estado,
-            OffsetDateTime fechaHoraApertura, OffsetDateTime fechaHoraCierre, int version, List<Comanda> comandas) {
+            OffsetDateTime fechaHoraApertura, OffsetDateTime fechaHoraCierre, int version, List<Comanda> comandas,
+            Cobro cobro) {
 
         /** Suma de comandas no canceladas, con los precios guardados. */
         public BigDecimal total() {
@@ -32,9 +33,20 @@ public final class DatosServicio {
             return estado == EstadoCuenta.ABIERTA;
         }
 
+        /** Todo lo vigente está servido y hay un total por cobrar. */
+        public boolean cobrable() {
+            return abierta() && total().signum() > 0 && comandas.stream()
+                    .allMatch(c -> c.estado() == EstadoComanda.SERVIDA || c.estado() == EstadoComanda.CANCELADA);
+        }
+
         public boolean tieneComandasVigentes() {
             return comandas.stream().anyMatch(c -> c.estado() != EstadoComanda.CANCELADA);
         }
+    }
+
+    /** Presente si la cuenta se cerró con una venta. */
+    public record Cobro(OffsetDateTime fechaHora, String metodo, BigDecimal total, String referenciaExterna,
+            String estado) {
     }
 
     public record Comanda(Long id, Long cuentaId, EstadoComanda estado, OffsetDateTime fechaHoraEnvio, int version,

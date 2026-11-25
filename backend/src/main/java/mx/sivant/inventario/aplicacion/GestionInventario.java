@@ -3,10 +3,10 @@ package mx.sivant.inventario.aplicacion;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.TreeMap;
 import mx.sivant.auditoria.aplicacion.RegistroAuditoria;
+import mx.sivant.infraestructura.api.Fechas;
 import mx.sivant.infraestructura.api.Pagina;
 import mx.sivant.infraestructura.errores.ReglaNegocioException;
 import mx.sivant.infraestructura.idempotencia.Idempotencia;
@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class GestionInventario {
 
     private static final String CONSULTA = "hasAnyAuthority('ADMINISTRADOR', 'ALMACENISTA')";
-    private static final ZoneId ZONA_NEGOCIO = ZoneId.of("America/Mexico_City");
     /** numeric(18,6) admite 12 enteros. */
     static final BigDecimal SALDO_MAXIMO = new BigDecimal("1000000000000");
 
@@ -70,7 +69,7 @@ public class GestionInventario {
         if (desde != null && hasta != null && hasta.isBefore(desde)) {
             throw ReglaNegocioException.invalido("hasta", "La fecha final no puede ser anterior a la inicial.");
         }
-        return inventario.historial(existencia, q, tipo, inicio(desde), inicio(hasta == null ? null : hasta.plusDays(1)),
+        return inventario.historial(existencia, q, tipo, Fechas.inicio(desde), Fechas.fin(hasta),
                 pagina, tamano);
     }
 
@@ -179,10 +178,6 @@ public class GestionInventario {
 
     private void publicarCambio(Existencia anterior) {
         avisos.publicarEnTema(Avisos.TEMA_INVENTARIO, "EXISTENCIA_ACTUALIZADA", anterior.id(), anterior.version() + 1);
-    }
-
-    private static OffsetDateTime inicio(LocalDate dia) {
-        return dia == null ? null : dia.atStartOfDay(ZONA_NEGOCIO).toOffsetDateTime();
     }
 
     private static ReglaNegocioException sinExistencia() {

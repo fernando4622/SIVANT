@@ -1,5 +1,6 @@
 package mx.sivant.infraestructura.arranque;
 
+import mx.sivant.empleados.aplicacion.ConsultaCredenciales;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,10 +17,15 @@ class DatosDesarrollo implements ApplicationRunner {
     private static final Logger LOG = LoggerFactory.getLogger(DatosDesarrollo.class);
 
     private final AltaInicial alta;
+    private final CatalogoDesarrollo catalogo;
+    private final ConsultaCredenciales empleados;
     private final String contrasena;
 
-    DatosDesarrollo(AltaInicial alta, @Value("${sivant.desarrollo.contrasena}") String contrasena) {
+    DatosDesarrollo(AltaInicial alta, CatalogoDesarrollo catalogo, ConsultaCredenciales empleados,
+            @Value("${sivant.desarrollo.contrasena}") String contrasena) {
         this.alta = alta;
+        this.catalogo = catalogo;
+        this.empleados = empleados;
         this.contrasena = contrasena;
     }
 
@@ -35,5 +41,6 @@ class DatosDesarrollo implements ApplicationRunner {
         alta.crearSiFalta("Carla Ruiz", "cocinero@sivant.test", contrasena, "COCINERO", true);
         alta.crearSiFalta("Pedro Torres", "almacenista@sivant.test", contrasena, "ALMACENISTA", true);
         alta.crearSiFalta("Ana Valenzuela", "inactivo@sivant.test", contrasena, "MESERO", false);
+        empleados.porCorreo("almacenista@sivant.test").ifPresent(e -> catalogo.crearSiFalta(e.id()));
     }
 }

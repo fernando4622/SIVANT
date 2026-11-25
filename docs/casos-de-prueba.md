@@ -1,6 +1,6 @@
-# Casos de prueba · Fases 0 a 2
+# Casos de prueba · Fases 0 a 3
 
-Casos derivados del diagrama de casos de uso, los RF07 a RF18 implementados y los RNF08 (expiración de sesión) y RNF09 (auditoría).
+Casos derivados del diagrama de casos de uso, los RF implementados y los RNF08 (expiración de sesión), RNF09 (auditoría) y RNF10 (tiempo real).
 El identificador aparece en el nombre de la prueba automatizada, así que se puede buscar en el código o en el reporte.
 
 | Prefijo | Tipo | Entorno |
@@ -15,9 +15,9 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 72 | 86 | 86 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 37 | 45 | 45 | 0 |
-| Navegador | Manual | 17 | 17 | 17 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 108 | 131 | 131 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 58 | 66 | 66 | 0 |
+| Navegador | Manual | 24 | 24 | 24 | 0 |
 
 Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
 pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
@@ -42,6 +42,14 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Registrar movimiento de inventario | RF17 | CP-57 a CP-63, CP-72, CP-F27, CP-F28, CP-M11 |
 | Ajustar inventario | RF18 | CP-64, CP-65, CP-F29, CP-F33, CP-M11 |
 | Autorizar ajuste de inventario | RF15 | CP-66 a CP-71, CP-F30 a CP-F32, CP-M12 |
+| Registrar pedido | RF01 | CP-73 a CP-79, CP-F42 a CP-F45, CP-F47, CP-F51, CP-M18 |
+| Modificar pedido | RF02 | CP-80 a CP-84, CP-F48, CP-F49, CP-M21 |
+| Cancelar pedido | RF03 | CP-85 a CP-87, CP-F50, CP-M22 |
+| Cierre sin cobro y empleados con cuentas | Decisiones de la fase 3 | CP-88 a CP-91, CP-F46, CP-M23 |
+| Consultar cola de pedidos | RF19 | CP-92, CP-93, CP-F52, CP-F55, CP-M20 |
+| Marcar pedido en preparación | RF20 | CP-94 a CP-97, CP-F53, CP-F54, CP-M20 |
+| Marcar pedido listo y avisos | RF21 | CP-98 a CP-101, CP-F56 a CP-F58, CP-M19 |
+| Tiempo real | RNF10 | CP-102 a CP-108, CP-F38 a CP-F41, CP-M19, CP-M20 |
 
 ## Precondiciones comunes
 
@@ -55,7 +63,7 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 5 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
+| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 6 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
 | CP-02 | P1 | Consultar la tabla `rol` | Exactamente ADMINISTRADOR, ALMACENISTA, CAJERO, COCINERO y MESERO | Aprobado |
 | CP-03 | P1 | 1. Insertar por SQL `uno@sivant.test`. 2. Insertar el mismo, uno con mayúsculas, uno con espacio inicial y uno vacío. 3. Insertar estado `BAJA`. 4. Borrar el rol MESERO en uso | El paso 1 se acepta; PostgreSQL rechaza todos los demás | Aprobado |
 
@@ -242,6 +250,109 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 | CP-F31 | Sesión de administrador | Autorizar | Muestra quién y cuándo; retira los botones | Aprobado |
 | CP-F32 | Sesión de administrador | Autorizar y recibir 409 | Muestra el motivo; solo permite rechazar | Aprobado |
 
+## Registrar pedido · RF01
+
+Precondición común de la fase 3: una sesión de administrador, dos de mesero (Juan y Ana), una de cajero y una de
+cocinero; mesas 1 y 2 libres; productos «Agua» a 20.00 y «Galleta» a 15.50. «Comanda» significa dos aguas y una galleta
+sin azúcar enviadas por Juan en la mesa 1.
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-73 | Común | Juan abre la mesa 1; ambos meseros consultan mesas | 201 con Juan como responsable y total 0.00; la mesa 1 queda ocupada; Ana ve quién la atiende, pero no el ID de la cuenta | Aprobado |
+| CP-74 | Común | Seis aperturas simultáneas de la mesa 1 por dos meseros; abrir una mesa inexistente | Una 201, las demás 409 `MESA_OCUPADA`; 400 | Aprobado |
+| CP-75 | Cuenta abierta | Enviar la comanda; subir el precio del agua; enviar otra | `ENVIADA`, subtotal 55.50 e historial con Juan; la primera conserva su precio; total 269.00 | Aprobado |
+| CP-76 | Cuenta abierta | Enviar 1 agua, 2 aguas con observación en blanco y 1 agua «Fría» | Dos líneas: 3 aguas y 1 «Fría» | Aprobado |
+| CP-77 | Cuenta abierta | Vacía; cantidades 0, -1 y 1000; suma mayor que 999; producto inexistente o desactivado | 400 o 409 `PRODUCTO_NO_DISPONIBLE`; no se guarda ninguna comanda | Aprobado |
+| CP-78 | Común | Repetir apertura y envío con la misma clave; enviar sin clave | Misma respuesta y una sola comanda; 400 | Aprobado |
+| CP-79 | Comanda de Juan | Ana consulta, envía, edita y cierra; el cajero consulta | 404 en las de Ana; 200 al cajero | Aprobado |
+| CP-F42 | Pantalla de mesas | Abrir una mesa libre | Solo ofrece abrir las libres y ver las propias; lleva a la cuenta | Aprobado |
+| CP-F43 | Pantalla de mesas | La API responde 409 | Muestra el motivo y actualiza | Aprobado |
+| CP-F44 | Sesión de cajero | Abrir mesas | Ve cuentas sin poder abrir | Aprobado |
+| CP-F45 | Cuenta con comanda | Recibir un evento de cambio | Se actualiza sin contar como actividad y muestra la cancelación | Aprobado |
+| CP-F47 | Comanda nueva | Agregar dos veces, anotar, fallar por red y reintentar | Subtotal 40.00; conserva lo capturado y reutiliza la clave | Aprobado |
+| CP-F51 | Importes | Sumar 0.10 y 0.20, y un importe de 12 enteros | Suma exacta | Aprobado |
+
+## Modificar pedido · RF02
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-80 | Comanda enviada | 5 aguas y sin galleta | Total 100.00, una línea, versión 1 y sin aviso | Aprobado |
+| CP-81 | Comanda en preparación | Guardar sin diferencia; después 3 aguas | Sin aviso; después aviso `MODIFICACION_COMANDA` a cocina con mesa y comanda | Aprobado |
+| CP-82 | Dos comandas | Quitar todo; detalle ajeno, repetido o en 0; comanda inexistente; borrar por SQL | 409 `ULTIMO_DETALLE`, 400 y 404; total intacto; PostgreSQL rechaza el borrado | Aprobado |
+| CP-83 | Comanda | Editar con versión anterior, lista y cancelada | 409 `VERSION_OBSOLETA` y `COMANDA_NO_EDITABLE` | Aprobado |
+| CP-84 | Comanda y agua desactivada | Dejar 1 agua | Se acepta con el precio guardado | Aprobado |
+| CP-F48 | Pantalla de modificar | Sumar una agua y eliminar la galleta | Recalcula; no permite eliminar la última línea; envía solo lo que queda | Aprobado |
+| CP-F49 | Pantalla de modificar | La API responde 409 | Muestra el estado vigente, conserva lo editado y permite guardar con la versión nueva | Aprobado |
+
+## Cancelar pedido · RF03
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-85 | Comanda enviada, en preparación o lista | El cajero cancela con justificación | `CANCELADA` con sus detalles, cajero y motivo; total 0.00; aviso a cocina; sale de la cola | Aprobado (3 estados) |
+| CP-86 | Comanda | Sin justificación; versión anterior; inexistente; repetir; servida | 400, 409, 404, 409 y 409 | Aprobado |
+| CP-87 | Comanda en preparación | Cancelar y marcar lista a la vez, cinco repeticiones | Una 200 y una 409 | Aprobado |
+| CP-F50 | Pantalla de cancelar | Como mesero; como cajero sin y con justificación | Regresa a inicio; exige el motivo; envía | Aprobado |
+
+## Cierre sin cobro y empleados con cuentas
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-88 | Cuenta con comanda | Cerrar; cancelar la comanda; cerrar con versión anterior y con la vigente; operar después | 409 `CUENTA_CON_COMANDAS`, 409, cerrada y auditada; después 409 `CUENTA_CERRADA`; la mesa se puede abrir | Aprobado |
+| CP-89 | Juan con cuenta abierta | Desactivarlo, cambiar su rol, cambiar su nombre; cerrar y desactivar | 409 `CUENTAS_ABIERTAS` en las dos primeras; 200 en el nombre; 200 al final | Aprobado |
+| CP-90 | Mesero activo | Abrir y desactivar a la vez, cinco repeticiones | Nunca queda un inactivo con cuenta abierta | Aprobado |
+| CP-91 | Comanda y sesión de cada rol | Consultas, apertura, envío, edición, cierre y cancelación | Consultan mesero y cajero; opera el mesero; cancela el cajero; los demás 403 | Aprobado (5 roles) |
+| CP-F46 | Cuenta sin comandas | Cerrar sin cobro | Exige confirmar y vuelve a mesas | Aprobado |
+
+## Consultar cola de pedidos · RF19
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-92 | Tres comandas en distinto estado | Consultar la cola | Orden de envío; mesa, cuenta, mesero, productos y observaciones; sin precios | Aprobado |
+| CP-93 | Una cancelada y una servida | Consultar la cola | Vacía | Aprobado |
+| CP-F52 | Cola con dos comandas | Filtrar por estado | Conserva el orden y muestra observaciones sin precios | Aprobado |
+| CP-F55 | Pantalla de cocina | Recibir un evento; perder la conexión | Actualiza sin contar como actividad; indica «Sin conexión en vivo» | Aprobado |
+
+## Marcar pedido en preparación · RF20
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-94 | Comanda enviada | Iniciar | `EN_PREPARACION`, versión 1, historial con responsable y fecha; sin aviso al mesero | Aprobado |
+| CP-95 | Comanda | De enviada a lista; iniciar dos veces; inexistente; sin versión; versión anterior; cancelada | 409 `TRANSICION_INVALIDA`, 409, 404, 400, 409 y 409 | Aprobado |
+| CP-96 | Comanda editada por el mesero | Iniciar con la versión anterior y con la vigente | 409 `VERSION_OBSOLETA` y 200 | Aprobado |
+| CP-97 | Dos cocineros | Iniciar a la vez | Una 200 y una 409 | Aprobado |
+| CP-F53 | Pantalla de cocina | Iniciar y marcar lista | Usa la versión mostrada y actualiza la tarjeta | Aprobado |
+| CP-F54 | Pantalla de cocina | La API responde 409 | Muestra el motivo y actualiza la cola | Aprobado |
+
+## Marcar pedido listo · RF21 y avisos
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-98 | Comanda en preparación | Marcar lista | Aviso `COMANDA_LISTA` solo a Juan, con mesa y cuenta; sigue en la cola | Aprobado |
+| CP-99 | Aviso al rol COCINERO | Un cocinero lo marca leído dos veces | 204; leído para esa persona y sin leer para la otra | Aprobado |
+| CP-100 | Aviso de Juan | Otras personas lo marcan; inexistente; sin sesión | 404, 404 y 401 | Aprobado |
+| CP-101 | Comanda y sesión de cada rol no cocinero | Cola, preparación y lista | 403 sin cambios | Aprobado (4 roles) |
+| CP-F56 | Aviso sin leer | «Entendido» en cocina | Lo marca y desaparece | Aprobado |
+| CP-F57 | Dos avisos | Abrir la bandeja y recibir un evento | Cuenta los no leídos; destaca solo pedidos listos | Aprobado |
+| CP-F58 | Pantalla de avisos | Filtrar y marcar | Consulta con el filtro; enlaza la cuenta del mesero; marca lectura | Aprobado |
+
+## Tiempo real · RNF10
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-102 | Cocinero conectado | Enviar, editar, cancelar y una operación rechazada | Un evento por cambio confirmado, con los cinco campos; ninguno por la rechazada | Aprobado |
+| CP-103 | Dos meseros conectados | Iniciar y marcar lista | Solo Juan recibe; el de lista llega en menos de 2 s | Aprobado |
+| CP-104 | Mesero conectado | Suscribirse a siete destinos que no le corresponden | Se rechazan; cocinero y almacenista entran a los suyos | Aprobado |
+| CP-105 | — | Conectar sin sesión y desde otro origen | 401 y 403 | Aprobado |
+| CP-106 | Cocinero conectado | Enviar un mensaje por el canal | Se rechaza y no llega a nadie | Aprobado |
+| CP-107 | Tres cocineros conectados | Desactivar a uno, cambiar la contraseña de otro y cerrar sesión del tercero | Ninguno recibe más eventos | Aprobado |
+| CP-108 | Cocinero conectado a los 40 min | Dejar pasar 6 min más | Deja de recibir y su sesión expira: la conexión no cuenta como actividad | Aprobado |
+| CP-F38 | Sin sesión y con cada rol | Iniciar sesión | Se suscribe solo a lo suyo | Aprobado |
+| CP-F39 | Conectado | Evento repetido y de otro tipo | Ignora el repetido y filtra por tipo | Aprobado |
+| CP-F40 | Conectado | Perder y recuperar la conexión | Avisa para volver a consultar | Aprobado |
+| CP-F41 | Conectado | Actualizar el perfil; cerrar sesión | No reconecta; se desconecta | Aprobado |
+
+Se comprobó que CP-107 y CP-108 fallan si se anula la validación de mensajes salientes.
+
 ## Recorrido en el navegador
 
 | ID | Precondición | Pasos y datos | Resultado obtenido | Estado |
@@ -263,6 +374,13 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 | CP-M15 | Sesión de mesero | Abrir el catálogo y después `/inventario` | Solo activos y sin acciones; regresa a inicio | Aprobado |
 | CP-M16 | Sesión cerrada | Enviar vacío; pedir ayuda; entrar con «Recordarme»; salir | Errores por campo y ayuda; al volver propone el correo sin contraseña | Aprobado |
 | CP-M17 | Administrador | Productos, inventario, movimientos, ajustes, alta y empleados a 360 px; movimientos a 790, 980 y 1095 px; productos y empleados a 980 px; acceso a 360 y 1400 px | Sin desplazamiento horizontal | Aprobado tras corregir |
+| CP-M18 | Sesión de mesero | Abrir la mesa 5 y enviar dos capuchinos «Sin azúcar» y un cheesecake | Comanda enviada, $185.00 | Aprobado |
+| CP-M19 | Mesero en Productos | La cocinera inicia y marca lista desde otra sesión | Aparece el aviso con mesa y cuenta, y el contador; leído, persiste al recargar | Aprobado |
+| CP-M20 | Sesión de cocinera | El mesero envía dos comandas y modifica una en preparación | Las tarjetas y el aviso llegan sin recargar | Aprobado |
+| CP-M21 | Comanda enviada | Sumar un brownie y guardar | Subtotal $210.00 y total actualizado | Aprobado |
+| CP-M22 | Sesión de cajero | Cancelar sin y con justificación | Exige el motivo; queda cancelada con responsable y el total baja | Aprobado |
+| CP-M23 | Mesero | Abrir la mesa 7 y cerrarla sin cobro | Confirma y queda libre | Aprobado |
+| CP-M24 | Mesero, cajero y cocinero | Mesas, cuenta, nueva, modificar, cocina y avisos a 360 px | Sin desplazamiento horizontal | Aprobado |
 
 ### Defectos encontrados
 
@@ -274,11 +392,14 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 | CP-M17 | Movimientos se desbordaba 20 px a 980 px | El menú lateral se pliega antes |
 | CP-M17 | A 360 px se cortaba «Ingresa tu contraseña» | Se ajustó el margen interno |
 | CP-F10, CP-F18 | Fallaban por tiempo con el equipo cargado | Las pantallas se precargan antes de los casos |
+| CP-M18 | «Mesas» no quedaba resaltado dentro de una cuenta | Se separó la clase de la opción incluida |
+| CP-M24 | El selector de cantidad se estiraba en móvil | Se ajustó el estilo; no se repitió en el navegador |
+| CP-102, CP-103, CP-107 | El cliente de prueba no leía eventos JSON y otros casos pasaban sin recibir nada | Se corrigió y se exige recibir antes de comprobar el silencio |
 
 ## Sin cubrir
 
 - Los 45 minutos de inactividad en tiempo real: CP-10 y CP-11 usan un reloj simulado.
-- Operación con HTTPS y en dispositivos físicos.
+- Operación con HTTPS (incluido WebSocket seguro) y en dispositivos físicos.
 - Tiempos de respuesta y sesiones simultáneas (RNF01 a RNF03), que el ROADMAP ubica en la fase 7.
 
 ## Casos de uso de fases posteriores
@@ -287,8 +408,6 @@ Sus casos de prueba se escriben al implementar cada fase.
 
 | Caso de uso | Fase | RF |
 |---|---|---|
-| Registrar, modificar y cancelar pedido | 3 | RF01 a RF03 |
-| Consultar cola, marcar en preparación y marcar listo | 3 | RF19 a RF21 |
 | Marcar pedido servido | 4 | RF23, RF24 |
 | Cobrar pedido, autorizar pago con tarjeta, consultar y cancelar venta | 5 | RF04 a RF06, RF22 |
 | Registrar entrega de efectivo y entregar fondo de cambio | 6 | RF25, RF26 |

@@ -1,13 +1,13 @@
 openapi: 3.1.0
 info:
   title: API de SIVANT
-  version: 0.2.0
+  version: 0.3.0
   license:
     name: Uso interno
     identifier: LicenseRef-SIVANT
   description: |
-    Contrato de las fases 0 a 2: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10) e inventario
-    (RF15 a RF18).
+    Contrato de las fases 0 a 3: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
+    (RF15 a RF18), servicio (RF01 a RF03) y cocina (RF19 a RF21).
     Cada fase agrega sus operaciones antes de enlazar sus pantallas.
 
     ## Convenciones
@@ -19,7 +19,8 @@ info:
     - **Campos desconocidos** en el cuerpo: se rechazan con 400.
 
     ## Idempotencia
-    Los movimientos, las solicitudes de ajuste y su resolución exigen `Idempotency-Key`. Repetir la solicitud con la
+    Los movimientos, las solicitudes de ajuste y su resolución, la apertura y el cierre de cuentas, el envío y la
+    cancelación de comandas exigen `Idempotency-Key`. Repetir la solicitud con la
     misma clave y los mismos datos devuelve el resultado guardado sin aplicarla de nuevo; con otros datos responde 409.
     Si la operación falló, la clave queda libre.
 
@@ -31,6 +32,17 @@ info:
     La sesión expira a los 45 minutos sin actividad. Una solicitud automática (sondeo) debe llevar
     `X-Solicitud-Pasiva: true` para no contar como actividad. Desactivar al empleado, cambiar su contraseña o cambiar
     su rol invalida sus sesiones abiertas a partir de la siguiente solicitud.
+
+    ## Tiempo real
+    `/ws` (STOMP sobre WebSocket, mismo origen) se autentica con la sesión HTTP y solo admite suscripciones:
+    - `/user/queue/notificaciones`: cualquier empleado. `COMANDA_LISTA` y `COMANDA_ACTUALIZADA` al mesero responsable.
+    - `/topic/cocina`: COCINERO. `COMANDA_ENVIADA`, `MODIFICACION_COMANDA`, `CANCELACION_COMANDA`,
+      `COMANDA_EN_PREPARACION` y `COMANDA_LISTA`.
+    - `/topic/inventario`: ALMACENISTA. Sin eventos hasta la fase 4.
+
+    Cada evento trae `eventoId`, `tipo`, `recursoId`, `version` y `fechaHora`, y se publica tras confirmar la
+    transacción. El estado se consulta por REST. La conexión no cuenta como actividad y deja de recibir eventos cuando
+    la sesión deja de ser vigente.
 
     Una ruta no declarada en este contrato responde 401 sin sesión y 403 con sesión.
 servers:
@@ -45,6 +57,12 @@ tags:
     description: RF07 a RF10
   - name: Inventario
     description: RF15 a RF18. Consultan ADMINISTRADOR y ALMACENISTA
+  - name: Servicio
+    description: RF01 a RF03
+  - name: Cocina
+    description: RF19 a RF21
+  - name: Notificaciones
+    description: Bandeja personal
 security:
   - sesion: []
 
@@ -236,7 +254,7 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
-          description: '`CORREO_DUPLICADO` o `ULTIMO_ADMINISTRADOR`'
+          description: '`CORREO_DUPLICADO`, `ULTIMO_ADMINISTRADOR` o `CUENTAS_ABIERTAS`'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -268,7 +286,7 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
-          description: '`EMPLEADO_INACTIVO` o `ULTIMO_ADMINISTRADOR`'
+          description: '`EMPLEADO_INACTIVO`, `ULTIMO_ADMINISTRADOR` o `CUENTAS_ABIERTAS`'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -655,6 +673,351 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
 
+  /mesas:
+    get:
+      tags: [Servicio]
+      operationId: consultarMesas
+      summary: Mesas con disponibilidad (RF01)
+      description: MESERO y CAJERO. `cuentaId` solo aparece si el usuario puede consultar esa cuenta.
+      responses:
+        '200':
+          description: Mesas por número
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Mesa' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /cuentas:
+    post:
+      tags: [Servicio]
+      operationId: abrirCuenta
+      summary: Abrir cuenta (RF01)
+      description: Solo MESERO, que queda como responsable.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AperturaCuenta' }
+      responses:
+        '201':
+          description: Cuenta ABIERTA
+          headers:
+            Location:
+              schema: { type: string, examples: [/api/v1/cuentas/3] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cuenta' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409':
+          description: '`MESA_OCUPADA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+    get:
+      tags: [Servicio]
+      operationId: consultarCuentas
+      summary: Consultar cuentas
+      description: El mesero recibe las suyas y el cajero todas. De la más reciente a la más antigua.
+      parameters:
+        - name: estado
+          in: query
+          schema: { type: string, enum: [ABIERTA, CERRADA] }
+        - name: mesaId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página de cuentas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaCuentas' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /cuentas/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Servicio]
+      operationId: obtenerCuenta
+      summary: Consultar cuenta
+      description: Mesero responsable o CAJERO. Para otro mesero responde 404.
+      responses:
+        '200':
+          description: Cuenta con sus comandas, cancelaciones, total y acciones disponibles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cuenta' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /cuentas/{id}/cierre:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Servicio]
+      operationId: cerrarCuentaSinCobro
+      summary: Cerrar sin cobro
+      description: Solo el mesero responsable y sin comandas vigentes. Libera la mesa y queda auditado.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SoloVersion' }
+      responses:
+        '200':
+          description: Cuenta CERRADA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cuenta' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`CUENTA_CON_COMANDAS`, `CUENTA_CERRADA`, `VERSION_OBSOLETA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /cuentas/{id}/comandas:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Servicio]
+      operationId: enviarComanda
+      summary: Enviar comanda a cocina (RF01)
+      description: |
+        Solo el mesero responsable. Agrupa el mismo producto y observación, y guarda el precio vigente. Publica
+        `COMANDA_ENVIADA` en `/topic/cocina`.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnvioComanda' }
+      responses:
+        '201':
+          description: Comanda ENVIADA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comanda' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`PRODUCTO_NO_DISPONIBLE`, `CUENTA_CERRADA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /comandas/{id}/detalles:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    put:
+      tags: [Servicio]
+      operationId: modificarComanda
+      summary: Modificar comanda (RF02)
+      description: |
+        Solo el mesero responsable, en ENVIADA o EN_PREPARACION. Omitir un detalle lo elimina. En preparación crea el
+        aviso `MODIFICACION_COMANDA` para cocina.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EdicionComanda' }
+      responses:
+        '200':
+          description: Cuenta con la comanda y el total actualizados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cuenta' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`ULTIMO_DETALLE`, `COMANDA_NO_EDITABLE`, `CUENTA_CERRADA` o `VERSION_OBSOLETA`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /comandas/{id}/cancelacion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Servicio]
+      operationId: cancelarComanda
+      summary: Cancelar comanda (RF03)
+      description: Solo CAJERO, en ENVIADA, EN_PREPARACION o LISTA. Conserva los detalles y avisa a cocina.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelacionComanda' }
+      responses:
+        '200':
+          description: Comanda CANCELADA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comanda' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`COMANDA_NO_CANCELABLE`, `CUENTA_CERRADA`, `VERSION_OBSOLETA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /cocina/cola:
+    get:
+      tags: [Cocina]
+      operationId: consultarCola
+      summary: Consultar cola (RF19)
+      description: Solo COCINERO. ENVIADA, EN_PREPARACION y LISTA, en orden de envío. Sin precios.
+      responses:
+        '200':
+          description: Comandas vigentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ComandaCocina' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /comandas/{id}/preparacion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Cocina]
+      operationId: iniciarPreparacion
+      summary: Marcar en preparación (RF20)
+      description: Solo COCINERO, desde ENVIADA.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SoloVersion' }
+      responses:
+        '200':
+          description: Comanda EN_PREPARACION
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComandaCocina' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/TransicionRechazada' }
+
+  /comandas/{id}/lista:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Cocina]
+      operationId: marcarLista
+      summary: Marcar lista (RF21)
+      description: Solo COCINERO, desde EN_PREPARACION. Crea el aviso `COMANDA_LISTA` para el mesero responsable.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SoloVersion' }
+      responses:
+        '200':
+          description: Comanda LISTA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComandaCocina' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/TransicionRechazada' }
+
+  /notificaciones:
+    get:
+      tags: [Notificaciones]
+      operationId: consultarNotificaciones
+      summary: Bandeja del usuario
+      description: Avisos dirigidos a la persona o a su rol vigente, del más reciente al más antiguo.
+      parameters:
+        - name: leida
+          in: query
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/SolicitudPasiva'
+      responses:
+        '200':
+          description: Página de avisos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaNotificaciones' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+
+  /notificaciones/{id}/lectura:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    put:
+      tags: [Notificaciones]
+      operationId: marcarLectura
+      summary: Marcar como leída
+      description: La lectura es individual, también en avisos dirigidos a un rol. Es idempotente.
+      security:
+        - sesion: []
+          csrf: []
+      responses:
+        '204':
+          description: Lectura registrada
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
 components:
   securitySchemes:
     sesion:
@@ -1008,6 +1371,193 @@ components:
         existenciaCambiada:
           type: boolean
           description: Pendiente que ya no puede autorizarse porque la existencia cambió
+    CantidadComanda:
+      type: integer
+      minimum: 1
+      maximum: 999
+    EstadoComanda:
+      type: string
+      enum: [ENVIADA, EN_PREPARACION, LISTA, SERVIDA, CANCELADA]
+    Mesa:
+      type: object
+      required: [id, numero, disponible]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        numero: { type: integer }
+        disponible: { type: boolean }
+        cuentaId: { $ref: '#/components/schemas/Id' }
+        mesero: { type: string }
+    AperturaCuenta:
+      type: object
+      additionalProperties: false
+      required: [mesaId]
+      properties:
+        mesaId: { $ref: '#/components/schemas/Id' }
+    SoloVersion:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer }
+    EnvioComanda:
+      type: object
+      additionalProperties: false
+      required: [detalles]
+      properties:
+        detalles:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [productoId, cantidad]
+            properties:
+              productoId: { $ref: '#/components/schemas/Id' }
+              cantidad: { $ref: '#/components/schemas/CantidadComanda' }
+              observaciones: { type: string, maxLength: 200 }
+    EdicionComanda:
+      type: object
+      additionalProperties: false
+      required: [version, detalles]
+      properties:
+        version: { type: integer }
+        detalles:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [detalleId, cantidad]
+            properties:
+              detalleId: { $ref: '#/components/schemas/Id' }
+              cantidad: { $ref: '#/components/schemas/CantidadComanda' }
+    CancelacionComanda:
+      type: object
+      additionalProperties: false
+      required: [version, justificacion]
+      properties:
+        version: { type: integer }
+        justificacion: { type: string, minLength: 1, maxLength: 500 }
+    DetalleComanda:
+      type: object
+      required: [id, productoId, producto, cantidad, precioUnitario, subtotal, observaciones]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        productoId: { $ref: '#/components/schemas/Id' }
+        producto: { type: string }
+        cantidad: { type: integer }
+        precioUnitario: { $ref: '#/components/schemas/Dinero' }
+        subtotal: { $ref: '#/components/schemas/Dinero' }
+        observaciones: { type: string }
+    Comanda:
+      type: object
+      required: [id, cuentaId, estado, fechaHoraEnvio, version, subtotal, detalles, acciones]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        cuentaId: { $ref: '#/components/schemas/Id' }
+        estado: { $ref: '#/components/schemas/EstadoComanda' }
+        fechaHoraEnvio: { type: string, format: date-time }
+        version: { type: integer }
+        subtotal: { $ref: '#/components/schemas/Dinero' }
+        detalles:
+          type: array
+          items: { $ref: '#/components/schemas/DetalleComanda' }
+        cancelacion:
+          type: object
+          properties:
+            cajero: { type: string }
+            fechaHora: { type: string, format: date-time }
+            justificacion: { type: string }
+        acciones:
+          type: array
+          description: Operaciones disponibles para el usuario
+          items: { type: string, enum: [EDITAR, CANCELAR] }
+    Cuenta:
+      type: object
+      required: [id, mesaId, mesa, mesero, estado, fechaHoraApertura, version, total, comandas, acciones]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        mesaId: { $ref: '#/components/schemas/Id' }
+        mesa: { type: integer }
+        mesero: { type: string }
+        estado: { type: string, enum: [ABIERTA, CERRADA] }
+        fechaHoraApertura: { type: string, format: date-time }
+        fechaHoraCierre: { type: string, format: date-time }
+        version: { type: integer }
+        total:
+          description: Suma de comandas no canceladas con sus precios guardados
+          $ref: '#/components/schemas/Dinero'
+        comandas:
+          type: array
+          items: { $ref: '#/components/schemas/Comanda' }
+        acciones:
+          type: array
+          items: { type: string, enum: [ENVIAR_COMANDA, CERRAR_SIN_COBRO] }
+    ResumenCuenta:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        mesa: { type: integer }
+        mesero: { type: string }
+        estado: { type: string, enum: [ABIERTA, CERRADA] }
+        fechaHoraApertura: { type: string, format: date-time }
+        fechaHoraCierre: { type: string, format: date-time }
+        total: { $ref: '#/components/schemas/Dinero' }
+    PaginaCuentas:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/ResumenCuenta' }
+    ComandaCocina:
+      type: object
+      required: [id, cuentaId, mesa, mesero, estado, fechaHoraEnvio, version, detalles]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        cuentaId: { $ref: '#/components/schemas/Id' }
+        mesa: { type: integer }
+        mesero: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoComanda' }
+        fechaHoraEnvio: { type: string, format: date-time }
+        version: { type: integer }
+        detalles:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { $ref: '#/components/schemas/Id' }
+              producto: { type: string }
+              cantidad: { type: integer }
+              observaciones: { type: string }
+    Notificacion:
+      type: object
+      required: [id, tipo, mensaje, fechaHora, leida, contexto]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        tipo:
+          type: string
+          enum: [MODIFICACION_COMANDA, CANCELACION_COMANDA, COMANDA_LISTA, ALERTA_INVENTARIO]
+        mensaje: { type: string }
+        fechaHora: { type: string, format: date-time }
+        leida: { type: boolean }
+        comandaId: { $ref: '#/components/schemas/Id' }
+        contexto:
+          type: object
+          properties:
+            mesa: { type: integer }
+            cuentaId: { $ref: '#/components/schemas/Id' }
+            comandaId: { $ref: '#/components/schemas/Id' }
+    PaginaNotificaciones:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/Notificacion' }
     Problema:
       type: object
       required: [type, title, status, detail, instance, codigo]
@@ -1037,6 +1587,16 @@ components:
             - AJUSTE_RESUELTO
             - EXISTENCIA_CAMBIADA
             - IDEMPOTENCIA_CONFLICTO
+            - CUENTAS_ABIERTAS
+            - MESA_OCUPADA
+            - CUENTA_CERRADA
+            - CUENTA_CON_COMANDAS
+            - PRODUCTO_NO_DISPONIBLE
+            - VERSION_OBSOLETA
+            - COMANDA_NO_EDITABLE
+            - COMANDA_NO_CANCELABLE
+            - ULTIMO_DETALLE
+            - TRANSICION_INVALIDA
             - ERROR_INTERNO
         erroresCampo:
           type: object
@@ -1055,6 +1615,11 @@ components:
           schema: { $ref: '#/components/schemas/Problema' }
     SinPermiso:
       description: '`ACCESO_DENEGADO` o `CSRF_INVALIDO`'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    TransicionRechazada:
+      description: '`TRANSICION_INVALIDA` o `VERSION_OBSOLETA`'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }

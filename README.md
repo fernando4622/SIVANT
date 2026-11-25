@@ -2,8 +2,9 @@
 
 Sistema de ventas e inventario para Jiva House. Angular, Spring Boot (Java 21) y PostgreSQL 18.
 
-**Estado:** fases 0 a 2 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
-roles, empleados (RF11 a RF14), productos y recetas (RF07 a RF10) e inventario (RF15 a RF18).
+**Estado:** fases 0 a 3 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
+roles, empleados (RF11 a RF14), productos y recetas (RF07 a RF10), inventario (RF15 a RF18),
+mesas, cuentas y comandas (RF01 a RF03) y cocina con avisos en tiempo real (RF19 a RF21).
 
 ## Estructura
 
@@ -56,7 +57,7 @@ cd backend; .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
 cd frontend; npm ci; npm start
 ```
 
-Abrir <http://localhost:4200>. El proxy de Angular envía `/api` a `http://localhost:8080`.
+Abrir <http://localhost:4200>. El proxy de Angular envía `/api` y `/ws` a `http://localhost:8080`.
 
 ## Variables de entorno
 
@@ -113,20 +114,25 @@ Recorrido sugerido:
    **Movimientos**.
 8. Como administrador, registra un producto preparado con receta y otro de reventa, cambia un precio y desactiva uno.
    Como mesero, comprueba que el catálogo solo muestra los activos.
+9. Como mesero, abre una mesa, envía una comanda y deja esa ventana en otra pantalla.
+10. En una ventana privada, entra como cocinero: inicia la preparación y marca lista. El mesero recibe el aviso al
+    momento.
+11. Como mesero, modifica una comanda en preparación: cocina recibe el aviso. Como cajero, entra a la cuenta desde
+    **Mesas** y cancela una comanda con justificación.
 
-El perfil `dev` también carga insumos, productos y existencias ficticias.
+El perfil `dev` también carga mesas, insumos, productos y existencias ficticias.
 
-## Cargar insumos
+## Cargar insumos y mesas
 
-Los insumos no se registran desde la aplicación. Edita la lista de `database/cargas/insumos.sql` y ejecútala después
-del primer arranque de la API. Con Docker:
+No se registran desde la aplicación. Edita `database/cargas/insumos.sql` y `database/cargas/mesas.sql`, y ejecútalos
+después del primer arranque de la API. Con Docker:
 
 ```powershell
-docker compose cp database/cargas/insumos.sql db:/tmp/insumos.sql
+docker compose cp database/cargas db:/tmp/
 ```
 
 ```powershell
-docker compose exec db sh -c 'PGPASSWORD=$SIVANT_DB_PASSWORD psql -h 127.0.0.1 -U $SIVANT_DB_USER -d $SIVANT_DB_NAME -f /tmp/insumos.sql'
+docker compose exec db sh -c 'PGPASSWORD=$SIVANT_DB_PASSWORD psql -h 127.0.0.1 -U $SIVANT_DB_USER -d $SIVANT_DB_NAME -f /tmp/cargas/insumos.sql -f /tmp/cargas/mesas.sql'
 ```
 
 Los insumos inician con existencia 0.

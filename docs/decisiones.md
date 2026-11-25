@@ -1,4 +1,4 @@
-# Decisiones y diferencias · Fases 0 a 2
+# Decisiones y diferencias · Fases 0 a 3
 
 Los documentos `ROADMAP.md`, `arquitectura-sivant.md` y `modelo-datos-logico-relacional.md` se copiaron sin cambios.
 Aquí se registra lo que la implementación precisó o resolvió de otra forma.
@@ -28,6 +28,16 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Receta y nivel mínimo | No se editan desde la aplicación | El contrato de RF09 solo cambia nombre, descripción y precio |
 | WebSocket de inventario | Se agrega con el primer aviso (fases 3 y 4) | En esta fase no hay alertas |
 | Nombre de producto | Puede repetirse | Ningún RF ni el modelo exigen unicidad |
+| **Cierre sin cobro** | Lo hace el mesero responsable si no hay comandas vigentes. Libera la mesa y queda en auditoría | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
+| **Mesero con cuentas abiertas** | Desactivarlo o cambiar su rol responde 409 `CUENTAS_ABIERTAS` | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
+| Fondo pendiente al cerrar sin cobro | Se define con el fondo de cambio (fase 6) | Aún no existe el fondo |
+| `POST /cuentas/:id/cierre` | Se agrega al contrato | Lo requiere el cierre sin cobro |
+| Edición de comanda | Devuelve la cuenta completa | Arquitectura pide la comanda y el total actualizado |
+| Cantidad máxima | 999 por producto en una comanda | Evita errores de captura; los RF no fijan límite |
+| `COMANDA_ACTUALIZADA` | Evento al mesero cuando cocina inicia o el cajero cancela. No crea aviso | Mantiene su pantalla al día sin llenar la bandeja |
+| Conexión WebSocket | No cuenta como actividad. Se revalida en cada evento: deja de recibir al expirar, desactivar o cambiar credenciales | RNF08 y arquitectura |
+| Aviso emergente | Solo `COMANDA_LISTA`; los demás quedan en la bandeja y en cocina | RF21 pide avisar al mesero desde cualquier pantalla |
+| Mesas | Se cargan con `database/cargas/mesas.sql` | Su pantalla se definirá después |
 
 ## Diferencias con las interfaces de referencia
 
@@ -55,7 +65,6 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 | «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro |
 | Iniciar y cerrar sesión no aparecen | Se implementan como soporte de todos los actores |
 
-## Pendiente de las fases 0 a 2
+## Pendiente de las fases 0 a 3
 
 - `AGENTS.md` no está en el repositorio ni en los documentos recibidos, así que no se pudieron revisar sus reglas.
-- La regla sobre cuentas a cargo al desactivar o cambiar de rol depende de las cuentas (fase 3).

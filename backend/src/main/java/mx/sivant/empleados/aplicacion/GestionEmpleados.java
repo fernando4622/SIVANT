@@ -1,8 +1,10 @@
 package mx.sivant.empleados.aplicacion;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import mx.sivant.auditoria.aplicacion.RegistroAuditoria;
 import mx.sivant.empleados.dominio.Empleado;
 import mx.sivant.empleados.dominio.EstadoEmpleado;
 import mx.sivant.empleados.dominio.Rol;
@@ -10,8 +12,6 @@ import mx.sivant.empleados.infraestructura.EmpleadoRepository;
 import mx.sivant.empleados.infraestructura.FiltrosEmpleado;
 import mx.sivant.empleados.infraestructura.RolRepository;
 import mx.sivant.infraestructura.errores.ReglaNegocioException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,18 +26,20 @@ import org.springframework.transaction.annotation.Transactional;
 @PreAuthorize("hasAuthority('ADMINISTRADOR')")
 public class GestionEmpleados {
 
-    /** Registra responsable, operación y campos; nunca valores ni secretos. */
-    private static final Logger AUDITORIA = LoggerFactory.getLogger("sivant.auditoria");
+    private static final String ENTIDAD = "EMPLEADO";
     private static final int BYTES_MAXIMOS_BCRYPT = 72;
 
     private final EmpleadoRepository empleados;
     private final RolRepository roles;
     private final PasswordEncoder codificador;
+    private final RegistroAuditoria auditoria;
 
-    public GestionEmpleados(EmpleadoRepository empleados, RolRepository roles, PasswordEncoder codificador) {
+    public GestionEmpleados(EmpleadoRepository empleados, RolRepository roles, PasswordEncoder codificador,
+            RegistroAuditoria auditoria) {
         this.empleados = empleados;
         this.roles = roles;
         this.codificador = codificador;
+        this.auditoria = auditoria;
     }
 
     @Transactional
@@ -47,7 +49,9 @@ public class GestionEmpleados {
             throw correoDuplicado();
         }
         Empleado nuevo = guardar(new Empleado(nombreCompleto, correo, cifrar(contrasena), rolAsignado));
-        AUDITORIA.info("accion=EMPLEADO_REGISTRADO actor={} empleado={}", actor, nuevo.getId());
+        auditoria.registrar(actor, "EMPLEADO_REGISTRADO", ENTIDAD, nuevo.getId(), Map.of(
+                "nombreCompleto", nuevo.getNombreCompleto(), "correo", nuevo.getCorreo(),
+                "rol", rolAsignado.getNombre()));
         return DatosEmpleado.de(nuevo);
     }
 
@@ -72,7 +76,7 @@ public class GestionEmpleados {
         Rol nuevoRol = cambios.rol() == null ? null : resolverRol(cambios.rol());
         List<Empleado> administradores = nuevoRol == null ? List.of() : bloquearAdministradores();
         Empleado empleado = empleados.bloquearPorId(id).orElseThrow(GestionEmpleados::noExiste);
-        List<String> campos = new ArrayList<>();
+        Map<String, Object> campos = new LinkedHashMap<>();
 
         if (cambios.correo() != null) {
             String correo = Empleado.normalizarCorreo(cambios.correo());
@@ -80,27 +84,29 @@ public class GestionEmpleados {
                 if (empleados.existsByCorreoAndIdNot(correo, id)) {
                     throw correoDuplicado();
                 }
+                campos.put("correo", cambio(empleado.getCorreo(), correo));
                 empleado.cambiarCorreo(correo);
-                campos.add("correo");
             }
         }
         if (cambios.nombreCompleto() != null
                 && !cambios.nombreCompleto().strip().equals(empleado.getNombreCompleto())) {
+            String anterior = empleado.getNombreCompleto();
             empleado.cambiarNombre(cambios.nombreCompleto());
-            campos.add("nombreCompleto");
+            campos.put("nombreCompleto", cambio(anterior, empleado.getNombreCompleto()));
         }
         if (nuevoRol != null && !nuevoRol.getNombre().equals(empleado.getRol().getNombre())) {
             conservarAdministrador(empleado, administradores);
+            campos.put("rol", cambio(empleado.getRol().getNombre(), nuevoRol.getNombre()));
             empleado.cambiarRol(nuevoRol);
-            campos.add("rol");
         }
         if (cambios.contrasena() != null) {
             empleado.cambiarContrasena(cifrar(cambios.contrasena()));
-            campos.add("contrasena");
+            // Se audita el hecho, nunca el valor.
+            campos.put("contrasena", "MODIFICADA");
         }
         guardar(empleado);
         if (!campos.isEmpty()) {
-            AUDITORIA.info("accion=EMPLEADO_EDITADO actor={} empleado={} campos={}", actor, id, campos);
+            auditoria.registrar(actor, "EMPLEADO_EDITADO", ENTIDAD, id, campos);
         }
         return DatosEmpleado.de(empleado);
     }
@@ -114,7 +120,8 @@ public class GestionEmpleados {
         }
         conservarAdministrador(empleado, administradores);
         empleado.desactivar();
-        AUDITORIA.info("accion=EMPLEADO_DESACTIVADO actor={} empleado={}", actor, id);
+        auditoria.registrar(actor, "EMPLEADO_DESACTIVADO", ENTIDAD, id, Map.of(
+                "estado", cambio(EstadoEmpleado.ACTIVO.name(), EstadoEmpleado.INACTIVO.name())));
         return DatosEmpleado.de(empleado);
     }
 
@@ -140,6 +147,10 @@ public class GestionEmpleados {
             }
             throw e;
         }
+    }
+
+    private static Map<String, String> cambio(String anterior, String nuevo) {
+        return Map.of("anterior", anterior, "nuevo", nuevo);
     }
 
     private Rol resolverRol(String nombre) {

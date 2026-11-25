@@ -52,7 +52,8 @@ abstract class PruebaIntegracion {
 
     @BeforeEach
     void limpiar() {
-        sql.update("DELETE FROM sivant.empleado");
+        // TRUNCATE no dispara la protección por fila de la auditoría.
+        sql.execute("TRUNCATE sivant.auditoria, sivant.empleado");
         administrador = crear("ADMINISTRADOR");
     }
 

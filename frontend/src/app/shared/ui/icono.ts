@@ -17,6 +17,8 @@ const TRAZOS = {
   ajuste: 'M9 4h6v3H9V4ZM9 5H5v16h14V5h-4M8.500 14l2.500 2.500 4.500-5',
   palomita: 'm4 12 6 6L20 6',
   calendario: 'M4 6h16v15H4V6Zm0 5h16M8 3v5M16 3v5',
+  correo: 'M3 5h18v14H3V5Zm0 2 9 6 9-6',
+  candado: 'M5 11h14v10H5V11Zm3 0V7a4 4 0 0 1 8 0v4M12 15v2',
   salir: 'M14 4H5v16h9M10 12h11m0 0-4-4m4 4-4 4',
   menu: 'M4 6h16M4 12h16M4 18h16',
   cerrar: 'M6 6l12 12M18 6 6 18',

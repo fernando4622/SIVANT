@@ -16,7 +16,7 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Inactividad | Encabezado `X-Solicitud-Pasiva` para consultas automáticas. Angular consulta la sesión cada minuto con él | El sondeo no debe contar como actividad |
 | Rutas no declaradas | Se rechazan (401 o 403) | Un módulo nuevo debe declarar sus roles para quedar accesible |
 | Migración de mesas | Se deja para la fase 3 | El ROADMAP ubica ahí las mesas; arquitectura las menciona junto a identidad |
-| Auditoría de empleados (RNF09) | Responsable, acción y campos en el registro `sivant.auditoria`, con fecha y hora | El modelo no tiene tabla de auditoría. **Pendiente de decidir** si debe persistirse en la base |
+| Auditoría de cambios (RNF09) | Tabla `AUDITORIA`, adicional al modelo: responsable, fecha y hora, acción, entidad, registro y detalle JSON. Se guarda en la misma transacción que el cambio y un trigger impide modificarla o borrarla. De la contraseña solo consta que cambió. Los inicios de sesión quedan en el registro de la aplicación | RNF09 pide auditar todos los cambios y el modelo no tenía dónde guardarlos |
 
 ## Diferencias con las interfaces de referencia
 

@@ -1,74 +1,6 @@
-.filtros {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 1rem;
-}
-
-.buscador {
-  position: relative;
-}
-
-.buscador app-icono {
-  position: absolute;
-  left: 1.25rem;
-  top: 50%;
-  translate: 0 -50%;
-  color: var(--texto-suave);
-  pointer-events: none;
-}
-
-.buscador .control {
-  padding-left: 3.75rem;
-}
-
-.mensaje {
-  min-height: 1.5rem;
-  margin: 0.5rem 0;
-  color: var(--verde);
-  font-weight: 600;
-}
-
-.aviso .boton {
-  margin-top: 0.75rem;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: var(--cabecera);
-}
-
-th,
-td {
-  padding: 0.5rem 0.75rem;
-  text-align: left;
+/* Los correos largos sí pueden partirse. */
+tbody td:nth-child(2) {
   overflow-wrap: anywhere;
-}
-
-thead th {
-  padding-block: 1rem;
-  font-weight: 650;
-  overflow-wrap: normal;
-}
-
-thead th:first-child {
-  border-radius: var(--radio) 0 0 0;
-}
-
-thead th:last-child {
-  border-radius: 0 var(--radio) 0 0;
-}
-
-tbody tr {
-  border-bottom: 2px solid var(--borde);
-  background: var(--superficie);
-}
-
-tbody th {
-  font-weight: 400;
 }
 
 .nombre {
@@ -88,101 +20,10 @@ tbody th {
   color: var(--azul-fuerte);
 }
 
-.estado {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.estado::before {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 50%;
-  background: var(--verde);
-  content: '';
-}
-
-.estado--inactivo::before {
-  border: 2px solid var(--texto-suave);
-  background: transparent;
-}
-
-.celda-acciones {
-  white-space: nowrap;
-}
-
-.pie {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  font-weight: 600;
-}
-
-.pie nav {
-  display: flex;
-  gap: 1rem;
-}
-
-.pagina {
-  display: grid;
-  place-items: center;
-  min-width: 3.25rem;
-  min-height: 3rem;
-  padding: 0.25rem;
-}
-
-.pagina--actual {
-  border-radius: var(--radio-chico);
-  background: var(--azul);
-  color: #fff;
-}
-
-/* En pantallas angostas cada fila se muestra como tarjeta, sin desplazamiento horizontal. */
 @media (max-width: 48rem) {
-  .filtros {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-  }
-
-  table,
-  tbody {
-    display: block;
-  }
-
-  /* Oculta la cabecera a la vista sin quitarla del árbol de accesibilidad. */
-  thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  thead tr {
-    display: block;
-  }
-
-  thead th {
-    display: inline;
-    padding: 0;
-  }
-
   tbody tr {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.25rem 0.75rem;
-    margin-bottom: 0.75rem;
-    padding: 0.85rem;
-    border: 2px solid var(--borde);
-    border-radius: var(--radio);
-  }
-
-  tbody th,
-  tbody td {
-    padding: 0;
   }
 
   tbody th,

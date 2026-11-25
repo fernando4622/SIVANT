@@ -1,0 +1,206 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/productos" aria-label="Volver a productos">
+    <app-icono nombre="atras" [tamano]="30" />
+  </a>
+  <h1>{{ edicion() ? 'Editar producto' : 'Nuevo producto' }}</h1>
+</div>
+
+@if (errorCarga(); as mensaje) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <p>{{ mensaje }}</p>
+  </div>
+} @else if (cargando()) {
+  <p role="status">Cargando…</p>
+} @else {
+  <form class="pila" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+    <div class="columnas">
+      <section class="tarjeta pila" aria-label="Datos del producto">
+        <div class="campo">
+          <label for="nombre">Nombre del producto</label>
+          <input
+            id="nombre"
+            class="control"
+            formControlName="nombre"
+            autocomplete="off"
+            [attr.aria-invalid]="!!errorDe('nombre')"
+            aria-describedby="nombre-error"
+          />
+          <span id="nombre-error" class="campo__error">{{ errorDe('nombre') }}</span>
+        </div>
+
+        <div class="campo">
+          <label for="descripcion">Descripción</label>
+          <textarea
+            id="descripcion"
+            class="control"
+            formControlName="descripcion"
+            [attr.aria-invalid]="!!errorDe('descripcion')"
+            aria-describedby="descripcion-error"
+          ></textarea>
+          <span id="descripcion-error" class="campo__error">{{ errorDe('descripcion') }}</span>
+        </div>
+
+        <div class="campo">
+          <label for="precioVenta">Precio de venta</label>
+          <div class="precio">
+            <span aria-hidden="true">$</span>
+            <input
+              id="precioVenta"
+              class="control"
+              inputmode="decimal"
+              formControlName="precioVenta"
+              autocomplete="off"
+              [attr.aria-invalid]="!!errorDe('precioVenta')"
+              aria-describedby="precioVenta-error"
+            />
+          </div>
+          <span id="precioVenta-error" class="campo__error">{{ errorDe('precioVenta') }}</span>
+        </div>
+
+        @if (!edicion()) {
+          <div class="par">
+            <div class="campo">
+              <label for="tipo">Tipo</label>
+              <select id="tipo" class="control" formControlName="tipo">
+                <option value="PREPARADO">Preparado</option>
+                <option value="REVENTA">Reventa</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="unidadMedida">Unidad de medida</label>
+              <select id="unidadMedida" class="control" formControlName="unidadMedida">
+                @for (u of unidades; track u[0]) {
+                  <option [value]="u[0]">{{ u[1] }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
+      </section>
+
+      <div class="pila">
+        @if (original(); as producto) {
+          <section class="tarjeta" aria-labelledby="titulo-info">
+            <h2 id="titulo-info">Información del artículo</h2>
+            <dl class="datos-lista">
+              <dt>Tipo:</dt>
+              <dd>{{ nombreTipo[producto.tipo] }}</dd>
+              <dt>Estado:</dt>
+              <dd>{{ producto.activo ? 'Activo' : 'Inactivo' }}</dd>
+              @if (producto.existencia; as existencia) {
+                <dt>Existencia:</dt>
+                <dd>{{ cantidad(existencia.cantidadActual) }} {{ unidad(producto.unidadMedida) }}</dd>
+                <dt>Nivel mínimo:</dt>
+                <dd>{{ cantidad(existencia.nivelMinimo) }} {{ unidad(producto.unidadMedida) }}</dd>
+              }
+            </dl>
+          </section>
+          @if (producto.receta; as receta) {
+            <section class="tarjeta" aria-labelledby="titulo-receta-actual">
+              <h2 id="titulo-receta-actual">Receta</h2>
+              <dl class="datos-lista">
+                @for (c of receta; track c.insumoId) {
+                  <dt>{{ c.nombre }}</dt>
+                  <dd>{{ cantidad(c.cantidadRequerida) }} {{ unidad(c.unidadMedida) }}</dd>
+                }
+              </dl>
+            </section>
+          }
+          <div class="aviso">
+            <app-icono nombre="info" [tamano]="32" />
+            <p>El precio nuevo se aplica a las siguientes comandas. Las ya registradas conservan su precio.</p>
+          </div>
+        } @else if (formulario.controls.tipo.value === 'PREPARADO') {
+          <section class="tarjeta pila" aria-labelledby="titulo-receta" formArrayName="receta">
+            <h2 id="titulo-receta">Receta</h2>
+            @for (fila of formulario.controls.receta.controls; track fila; let i = $index) {
+              <div class="insumo" [formGroupName]="i">
+                <div class="campo">
+                  <label [for]="'insumo-' + i">Insumo {{ i + 1 }}</label>
+                  <select
+                    [id]="'insumo-' + i"
+                    class="control"
+                    formControlName="insumoId"
+                    [attr.aria-invalid]="(enviado() && fila.controls.insumoId.invalid) || repetido(i)"
+                  >
+                    <option value="" disabled>Selecciona un insumo</option>
+                    @for (insumo of insumos(); track insumo.id) {
+                      <option [value]="insumo.id">{{ insumo.nombre }}</option>
+                    }
+                  </select>
+                  @if (repetido(i)) {
+                    <span class="campo__error">Este insumo ya está en la receta.</span>
+                  } @else if (enviado() && fila.controls.insumoId.invalid) {
+                    <span class="campo__error">Selecciona un insumo.</span>
+                  }
+                </div>
+                <div class="insumo__cantidad">
+                  <div class="campo">
+                    <label [for]="'cantidad-' + i">Cantidad {{ unidadDe(fila.controls.insumoId.value) }}</label>
+                    <input
+                      [id]="'cantidad-' + i"
+                      class="control"
+                      inputmode="decimal"
+                      formControlName="cantidadRequerida"
+                      autocomplete="off"
+                      [attr.aria-invalid]="enviado() && fila.controls.cantidadRequerida.invalid"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="boton-icono boton-icono--peligro"
+                    [attr.aria-label]="'Quitar insumo ' + (i + 1)"
+                    [disabled]="formulario.controls.receta.length === 1"
+                    (click)="quitarInsumo(i)"
+                  >
+                    <app-icono nombre="basura" />
+                  </button>
+                </div>
+                @if (enviado() && fila.controls.cantidadRequerida.invalid) {
+                  <span class="campo__error">Escribe una cantidad mayor que cero.</span>
+                }
+              </div>
+            }
+            <button type="button" class="boton" (click)="agregarInsumo()">
+              <app-icono nombre="mas" />
+              Agregar insumo
+            </button>
+          </section>
+        } @else {
+          <section class="tarjeta" aria-label="Existencia">
+            <div class="campo">
+              <label for="nivelMinimo">Nivel mínimo</label>
+              <input
+                id="nivelMinimo"
+                class="control"
+                inputmode="decimal"
+                formControlName="nivelMinimo"
+                autocomplete="off"
+                [attr.aria-invalid]="!!errorDe('nivelMinimo')"
+                aria-describedby="nivelMinimo-error"
+              />
+              <span id="nivelMinimo-error" class="campo__error">{{ errorDe('nivelMinimo') }}</span>
+            </div>
+          </section>
+          <div class="aviso">
+            <app-icono nombre="info" [tamano]="32" />
+            <p>La existencia inicia en 0. Almacén registra las entradas.</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (error(); as mensaje) {
+      <p class="campo__error" role="alert">{{ mensaje }}</p>
+    }
+
+    <div class="acciones">
+      <a class="boton" routerLink="/productos">Cancelar</a>
+      <button type="submit" class="boton boton--principal" [disabled]="guardando()">
+        <app-icono nombre="guardar" />
+        {{ guardando() ? 'Guardando…' : edicion() ? 'Guardar cambios' : 'Registrar producto' }}
+      </button>
+    </div>
+  </form>
+}

@@ -7,7 +7,7 @@
   </a>
 </div>
 
-<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="reintentar()">
+<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
   <div class="buscador">
     <app-icono nombre="buscar" />
     <input
@@ -34,17 +34,17 @@
 
 <p class="mensaje" role="status">{{ mensaje() }}</p>
 
-@if (vista().error; as error) {
+@if (listado.vista().error; as error) {
   <div class="aviso aviso--error" role="alert">
     <app-icono nombre="info" [tamano]="32" />
     <div>
       <p>{{ error }}</p>
-      <button type="button" class="boton" (click)="reintentar()">Reintentar</button>
+      <button type="button" class="boton" (click)="listado.recargar()">Reintentar</button>
     </div>
   </div>
-} @else if (pagina(); as datos) {
+} @else if (listado.pagina(); as datos) {
   @if (datos.contenido.length) {
-    <table [attr.aria-busy]="vista().cargando">
+    <table [attr.aria-busy]="listado.vista().cargando">
       <caption class="solo-lector">
         Empleados registrados
       </caption>
@@ -99,33 +99,7 @@
       </tbody>
     </table>
 
-    <div class="pie">
-      <p>{{ rango() }}</p>
-      <nav aria-label="Páginas">
-        <button
-          type="button"
-          class="boton pagina"
-          aria-label="Página anterior"
-          [disabled]="datos.page === 0"
-          (click)="irA(datos.page - 1)"
-        >
-          <app-icono nombre="anterior" />
-        </button>
-        <span class="pagina pagina--actual" aria-current="page">
-          <span class="solo-lector">Página </span>{{ datos.page + 1 }}
-          <span class="solo-lector">de {{ datos.totalPaginas }}</span>
-        </span>
-        <button
-          type="button"
-          class="boton pagina"
-          aria-label="Página siguiente"
-          [disabled]="datos.page + 1 >= datos.totalPaginas"
-          (click)="irA(datos.page + 1)"
-        >
-          <app-icono nombre="siguiente" />
-        </button>
-      </nav>
-    </div>
+    <app-paginacion [datos]="datos" elementos="empleados" (ir)="listado.irA($event)" />
   } @else {
     <p class="tarjeta">No hay empleados que coincidan con la búsqueda.</p>
   }

@@ -1,0 +1,87 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>Consultar inventario</h1>
+</div>
+
+<app-pestanas-inventario />
+
+<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+  <div class="buscador">
+    <app-icono nombre="buscar" />
+    <input
+      class="control"
+      type="search"
+      formControlName="q"
+      placeholder="Buscar artículo…"
+      aria-label="Buscar por nombre"
+      maxlength="120"
+    />
+  </div>
+  <select class="control" formControlName="tipo" aria-label="Filtrar por tipo">
+    <option value="">Todos los tipos</option>
+    <option value="INSUMO">Insumo</option>
+    <option value="PRODUCTO">Producto</option>
+  </select>
+  <select class="control" formControlName="nivelBajo" aria-label="Filtrar por nivel">
+    <option value="">Todos los niveles</option>
+    <option value="true">Nivel bajo</option>
+    <option value="false">Nivel suficiente</option>
+  </select>
+</form>
+
+<p class="mensaje"></p>
+
+@if (listado.vista().error; as error) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ error }}</p>
+      <button type="button" class="boton" (click)="listado.recargar()">Reintentar</button>
+    </div>
+  </div>
+} @else if (listado.pagina(); as datos) {
+  @if (datos.contenido.length) {
+    <table [attr.aria-busy]="listado.vista().cargando">
+      <caption class="solo-lector">
+        Existencias
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Artículo</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Existencia</th>
+          <th scope="col">Nivel mínimo</th>
+          <th scope="col">Nivel</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of datos.contenido; track e.id) {
+          <tr>
+            <th scope="row">{{ e.nombre }}{{ e.activo ? '' : ' (inactivo)' }}</th>
+            <td data-etiqueta="Tipo">{{ e.tipo === 'INSUMO' ? 'Insumo' : 'Producto' }}</td>
+            <td data-etiqueta="Existencia" class="numero">{{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}</td>
+            <td data-etiqueta="Nivel mínimo" class="numero">{{ cantidad(e.nivelMinimo) }} {{ unidad(e.unidadMedida) }}</td>
+            <td data-etiqueta="Nivel">
+              @if (e.nivelBajo) {
+                <span class="etiqueta etiqueta--alerta">Bajo</span>
+              } @else {
+                <span class="etiqueta etiqueta--bien">Suficiente</span>
+              }
+            </td>
+            <td>
+              <a [routerLink]="['/inventario/existencias', e.id]" [attr.aria-label]="'Ver detalle de ' + e.nombre"
+                >Ver detalle</a
+              >
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <app-paginacion [datos]="datos" elementos="artículos" (ir)="listado.irA($event)" />
+  } @else {
+    <p class="tarjeta">No hay artículos que coincidan con la búsqueda.</p>
+  }
+} @else {
+  <p role="status">Cargando existencias…</p>
+}

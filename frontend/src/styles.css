@@ -17,6 +17,9 @@
   --texto: #0f1a3a;
   --texto-suave: #4a5573;
   --verde: #0f7a45;
+  --verde-fondo: #e1f5ea;
+  --naranja: #9a4a00;
+  --naranja-fondo: #fff0e2;
   --rojo: #c01f2e;
   --rojo-fuerte: #9e1926;
   --rojo-fondo: #fdecee;
@@ -70,7 +73,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -201,6 +205,66 @@ select {
   color: var(--rojo);
 }
 
+/* Pestañas en forma de píldora */
+.pildoras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.pildora {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.4rem 1.4rem;
+  border-radius: 999px;
+  background: var(--cabecera);
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.pildora--activa {
+  background: var(--azul);
+  color: #fff;
+}
+
+/* Detalle en dos columnas */
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.pila {
+  display: grid;
+  gap: 1rem;
+}
+
+.datos-lista {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem 1.5rem;
+  margin: 1rem 0 0;
+}
+
+.datos-lista dt {
+  color: var(--texto-suave);
+}
+
+.datos-lista dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 60rem) {
+  .columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Formularios */
 .campo {
   display: grid;
@@ -222,6 +286,11 @@ select {
 
 select.control {
   padding-right: 2rem;
+}
+
+textarea.control {
+  min-height: 8rem;
+  resize: vertical;
 }
 
 .control[aria-invalid='true'] {

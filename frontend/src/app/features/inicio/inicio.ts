@@ -13,11 +13,16 @@ interface Funcion {
 const FUNCIONES: Record<Rol, Funcion[]> = {
   ADMINISTRADOR: [
     { texto: 'Gestionar empleados', ruta: '/empleados' },
-    { texto: 'Gestionar productos' },
+    { texto: 'Gestionar productos', ruta: '/productos' },
     { texto: 'Consultar y cancelar ventas' },
-    { texto: 'Consultar inventario y resolver ajustes' },
+    { texto: 'Consultar inventario', ruta: '/inventario' },
+    { texto: 'Resolver ajustes de inventario', ruta: '/inventario/ajustes' },
   ],
-  MESERO: [{ texto: 'Abrir cuentas y registrar comandas' }, { texto: 'Servir y cobrar' }],
+  MESERO: [
+    { texto: 'Consultar el catálogo', ruta: '/productos' },
+    { texto: 'Abrir cuentas y registrar comandas' },
+    { texto: 'Servir y cobrar' },
+  ],
   CAJERO: [
     { texto: 'Cancelar comandas' },
     { texto: 'Consultar ventas' },
@@ -25,8 +30,8 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
   ],
   COCINERO: [{ texto: 'Consultar la cola y preparar comandas' }],
   ALMACENISTA: [
-    { texto: 'Consultar inventario y registrar movimientos' },
-    { texto: 'Solicitar ajustes de inventario' },
+    { texto: 'Consultar inventario y registrar movimientos', ruta: '/inventario' },
+    { texto: 'Consultar solicitudes de ajuste', ruta: '/inventario/ajustes' },
   ],
 };
 

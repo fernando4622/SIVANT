@@ -1,0 +1,17 @@
+.mensaje {
+  min-height: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--verde);
+  font-weight: 600;
+}
+
+.paneles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.titulo-historial {
+  margin: 2rem 0 1rem;
+}

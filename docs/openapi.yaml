@@ -1,0 +1,436 @@
+openapi: 3.1.0
+info:
+  title: API de SIVANT
+  version: 0.1.0
+  license:
+    name: Uso interno
+    identifier: LicenseRef-SIVANT
+  description: |
+    Contrato de las fases 0 y 1: identidad y empleados (RF11 a RF14).
+    Cada fase agrega sus operaciones antes de enlazar sus pantallas.
+
+    ## Convenciones
+    - **IDs**: cadenas decimales.
+    - **Dinero e inventario**: cadenas decimales (desde la fase 2). Cantidades de comanda: enteros.
+    - **Fechas**: ISO 8601 con offset. Los filtros por día usan `America/Mexico_City` como rango `[desde, hasta)`.
+    - **Paginación**: `page` inicia en 0; `size` es 25 por omisión y 100 como máximo. El orden es estable.
+    - **Errores**: `application/problem+json` con `codigo` y, si aplica, `erroresCampo`.
+    - **Campos desconocidos** en el cuerpo: se rechazan con 400.
+
+    ## Sesión
+    La cookie `SIVANT_SESION` (HttpOnly, SameSite=Lax, Secure con HTTPS) identifica la sesión. Toda operación que
+    modifica datos exige el valor de la cookie `XSRF-TOKEN` en el encabezado `X-XSRF-TOKEN`. El token se renueva al
+    iniciar y cerrar sesión.
+
+    La sesión expira a los 45 minutos sin actividad. Una solicitud automática (sondeo) debe llevar
+    `X-Solicitud-Pasiva: true` para no contar como actividad. Desactivar al empleado, cambiar su contraseña o cambiar
+    su rol invalida sus sesiones abiertas a partir de la siguiente solicitud.
+
+    Una ruta no declarada en este contrato responde 401 sin sesión y 403 con sesión.
+servers:
+  - url: /api/v1
+    description: Mismo origen que Angular, mediante el proxy
+tags:
+  - name: Identidad
+    description: Inicio y cierre de sesión, y perfil
+  - name: Empleados
+    description: RF11 a RF14. Solo ADMINISTRADOR
+security:
+  - sesion: []
+
+paths:
+  /auth/csrf:
+    get:
+      tags: [Identidad]
+      operationId: obtenerCsrf
+      summary: Obtener el token CSRF
+      description: También escribe la cookie `XSRF-TOKEN`.
+      security: []
+      responses:
+        '200':
+          description: Token vigente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenCsrf' }
+        '500': { $ref: '#/components/responses/ErrorInterno' }
+        4XX: { $ref: '#/components/responses/SolicitudRechazada' }
+
+  /auth/login:
+    post:
+      tags: [Identidad]
+      operationId: iniciarSesion
+      summary: Iniciar sesión
+      description: |
+        Un correo inexistente, una contraseña incorrecta y un empleado inactivo reciben la misma respuesta.
+        Al entrar cambia el ID de sesión y se renueva el token CSRF.
+      security:
+        - csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credenciales' }
+      responses:
+        '200':
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Perfil' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401':
+          description: '`CREDENCIALES_INVALIDAS`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /auth/logout:
+    post:
+      tags: [Identidad]
+      operationId: cerrarSesion
+      summary: Cerrar sesión
+      description: Es idempotente. Sin sesión también responde 204.
+      security:
+        - csrf: []
+      responses:
+        '204':
+          description: Sesión cerrada
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /auth/me:
+    get:
+      tags: [Identidad]
+      operationId: consultarPerfil
+      summary: Consultar al usuario autenticado
+      parameters:
+        - $ref: '#/components/parameters/SolicitudPasiva'
+      responses:
+        '200':
+          description: Perfil con el rol vigente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Perfil' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+
+  /empleados:
+    post:
+      tags: [Empleados]
+      operationId: registrarEmpleado
+      summary: Registrar empleado (RF11)
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AltaEmpleado' }
+      responses:
+        '201':
+          description: Empleado registrado como ACTIVO
+          headers:
+            Location:
+              description: Ruta del empleado creado
+              schema: { type: string, examples: [/api/v1/empleados/7] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empleado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409':
+          description: '`CORREO_DUPLICADO`, sin distinguir mayúsculas'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+    get:
+      tags: [Empleados]
+      operationId: consultarEmpleados
+      summary: Consultar empleados (RF12)
+      description: |
+        Incluye activos e inactivos. Orden por nombre e ID. Los filtros se combinan; los de texto buscan coincidencias
+        parciales sin distinguir mayúsculas.
+      parameters:
+        - name: q
+          in: query
+          description: Coincidencia en nombre o correo
+          schema: { type: string }
+        - name: nombre
+          in: query
+          schema: { type: string }
+        - name: correo
+          in: query
+          schema: { type: string }
+        - name: rol
+          in: query
+          schema: { $ref: '#/components/schemas/Rol' }
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoEmpleado' }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: Página de empleados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaEmpleados' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /empleados/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdEmpleado'
+    get:
+      tags: [Empleados]
+      operationId: obtenerEmpleado
+      summary: Consultar un empleado (RF12)
+      responses:
+        '200':
+          description: Empleado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empleado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    patch:
+      tags: [Empleados]
+      operationId: editarEmpleado
+      summary: Editar empleado (RF13)
+      description: |
+        Edición parcial: lo no enviado se conserva. Cambiar `contrasena` o `rol` invalida las sesiones abiertas del
+        empleado. Debe permanecer al menos un administrador activo.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EdicionEmpleado' }
+      responses:
+        '200':
+          description: Empleado actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empleado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`CORREO_DUPLICADO` o `ULTIMO_ADMINISTRADOR`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /empleados/{id}/desactivacion:
+    parameters:
+      - $ref: '#/components/parameters/IdEmpleado'
+    post:
+      tags: [Empleados]
+      operationId: desactivarEmpleado
+      summary: Desactivar empleado (RF14)
+      description: Conserva el registro e invalida las sesiones abiertas. El empleado no vuelve a iniciar sesión.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Desactivacion' }
+      responses:
+        '200':
+          description: Empleado INACTIVO
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empleado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`EMPLEADO_INACTIVO` o `ULTIMO_ADMINISTRADOR`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+components:
+  securitySchemes:
+    sesion:
+      type: apiKey
+      in: cookie
+      name: SIVANT_SESION
+    csrf:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+
+  parameters:
+    IdEmpleado:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Id' }
+    SolicitudPasiva:
+      name: X-Solicitud-Pasiva
+      in: header
+      description: '`true` si la solicitud es automática y no cuenta como actividad'
+      schema: { type: boolean, default: false }
+
+  schemas:
+    Id:
+      type: string
+      pattern: '^[0-9]+$'
+      examples: ['7']
+    Rol:
+      type: string
+      description: Nombre del registro en la tabla ROL
+      enum: [MESERO, CAJERO, COCINERO, ADMINISTRADOR, ALMACENISTA]
+    EstadoEmpleado:
+      type: string
+      enum: [ACTIVO, INACTIVO]
+    Correo:
+      type: string
+      maxLength: 254
+      description: Se guarda sin espacios exteriores y en minúsculas
+      examples: [laura@sivant.test]
+    Contrasena:
+      type: string
+      format: password
+      writeOnly: true
+      minLength: 8
+      maxLength: 72
+      description: Máximo 72 bytes en UTF-8. Se guarda como hash BCrypt
+    TokenCsrf:
+      type: object
+      required: [token, encabezado]
+      properties:
+        token: { type: string }
+        encabezado: { type: string, examples: [X-XSRF-TOKEN] }
+    Credenciales:
+      type: object
+      additionalProperties: false
+      required: [correo, contrasena]
+      properties:
+        correo: { type: string, maxLength: 254 }
+        contrasena: { type: string, format: password, maxLength: 200, writeOnly: true }
+    Perfil:
+      type: object
+      required: [id, nombre, rol]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        nombre: { type: string }
+        rol: { $ref: '#/components/schemas/Rol' }
+    AltaEmpleado:
+      type: object
+      additionalProperties: false
+      required: [nombreCompleto, correo, contrasena, rol]
+      properties:
+        nombreCompleto: { type: string, minLength: 1, maxLength: 150 }
+        correo: { $ref: '#/components/schemas/Correo' }
+        contrasena: { $ref: '#/components/schemas/Contrasena' }
+        rol: { $ref: '#/components/schemas/Rol' }
+    EdicionEmpleado:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nombreCompleto: { type: string, minLength: 1, maxLength: 150 }
+        correo: { $ref: '#/components/schemas/Correo' }
+        contrasena: { $ref: '#/components/schemas/Contrasena' }
+        rol: { $ref: '#/components/schemas/Rol' }
+    Desactivacion:
+      type: object
+      additionalProperties: false
+      required: [confirmado]
+      properties:
+        confirmado: { type: boolean, const: true }
+    Empleado:
+      type: object
+      required: [id, nombreCompleto, correo, rol, estado]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        nombreCompleto: { type: string }
+        correo: { $ref: '#/components/schemas/Correo' }
+        rol: { $ref: '#/components/schemas/Rol' }
+        estado: { $ref: '#/components/schemas/EstadoEmpleado' }
+    PaginaEmpleados:
+      type: object
+      required: [contenido, page, size, totalElementos, totalPaginas]
+      properties:
+        contenido:
+          type: array
+          items: { $ref: '#/components/schemas/Empleado' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElementos: { type: integer }
+        totalPaginas: { type: integer }
+    Problema:
+      type: object
+      required: [type, title, status, detail, instance, codigo]
+      properties:
+        type: { type: string, examples: ['urn:sivant:error:correo-duplicado'] }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        codigo:
+          type: string
+          enum:
+            - DATOS_INVALIDOS
+            - CREDENCIALES_INVALIDAS
+            - SESION_REQUERIDA
+            - SESION_EXPIRADA
+            - SESION_INVALIDADA
+            - ACCESO_DENEGADO
+            - CSRF_INVALIDO
+            - NO_ENCONTRADO
+            - METODO_NO_PERMITIDO
+            - CORREO_DUPLICADO
+            - EMPLEADO_INACTIVO
+            - ULTIMO_ADMINISTRADOR
+            - ERROR_INTERNO
+        erroresCampo:
+          type: object
+          additionalProperties: { type: string }
+
+  responses:
+    DatosInvalidos:
+      description: '`DATOS_INVALIDOS`, con `erroresCampo` si aplica'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    SinSesion:
+      description: '`SESION_REQUERIDA`, `SESION_EXPIRADA` o `SESION_INVALIDADA`'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    SinPermiso:
+      description: '`ACCESO_DENEGADO` o `CSRF_INVALIDO`'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    NoEncontrado:
+      description: '`NO_ENCONTRADO`'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    SolicitudRechazada:
+      description: Solicitud rechazada
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    ErrorInterno:
+      description: '`ERROR_INTERNO`'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }

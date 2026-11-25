@@ -35,7 +35,7 @@ desktop.ini
 **/application-local.yaml
 compose.override.yaml
 database/**/*.local.*
-.claude/settings.local.json
+.claude/
 
 # Respaldos y datos de PostgreSQL
 *.dump

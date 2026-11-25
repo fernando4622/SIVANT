@@ -1,0 +1,145 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>Gestionar empleados</h1>
+  <a class="boton boton--principal" routerLink="/empleados/nuevo">
+    <app-icono nombre="mas" />
+    Nuevo empleado
+  </a>
+</div>
+
+<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="reintentar()">
+  <div class="buscador">
+    <app-icono nombre="buscar" />
+    <input
+      class="control"
+      type="search"
+      formControlName="q"
+      placeholder="Buscar empleado…"
+      aria-label="Buscar por nombre o correo"
+      maxlength="150"
+    />
+  </div>
+  <select class="control" formControlName="rol" aria-label="Filtrar por rol">
+    <option value="">Todos los roles</option>
+    @for (rol of roles; track rol) {
+      <option [value]="rol">{{ nombreRol[rol] }}</option>
+    }
+  </select>
+  <select class="control" formControlName="estado" aria-label="Filtrar por estado">
+    <option value="">Todos los estados</option>
+    <option value="ACTIVO">Activo</option>
+    <option value="INACTIVO">Inactivo</option>
+  </select>
+</form>
+
+<p class="mensaje" role="status">{{ mensaje() }}</p>
+
+@if (vista().error; as error) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ error }}</p>
+      <button type="button" class="boton" (click)="reintentar()">Reintentar</button>
+    </div>
+  </div>
+} @else if (pagina(); as datos) {
+  @if (datos.contenido.length) {
+    <table [attr.aria-busy]="vista().cargando">
+      <caption class="solo-lector">
+        Empleados registrados
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Nombre</th>
+          <th scope="col">Correo</th>
+          <th scope="col">Rol</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (empleado of datos.contenido; track empleado.id) {
+          <tr>
+            <th scope="row">
+              <span class="nombre">
+                <span class="avatar" aria-hidden="true">{{ iniciales(empleado.nombreCompleto) }}</span>
+                {{ empleado.nombreCompleto }}
+              </span>
+            </th>
+            <td>{{ empleado.correo }}</td>
+            <td>{{ nombreRol[empleado.rol] }}</td>
+            <td>
+              <span class="estado" [class.estado--inactivo]="empleado.estado === 'INACTIVO'">
+                {{ empleado.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td class="celda-acciones">
+              <a
+                class="boton-icono"
+                [routerLink]="['/empleados', empleado.id]"
+                [attr.aria-label]="'Editar a ' + empleado.nombreCompleto"
+                title="Editar"
+              >
+                <app-icono nombre="editar" />
+              </a>
+              @if (empleado.estado === 'ACTIVO') {
+                <button
+                  type="button"
+                  class="boton-icono boton-icono--peligro"
+                  [attr.aria-label]="'Desactivar a ' + empleado.nombreCompleto"
+                  title="Desactivar"
+                  (click)="pedirConfirmacion(empleado)"
+                >
+                  <app-icono nombre="basura" />
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pie">
+      <p>{{ rango() }}</p>
+      <nav aria-label="Páginas">
+        <button
+          type="button"
+          class="boton pagina"
+          aria-label="Página anterior"
+          [disabled]="datos.page === 0"
+          (click)="irA(datos.page - 1)"
+        >
+          <app-icono nombre="anterior" />
+        </button>
+        <span class="pagina pagina--actual" aria-current="page">
+          <span class="solo-lector">Página </span>{{ datos.page + 1 }}
+          <span class="solo-lector">de {{ datos.totalPaginas }}</span>
+        </span>
+        <button
+          type="button"
+          class="boton pagina"
+          aria-label="Página siguiente"
+          [disabled]="datos.page + 1 >= datos.totalPaginas"
+          (click)="irA(datos.page + 1)"
+        >
+          <app-icono nombre="siguiente" />
+        </button>
+      </nav>
+    </div>
+  } @else {
+    <p class="tarjeta">No hay empleados que coincidan con la búsqueda.</p>
+  }
+} @else {
+  <p role="status">Cargando empleados…</p>
+}
+
+<app-confirmacion
+  titulo="Desactivar empleado"
+  accion="Desactivar"
+  [ocupado]="desactivando()"
+  [error]="errorDesactivacion()"
+  (confirmado)="desactivar()"
+>
+  <strong>{{ porDesactivar()?.nombreCompleto }}</strong> ya no podrá iniciar sesión y perderá el acceso si tiene una
+  sesión abierta. Se conservan sus datos y su historial.
+</app-confirmacion>

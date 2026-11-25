@@ -1,0 +1,53 @@
+<a class="saltar" href="#contenido" (click)="$event.preventDefault(); contenido.focus()">Ir al contenido</a>
+
+<header class="lateral" [class.lateral--abierta]="menuAbierto()">
+  <div class="lateral__marca">
+    <app-logo />
+    <button
+      type="button"
+      class="lateral__menu"
+      aria-controls="menu"
+      [attr.aria-expanded]="menuAbierto()"
+      [attr.aria-label]="menuAbierto() ? 'Cerrar menú' : 'Abrir menú'"
+      (click)="menuAbierto.set(!menuAbierto())"
+    >
+      <app-icono [nombre]="menuAbierto() ? 'cerrar' : 'menu'" [tamano]="28" />
+    </button>
+  </div>
+
+  <div id="menu" class="lateral__contenido">
+    <nav aria-label="Principal">
+      @for (opcion of opciones(); track opcion.ruta) {
+        <a
+          class="opcion"
+          [routerLink]="opcion.ruta"
+          routerLinkActive="opcion--activa"
+          ariaCurrentWhenActive="page"
+          (click)="menuAbierto.set(false)"
+        >
+          <app-icono [nombre]="opcion.icono" />
+          {{ opcion.texto }}
+        </a>
+      }
+    </nav>
+
+    <div class="usuario">
+      <span class="usuario__avatar"><app-icono nombre="persona" [tamano]="32" /></span>
+      <span class="usuario__datos">
+        <strong>{{ perfil()?.nombre }}</strong>
+        <span>{{ nombreRol() }}</span>
+      </span>
+      <button type="button" class="opcion usuario__salir" (click)="salir()">
+        <app-icono nombre="salir" />
+        Cerrar sesión
+      </button>
+      @if (errorSalida()) {
+        <p class="usuario__error" role="alert">No se pudo cerrar la sesión. Intenta de nuevo.</p>
+      }
+    </div>
+  </div>
+</header>
+
+<main #contenido id="contenido" tabindex="-1">
+  <router-outlet />
+</main>

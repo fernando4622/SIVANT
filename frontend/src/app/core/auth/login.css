@@ -1,0 +1,36 @@
+:host {
+  display: grid;
+  grid-template-columns: minmax(16rem, 2fr) 3fr;
+  min-height: 100dvh;
+}
+
+.marca {
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--marino);
+  color: var(--marino-texto);
+}
+
+main {
+  display: grid;
+  place-items: center;
+  padding: 1.5rem 1rem;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  width: min(28rem, 100%);
+}
+
+@media (max-width: 48rem) {
+  :host {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  main {
+    place-items: start center;
+  }
+}

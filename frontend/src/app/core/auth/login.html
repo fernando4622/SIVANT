@@ -1,0 +1,59 @@
+<div class="marca"><app-logo /></div>
+
+<main>
+  <form class="tarjeta" [formGroup]="formulario" (ngSubmit)="entrar()" novalidate>
+    <h1>Iniciar sesión</h1>
+
+    @if (error(); as mensaje) {
+      <div class="aviso aviso--error" role="alert">
+        <app-icono nombre="info" />
+        <p>{{ mensaje }}</p>
+      </div>
+    } @else if (aviso(); as mensaje) {
+      <div class="aviso" role="status">
+        <app-icono nombre="info" />
+        <p>{{ mensaje }}</p>
+      </div>
+    }
+
+    <div class="campo">
+      <label for="correo">Correo</label>
+      <input
+        id="correo"
+        class="control"
+        type="email"
+        formControlName="correo"
+        autocomplete="username"
+        [attr.aria-invalid]="enviado() && formulario.controls.correo.invalid"
+        aria-describedby="correo-error"
+      />
+      <span id="correo-error" class="campo__error" aria-live="polite">
+        @if (enviado() && formulario.controls.correo.invalid) {
+          Escribe tu correo.
+        }
+      </span>
+    </div>
+
+    <div class="campo">
+      <label for="contrasena">Contraseña</label>
+      <input
+        id="contrasena"
+        class="control"
+        type="password"
+        formControlName="contrasena"
+        autocomplete="current-password"
+        [attr.aria-invalid]="enviado() && formulario.controls.contrasena.invalid"
+        aria-describedby="contrasena-error"
+      />
+      <span id="contrasena-error" class="campo__error" aria-live="polite">
+        @if (enviado() && formulario.controls.contrasena.invalid) {
+          Escribe tu contraseña.
+        }
+      </span>
+    </div>
+
+    <button type="submit" class="boton boton--principal" [disabled]="enviando()">
+      {{ enviando() ? 'Entrando…' : 'Entrar' }}
+    </button>
+  </form>
+</main>

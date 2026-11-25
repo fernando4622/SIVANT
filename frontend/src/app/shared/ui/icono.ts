@@ -1,0 +1,49 @@
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+
+const TRAZOS = {
+  atras: 'M20 12H4m0 0 6-6m-6 6 6 6',
+  mas: 'M12 4v16M4 12h16',
+  buscar: 'M15.5 15.5 21 21M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z',
+  editar: 'M4 20l1-5L16 4l4 4L9 19l-5 1Z',
+  basura: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5',
+  guardar: 'M4 4h13l3 3v13H4V4Zm4 0v5h7V4M8 20v-6h8v6',
+  info: 'M12 11v6M12 7.5v.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  persona: 'M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21c0-4 3.5-6 8-6s8 2 8 6',
+  empleados:
+    'M12 8a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM2 20c0-3.5 2.8-5.5 6.5-5.5S15 16.500 15 20M15.500 4.800a3.500 3.500 0 0 1 0 6.400M17 14.800c3 .5 5 2.400 5 5.200',
+  inicio: 'M3 11.500 12 4l9 7.500M5.500 10v10h13V10M10 20v-6h4v6',
+  salir: 'M14 4H5v16h9M10 12h11m0 0-4-4m4 4-4 4',
+  menu: 'M4 6h16M4 12h16M4 18h16',
+  cerrar: 'M6 6l12 12M18 6 6 18',
+  anterior: 'm14 6-6 6 6 6',
+  siguiente: 'm10 6 6 6-6 6',
+  ver: 'M2 12s3.500-7 10-7 10 7 10 7-3.500 7-10 7-10-7-10-7Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+} as const;
+
+export type NombreIcono = keyof typeof TRAZOS;
+
+/** Decorativo: el texto accesible lo pone el control que lo contiene. */
+@Component({
+  selector: 'app-icono',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<svg
+    viewBox="0 0 24 24"
+    [attr.width]="tamano()"
+    [attr.height]="tamano()"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path [attr.d]="trazo()" />
+  </svg>`,
+  styles: ':host { display: inline-flex }',
+})
+export class Icono {
+  readonly nombre = input.required<NombreIcono>();
+  readonly tamano = input(24);
+  protected readonly trazo = computed(() => TRAZOS[this.nombre()]);
+}

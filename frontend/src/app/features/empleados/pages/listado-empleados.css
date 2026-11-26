@@ -1,42 +1,76 @@
-/* Los correos largos sí pueden partirse. */
-tbody td:nth-child(2) {
-  overflow-wrap: anywhere;
+.empleados {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(21rem, 100%), 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.nombre {
-  display: flex;
-  align-items: center;
+.empleado {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 1rem;
+  min-height: 9rem;
+  padding: 1rem;
+  box-shadow: var(--sombra);
 }
 
 .avatar {
   display: grid;
-  flex: none;
   place-items: center;
-  width: 2.9rem;
-  height: 2.9rem;
+  align-self: center;
+  width: 4.75rem;
+  height: 4.75rem;
   border-radius: 50%;
   background: var(--azul-avatar);
   color: var(--azul-fuerte);
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
-@media (max-width: 48rem) {
-  tbody tr {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.25rem 0.75rem;
-  }
+.empleado__contenido {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.5rem;
+  min-width: 0;
+}
 
-  tbody th,
-  tbody td:nth-child(2) {
-    grid-column: 1 / -1;
-  }
+.empleado__encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
 
-  tbody td:nth-child(4) {
-    grid-row: 4;
-  }
+.empleado__encabezado .boton-icono {
+  width: 2.4rem;
+  min-width: 2.4rem;
+  min-height: 2.4rem;
+}
 
-  .celda-acciones {
-    grid-area: 3 / 2 / span 2;
-    align-self: center;
-  }
+.empleado__texto h2 {
+  font-size: 1.05rem;
+}
+
+.empleado__texto p {
+  margin-top: 0.2rem;
+  color: var(--texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.empleado__cargo {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--borde);
+  font-weight: 650;
+}
+
+.icono-cargo {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  object-fit: contain;
 }

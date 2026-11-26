@@ -77,63 +77,51 @@ describe('Gestionar empleados', () => {
   const boton = (texto: string) =>
     [...el.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent)?.includes(texto));
 
-  it('CP-F10 ofrece desactivar a los activos y reactivar a los inactivos', async () => {
+  it('CP-F10 muestra tarjetas con estado y una sola acción de edición', async () => {
     await abrir('/empleados?q=a&rol=CAJERO&estado=ACTIVO&page=2');
     expect(api.listar).toHaveBeenCalledWith({ q: 'a', rol: 'CAJERO', estado: 'ACTIVO', page: 2 });
     expect(el.textContent).toContain('Ana Ruiz');
     expect(el.textContent).toContain('Inactivo');
-    expect(boton('Desactivar a Ana')).toBeDefined();
-    expect(boton('Desactivar a Ciro')).toBeUndefined();
-    expect(boton('Reactivar a Ciro')).toBeDefined();
-    expect(boton('Reactivar a Ana')).toBeUndefined();
+    expect(el.querySelector('[aria-label="Editar a Ana Ruiz"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="Editar a Ciro Paz"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label^="Desactivar"], [aria-label^="Reactivar"]')).toBeNull();
+    expect(el.querySelectorAll('.empleado__encabezado .boton-icono')).toHaveLength(2);
   });
 
-  it('reactiva al empleado tras confirmar y actualiza el listado', async () => {
-    await abrir('/empleados');
+  it('reactiva al empleado al guardar desde la edición', async () => {
+    api.obtener.mockReturnValue(of(CIRO));
     const activo = { ...CIRO, estado: 'ACTIVO' } as const;
     api.reactivar.mockReturnValue(of(activo));
-    api.listar.mockReturnValueOnce(pagina(ANA, activo));
-
-    boton('Reactivar a Ciro')!.click();
+    await abrir('/empleados/8');
+    const estado = el.querySelector<HTMLInputElement>('input[formControlName="activo"]')!;
+    expect(estado.checked).toBe(false);
+    estado.click();
     await refrescar();
-    expect(el.querySelector('dialog')!.open).toBe(true);
-    expect(api.reactivar).not.toHaveBeenCalled();
-    el.querySelector<HTMLButtonElement>('dialog .boton--principal')!.click();
-    await refrescar();
-
+    await enviar();
     expect(api.reactivar).toHaveBeenCalledWith('8');
-    expect(el.querySelector('dialog')!.open).toBe(false);
-    expect(el.textContent).toContain('Ciro Paz ya puede iniciar sesión.');
-    expect(boton('Desactivar a Ciro')).toBeDefined();
+    expect(api.editar).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/empleados');
   });
 
-  it('CP-F11 desactivar exige confirmar; cancelar no llama a la API', async () => {
-    await abrir('/empleados');
-    boton('Desactivar a Ana')!.click();
-    await refrescar();
-    expect(el.querySelector('dialog')!.open).toBe(true);
-    boton('Cancelar')!.click();
-    await refrescar();
-    expect(el.querySelector('dialog')!.open).toBe(false);
-    expect(api.desactivar).not.toHaveBeenCalled();
-
+  it('CP-F11 desactiva al empleado desde su edición', async () => {
     api.desactivar.mockReturnValue(of({ ...ANA, estado: 'INACTIVO' }));
-    boton('Desactivar a Ana')!.click();
+    await abrir('/empleados/7');
+    const estado = el.querySelector<HTMLInputElement>('input[formControlName="activo"]')!;
+    expect(estado.checked).toBe(true);
+    estado.click();
     await refrescar();
-    el.querySelector<HTMLButtonElement>('dialog .boton--peligro')!.click();
-    await refrescar();
+    await enviar();
     expect(api.desactivar).toHaveBeenCalledWith('7');
-    expect(api.listar).toHaveBeenCalledTimes(2);
-    expect(el.textContent).toContain('Ana Ruiz quedó inactivo');
+    expect(TestBed.inject(Router).url).toBe('/empleados');
   });
 
-  it('CP-F12 si la API rechaza la desactivación, el diálogo muestra el motivo', async () => {
+  it('CP-F12 si la API rechaza la desactivación, el formulario muestra el motivo', async () => {
     api.desactivar.mockReturnValue(error(409, { codigo: 'ULTIMO_ADMINISTRADOR', detail: 'Debe permanecer uno.' }));
-    await abrir('/empleados');
-    boton('Desactivar a Ana')!.click();
-    el.querySelector<HTMLButtonElement>('dialog .boton--peligro')!.click();
+    await abrir('/empleados/7');
+    el.querySelector<HTMLInputElement>('input[formControlName="activo"]')!.click();
+    await enviar();
     await refrescar();
-    expect(el.querySelector('dialog')!.textContent).toContain('Debe permanecer uno.');
+    expect(el.textContent).toContain('Debe permanecer uno.');
   });
 
   it('CP-F13 muestra el error de carga y permite reintentar', async () => {

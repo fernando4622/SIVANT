@@ -1,4 +1,4 @@
-# Decisiones y diferencias · Fases 0 a 5
+# Decisiones y diferencias · Fases 0 a 6
 
 Los documentos `ROADMAP.md`, `arquitectura-sivant.md` y `modelo-datos-logico-relacional.md` se copiaron sin cambios.
 Aquí se registra lo que la implementación precisó o resolvió de otra forma.
@@ -28,7 +28,7 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Nombre de producto | Puede repetirse | Ningún RF ni el modelo exigen unicidad |
 | **Cierre sin cobro** | Lo hace el mesero responsable si no hay comandas vigentes. Libera la mesa y queda en auditoría | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | **Mesero con cuentas abiertas** | Desactivarlo o cambiar su rol responde 409 `CUENTAS_ABIERTAS` | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
-| Fondo pendiente al cerrar sin cobro | Se define con el fondo de cambio (fase 6) | Aún no existe el fondo |
+| **Fondo pendiente al cerrar sin cobro** | Se rechaza (409 `FONDO_PENDIENTE`) hasta que el cajero lo anula al recibirlo | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | `POST /cuentas/:id/cierre` | Se agrega al contrato | Lo requiere el cierre sin cobro |
 | Edición de comanda | Devuelve la cuenta completa | Arquitectura pide la comanda y el total actualizado |
 | Cantidad máxima | 999 por producto en una comanda | Evita errores de captura; los RF no fijan límite |
@@ -55,6 +55,15 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | `GET /ventas/opciones` | Se agrega: meseros y mesas con ventas en la ventana | Los filtros piden mesero y mesa, y el cajero no consulta empleados |
 | `cobro` y `COBRAR` en la cuenta | La cuenta indica si puede cobrarse y, cerrada, con qué método | El mesero ve el resultado aunque se pierda la respuesta |
 | Total máximo | 409 `TOTAL_INVALIDO` si el total es 0 o superaría 12 enteros | La venta exige total positivo |
+| **Liquidación del fondo aplicado** | El cajero lo recibe en la misma entrega que el efectivo de sus pagos, con su propio importe (`fondoRecibido`). La entrega guarda la suma de los pagos en `monto` y el fondo en `monto_fondo`; el fondo pasa a LIQUIDADO con la entrega | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
+| Estado `LIQUIDADO`, `FONDO_CAMBIO.id_entrega` y `ENTREGA_EFECTIVO.monto_fondo` | Se agregan al modelo | Lo requiere la liquidación con la entrega |
+| Un fondo vigente por cuenta | Índice único sobre los que no están anulados (pendiente, aplicado o liquidado) | Arquitectura: uno pendiente o aplicado. El liquidado sigue siendo el fondo de esa cuenta |
+| Entregar un fondo | Exige cuenta abierta con comandas no canceladas y total positivo. No usa la versión de la cuenta | Arquitectura, sección 5. El fondo no depende del total exacto |
+| Fondo de un pago que no es en efectivo | No ocurre: con un fondo pendiente solo se cobra en efectivo | Arquitectura |
+| Pagos de ventas canceladas | Siguen pendientes de entregar por su importe original | Arquitectura: la devolución sale de caja |
+| `GET /caja/fondos` | Se agrega con filtro por estado | Permite seguir cada fondo hasta su liquidación o anulación |
+| `fondo`, `ENTREGAR_FONDO` y `ANULAR_FONDO` en la cuenta | La cuenta muestra su fondo vigente y ofrece al cajero entregarlo o anularlo | El cajero lo registra desde la cuenta y el mesero lo ve |
+| Recepción en la pantalla | No se envía si lo contado no coincide con la suma; la API lo vuelve a validar | Evita registrar una diferencia por error de captura |
 
 ## Diferencias con las interfaces de referencia
 
@@ -81,10 +90,10 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 | «Autorizar pago con tarjeta» por el cajero (CU-05) | Lo registra el mesero responsable (RF05 vigente) |
 | «Registrar devolución» parcial con reposición de inventario (CU-15) | Cancelar venta con devolución completa y sin reponer inventario (RF22) |
 | «Registrar entrega de efectivo» asociado a mesero y cajero | La registra el cajero (arquitectura, sección 3) |
-| «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro |
+| «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro; al cobrar en efectivo queda aplicado |
 | Iniciar y cerrar sesión no aparecen | Se implementan como soporte de todos los actores |
 
-## Pendiente de las fases 0 a 5
+## Pendiente de las fases 0 a 6
 
 - `AGENTS.md` no está en el repositorio ni en los documentos recibidos, así que no se pudieron revisar sus reglas.
 - Una cuenta con comandas servidas cuyo total es 0 (productos con precio 0) no puede cobrarse ni cerrarse sin cobro.

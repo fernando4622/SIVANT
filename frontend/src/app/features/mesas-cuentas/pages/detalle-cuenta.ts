@@ -7,6 +7,7 @@ import { TiempoReal } from '../../../core/realtime/tiempo-real';
 import { dinero, fechaHora } from '../../../shared/formato';
 import { Confirmacion } from '../../../shared/ui/confirmacion';
 import { Icono } from '../../../shared/ui/icono';
+import { NOMBRE_FONDO } from '../../caja/data-access/caja.api';
 import { NOMBRE_METODO } from '../../ventas/data-access/ventas.api';
 import { TarjetaComanda } from '../components/tarjeta-comanda';
 import { Comanda, Cuenta, Servida, ServicioApi } from '../data-access/servicio.api';
@@ -52,6 +53,7 @@ export class DetalleCuenta implements OnInit {
     );
   });
   protected readonly metodos = NOMBRE_METODO as Partial<Record<string, string>>;
+  protected readonly estadoFondo = NOMBRE_FONDO as Partial<Record<string, string>>;
   protected readonly dinero = dinero;
   protected readonly fechaHora = fechaHora;
 

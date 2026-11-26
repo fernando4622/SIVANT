@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Sesion } from '../../../core/auth/sesion';
@@ -37,10 +37,17 @@ import { NOMBRE_TIPO, Producto, ProductosApi } from '../data-access/productos.ap
     .producto__imagen {
       display: grid;
       place-items: center;
+      overflow: hidden;
       min-height: 8.25rem;
       border-radius: var(--radio-chico);
       background: var(--cabecera);
       color: var(--texto-suave);
+    }
+
+    .producto__imagen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .producto__contenido {
@@ -118,7 +125,14 @@ export class ListadoProductos {
     this.api.listar({ q: p.get('q') ?? '', tipo: p.get('tipo') ?? '', activo: p.get('activo') ?? '', page }),
   );
 
+  /** Productos cuya imagen no cargó: se muestra el marcador. */
+  protected readonly sinImagen = signal(new Set<string>());
+
   constructor() {
     conectarFiltros(this.filtros, this.listado);
+  }
+
+  protected ocultarImagen(id: string): void {
+    this.sinImagen.update((ids) => new Set(ids).add(id));
   }
 }

@@ -88,17 +88,26 @@ final class ProductoDtos {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record Respuesta(String id, String nombre, String descripcion, String precioVenta, TipoProducto tipo,
-            UnidadMedida unidadMedida, boolean activo, List<Componente> receta, Saldo existencia) {
+            UnidadMedida unidadMedida, boolean activo, String imagen, List<Componente> receta, Saldo existencia) {
 
         static Respuesta de(DatosProducto p) {
             return new Respuesta(p.id().toString(), p.nombre(), p.descripcion(), Decimales.dinero(p.precioVenta()),
-                    p.tipo(), p.unidadMedida(), p.activo(),
+                    p.tipo(), p.unidadMedida(), p.activo(), urlImagen(p),
                     p.receta() == null ? null : p.receta().stream().map(c -> new Componente(c.insumoId().toString(),
                             c.nombre(), c.unidadMedida(), Decimales.cantidad(c.cantidadRequerida()))).toList(),
                     p.existencia() == null ? null : new Saldo(p.existencia().id().toString(),
                             Decimales.cantidad(p.existencia().cantidadActual()),
                             Decimales.cantidad(p.existencia().nivelMinimo())));
         }
+    }
+
+    /** La versión cambia con cada imagen nueva, así el navegador puede guardarla en caché sin mostrar una vieja. */
+    private static String urlImagen(DatosProducto p) {
+        if (p.imagen() == null) {
+            return null;
+        }
+        String archivo = p.imagen().substring(p.imagen().lastIndexOf('/') + 1);
+        return "/api/v1/productos/" + p.id() + "/imagen?v=" + archivo.substring(0, archivo.indexOf('.'));
     }
 
     record InsumoRespuesta(String id, String nombre, UnidadMedida unidadMedida) {

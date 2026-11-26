@@ -434,6 +434,87 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
+  /productos/{id}/imagen:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Productos]
+      operationId: obtenerImagenProducto
+      summary: Imagen del producto
+      description: >-
+        ADMINISTRADOR o MESERO; el mesero solo la de productos activos. La URL que devuelve el producto incluye la
+        versión, así que la respuesta se guarda en caché privada.
+      responses:
+        '200':
+          description: Archivo de la imagen
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404':
+          description: El producto no existe o no tiene imagen
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+    put:
+      tags: [Productos]
+      operationId: cambiarImagenProducto
+      summary: Subir o reemplazar la imagen del producto
+      description: >-
+        Solo ADMINISTRADOR. JPG, PNG o WebP de hasta 2 MB; el formato se reconoce por el contenido. El archivo se guarda
+        en el almacén de imágenes y el producto conserva solo su ruta. La imagen anterior se borra.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary }
+      responses:
+        '200':
+          description: Producto con la nueva imagen
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '413':
+          description: La imagen pesa más de 2 MB (`DATOS_INVALIDOS` en `archivo`)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+    delete:
+      tags: [Productos]
+      operationId: quitarImagenProducto
+      summary: Quitar la imagen del producto
+      description: Solo ADMINISTRADOR. Borra la ruta y el archivo.
+      security:
+        - sesion: []
+          csrf: []
+      responses:
+        '200':
+          description: Producto sin imagen
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`SIN_IMAGEN`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
   /productos/{id}/desactivacion:
     parameters:
       - $ref: '#/components/parameters/IdRecurso'
@@ -1602,6 +1683,10 @@ components:
         tipo: { $ref: '#/components/schemas/TipoProducto' }
         unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
         activo: { type: boolean }
+        imagen:
+          description: URL de la imagen con su versión. Ausente si el producto no tiene imagen
+          type: string
+          example: /api/v1/productos/4/imagen?v=0a1b2c3d-4e5f-6789-abcd-ef0123456789
         receta:
           type: array
           items:
@@ -2207,6 +2292,7 @@ components:
             - EMPLEADO_INACTIVO
             - ULTIMO_ADMINISTRADOR
             - PRODUCTO_INACTIVO
+            - SIN_IMAGEN
             - EXISTENCIA_INSUFICIENTE
             - AJUSTE_RESUELTO
             - EXISTENCIA_CAMBIADA

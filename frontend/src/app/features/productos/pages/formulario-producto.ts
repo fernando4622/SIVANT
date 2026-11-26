@@ -1,8 +1,17 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, switchMap } from 'rxjs';
+import { Observable, of, switchMap, tap } from 'rxjs';
 import { leerProblema } from '../../../core/http/problema';
 import {
   NOMBRE_UNIDAD,
@@ -21,11 +30,13 @@ import {
   NOMBRE_TIPO,
   Producto,
   ProductosApi,
+  TAMANO_MAXIMO_IMAGEN,
+  TIPOS_IMAGEN,
   TipoProducto,
   UnidadMedida,
 } from '../data-access/productos.api';
 
-/** Alta (RF07) y edición (RF09). La edición cambia nombre, descripción y precio. */
+/** Alta (RF07) y edición (RF09). La edición cambia nombre, descripción, precio e imagen. */
 @Component({
   selector: 'app-formulario-producto',
   imports: [ReactiveFormsModule, RouterLink, Icono],
@@ -66,7 +77,22 @@ export class FormularioProducto implements OnInit {
   protected readonly erroresServidor = signal<Record<string, string>>({});
   protected readonly edicion = computed(() => this.id() !== undefined);
 
+  /** Imagen elegida y aún sin guardar; `null` si se pidió quitar la actual. */
+  protected readonly imagenNueva = signal<File | null | undefined>(undefined);
+  protected readonly errorImagen = signal<string | null>(null);
+  /** Producto ya registrado cuya imagen no se pudo guardar: no se vuelve a dar de alta. */
+  protected readonly creado = signal<string | null>(null);
+  private readonly urlLocal = signal<string | null>(null);
+  protected readonly vistaPrevia = computed(() => {
+    const nueva = this.imagenNueva();
+    if (nueva === null) {
+      return null;
+    }
+    return nueva ? this.urlLocal() : (this.original()?.imagen ?? null);
+  });
+
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.liberarVista());
     this.formulario.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.erroresServidor.set({}));
     this.formulario.controls.tipo.valueChanges.pipe(takeUntilDestroyed()).subscribe((tipo) => this.segunTipo(tipo));
   }
@@ -96,6 +122,34 @@ export class FormularioProducto implements OnInit {
       },
       error: (error: unknown) => this.falloCarga(error),
     });
+  }
+
+  /** Se valida aquí para avisar antes de enviar; la API vuelve a revisar el contenido del archivo. */
+  protected elegirImagen(selector: HTMLInputElement): void {
+    const archivo = selector.files?.[0];
+    selector.value = '';
+    if (!archivo) {
+      return;
+    }
+    if (!TIPOS_IMAGEN.includes(archivo.type)) {
+      this.errorImagen.set('Usa una imagen JPG, PNG o WebP.');
+      return;
+    }
+    if (archivo.size > TAMANO_MAXIMO_IMAGEN) {
+      this.errorImagen.set('La imagen pesa más de 2 MB.');
+      return;
+    }
+    this.errorImagen.set(null);
+    this.liberarVista();
+    this.urlLocal.set(URL.createObjectURL(archivo));
+    this.imagenNueva.set(archivo);
+  }
+
+  protected quitarImagen(selector: HTMLInputElement): void {
+    selector.value = '';
+    this.errorImagen.set(null);
+    this.liberarVista();
+    this.imagenNueva.set(this.original()?.imagen ? null : undefined);
   }
 
   protected agregarInsumo(): void {
@@ -141,7 +195,7 @@ export class FormularioProducto implements OnInit {
   protected guardar(): void {
     this.enviado.set(true);
     this.error.set(null);
-    if (this.guardando()) {
+    if (this.guardando() || this.creado()) {
       return;
     }
     const repetidos = this.formulario.controls.receta.controls.some((_, i) => this.repetido(i));
@@ -152,20 +206,24 @@ export class FormularioProducto implements OnInit {
     const id = this.id();
     let operacion;
     if (id === undefined) {
-      operacion = this.api.registrar(this.alta());
+      operacion = this.api.registrar(this.alta()).pipe(tap((producto) => this.creado.set(producto.id)));
     } else {
       const cambios = this.cambios();
       const cambiaEstado = this.formulario.controls.activo.value !== this.original()?.activo;
-      if (Object.keys(cambios).length === 0 && !cambiaEstado) {
+      if (Object.keys(cambios).length === 0 && !cambiaEstado && this.imagenNueva() === undefined) {
         this.error.set('No hay cambios por guardar.');
         return;
       }
       const estado = () =>
         this.formulario.controls.activo.value ? this.api.reactivar(id) : this.api.desactivar(id);
+      const actual = this.original()!;
       operacion = Object.keys(cambios).length
         ? this.api.editar(id, cambios).pipe(switchMap((producto) => (cambiaEstado ? estado() : this.resultado(producto))))
-        : estado();
+        : cambiaEstado
+          ? estado()
+          : of(actual);
     }
+    operacion = operacion.pipe(switchMap((producto) => this.guardarImagen(producto)));
     this.guardando.set(true);
     operacion.subscribe({
       next: () => void this.router.navigateByUrl('/productos'),
@@ -173,11 +231,36 @@ export class FormularioProducto implements OnInit {
         // Se conservan los datos capturados para corregirlos.
         const problema = leerProblema(error);
         this.guardando.set(false);
+        const deImagen = problema.erroresCampo['archivo'];
+        if (deImagen) {
+          this.errorImagen.set(deImagen);
+        }
+        if (this.creado()) {
+          this.error.set(`El producto se registró, pero no se guardó la imagen: ${deImagen ?? problema.detalle}`);
+          return;
+        }
         this.erroresServidor.set(problema.erroresCampo);
         const campos = Object.keys(problema.erroresCampo);
         this.error.set(problema.erroresCampo['receta'] ?? (campos.length ? 'Revisa los datos marcados.' : problema.detalle));
       },
     });
+  }
+
+  /** La imagen se guarda después del producto, porque el alta necesita su ID. */
+  private guardarImagen(producto: Producto): Observable<Producto> {
+    const nueva = this.imagenNueva();
+    if (nueva) {
+      return this.api.subirImagen(producto.id, nueva);
+    }
+    return nueva === null ? this.api.quitarImagen(producto.id) : of(producto);
+  }
+
+  private liberarVista(): void {
+    const url = this.urlLocal();
+    if (url) {
+      URL.revokeObjectURL(url);
+      this.urlLocal.set(null);
+    }
   }
 
   private componente() {

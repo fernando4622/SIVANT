@@ -29,6 +29,19 @@
   width: 100%;
 }
 
+.imagen-producto__vista {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radio-chico);
+  object-fit: cover;
+  background: var(--cabecera);
+}
+
+.imagen-producto input[type='file']:focus-visible + label {
+  outline: 2.4px solid var(--azul, #1d4ed8);
+  outline-offset: 2px;
+}
+
 .datos-producto textarea {
   min-height: 7rem;
   resize: vertical;

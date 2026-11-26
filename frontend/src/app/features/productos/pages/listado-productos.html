@@ -49,7 +49,11 @@
       @for (producto of datos.contenido; track producto.id) {
         <li class="tarjeta producto">
           <div class="producto__imagen" aria-hidden="true">
-            <app-icono nombre="productos" [tamano]="38" />
+            @if (producto.imagen && !sinImagen().has(producto.id)) {
+              <img [src]="producto.imagen" alt="" loading="lazy" (error)="ocultarImagen(producto.id)" />
+            } @else {
+              <app-icono nombre="productos" [tamano]="38" />
+            }
           </div>
 
           <div class="producto__contenido">

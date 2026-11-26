@@ -64,6 +64,44 @@ class ClienteApi {
         return enviar("PUT", ruta, cuerpo, false, true, null);
     }
 
+    Respuesta delete(String ruta) {
+        return enviar("DELETE", ruta, null, false, true, null);
+    }
+
+    /** Envía un archivo en multipart/form-data, como el formulario del navegador. */
+    Respuesta subir(String metodo, String ruta, String parte, String nombre, byte[] contenido) {
+        try {
+            String limite = "----sivant" + System.nanoTime();
+            var cuerpo = new java.io.ByteArrayOutputStream();
+            String fin = "\r\n";
+            cuerpo.write(("--" + limite + fin + "Content-Disposition: form-data; name=\"" + parte + "\"; filename=\""
+                    + nombre + "\"" + fin + "Content-Type: application/octet-stream" + fin + fin)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            cuerpo.write(contenido);
+            cuerpo.write((fin + "--" + limite + "--" + fin).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            var solicitud = HttpRequest.newBuilder(URI.create(base + ruta))
+                    .header("Content-Type", "multipart/form-data; boundary=" + limite)
+                    .method(metodo, HttpRequest.BodyPublishers.ofByteArray(cuerpo.toByteArray()));
+            if (cookie("XSRF-TOKEN") != null) {
+                solicitud.header("X-XSRF-TOKEN", cookie("XSRF-TOKEN"));
+            }
+            HttpResponse<String> r = http.send(solicitud.build(), HttpResponse.BodyHandlers.ofString());
+            JsonNode json = r.body().startsWith("{") ? JSON.readTree(r.body()) : JSON.createObjectNode();
+            return new Respuesta(r.statusCode(), json, r.body(), r.headers().map());
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    HttpResponse<byte[]> getBytes(String ruta) {
+        try {
+            return http.send(HttpRequest.newBuilder(URI.create(base + ruta)).GET().build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     Respuesta sinCsrf(String metodo, String ruta, Object cuerpo) {
         return enviar(metodo, ruta, cuerpo, false, false, null);
     }

@@ -52,7 +52,7 @@ class PermisosTest extends PruebaIntegracion {
     @Test
     @DisplayName("CP-15 Una ruta no declarada se rechaza incluso para el administrador")
     void rutaNoDeclarada() {
-        assertThat(sesionDe(administrador).get("/caja/entregas").estado()).isEqualTo(403);
+        assertThat(sesionDe(administrador).get("/reportes").estado()).isEqualTo(403);
     }
 
     private static List<ClienteApi.Respuesta> operaciones(ClienteApi cliente, Empleado objetivo) {

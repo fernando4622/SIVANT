@@ -17,6 +17,7 @@ import mx.sivant.servicio.aplicacion.DatosServicio.Cobro;
 import mx.sivant.servicio.aplicacion.DatosServicio.Comanda;
 import mx.sivant.servicio.aplicacion.DatosServicio.Cuenta;
 import mx.sivant.servicio.aplicacion.DatosServicio.Detalle;
+import mx.sivant.servicio.aplicacion.DatosServicio.Fondo;
 import mx.sivant.servicio.aplicacion.DatosServicio.EnCola;
 import mx.sivant.servicio.aplicacion.DatosServicio.Mesa;
 import mx.sivant.servicio.aplicacion.DatosServicio.ResumenCuenta;
@@ -126,18 +127,23 @@ public class ServicioJdbc implements CuentasDeEmpleado {
     public Optional<Cuenta> cuenta(Long id) {
         return sql.sql("""
                 SELECT c.id_cuenta, c.id_mesa, m.numero, c.id_mesero, e.nombre_completo, c.estado, c.fecha_hora_apertura,
-                       c.fecha_hora_cierre, c.version, v.fecha_hora, p.metodo, v.total, p.referencia_externa, v.estado
+                       c.fecha_hora_cierre, c.version, v.fecha_hora, p.metodo, v.total, p.referencia_externa, v.estado,
+                       g.id_fondo_cambio, g.monto, g.estado, eg.nombre_completo, g.fecha_hora
                 FROM sivant.cuenta c
                 JOIN sivant.mesa m USING (id_mesa)
                 JOIN sivant.empleado e ON e.id_empleado = c.id_mesero
                 LEFT JOIN sivant.venta v USING (id_cuenta)
                 LEFT JOIN sivant.pago p USING (id_venta)
+                LEFT JOIN sivant.fondo_cambio g ON g.id_cuenta = c.id_cuenta AND g.estado <> 'ANULADO'
+                LEFT JOIN sivant.empleado eg ON eg.id_empleado = g.id_cajero
                 WHERE c.id_cuenta = ?
                 """).param(id).query((f, n) -> new Cuenta(f.getLong(1), f.getLong(2), f.getInt(3), f.getLong(4),
                 f.getString(5), EstadoCuenta.valueOf(f.getString(6)), f.getObject(7, OffsetDateTime.class),
                 f.getObject(8, OffsetDateTime.class), f.getInt(9), comandasDe(f.getLong(1)),
                 f.getString(11) == null ? null : new Cobro(f.getObject(10, OffsetDateTime.class), f.getString(11),
-                        f.getBigDecimal(12), f.getString(13), f.getString(14)))).optional();
+                        f.getBigDecimal(12), f.getString(13), f.getString(14)),
+                f.getString(17) == null ? null : new Fondo(f.getLong(15), f.getBigDecimal(16), f.getString(17),
+                        f.getString(18), f.getObject(19, OffsetDateTime.class)))).optional();
     }
 
     // --- Comandas

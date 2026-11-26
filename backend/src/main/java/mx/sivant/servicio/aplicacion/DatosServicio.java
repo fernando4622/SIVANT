@@ -21,7 +21,7 @@ public final class DatosServicio {
 
     public record Cuenta(Long id, Long mesaId, int mesa, Long meseroId, String mesero, EstadoCuenta estado,
             OffsetDateTime fechaHoraApertura, OffsetDateTime fechaHoraCierre, int version, List<Comanda> comandas,
-            Cobro cobro) {
+            Cobro cobro, Fondo fondo) {
 
         /** Suma de comandas no canceladas, con los precios guardados. */
         public BigDecimal total() {
@@ -39,6 +39,10 @@ public final class DatosServicio {
                     .allMatch(c -> c.estado() == EstadoComanda.SERVIDA || c.estado() == EstadoComanda.CANCELADA);
         }
 
+        public boolean fondoPendiente() {
+            return fondo != null && fondo.estado().equals("PENDIENTE");
+        }
+
         public boolean tieneComandasVigentes() {
             return comandas.stream().anyMatch(c -> c.estado() != EstadoComanda.CANCELADA);
         }
@@ -47,6 +51,10 @@ public final class DatosServicio {
     /** Presente si la cuenta se cerró con una venta. */
     public record Cobro(OffsetDateTime fechaHora, String metodo, BigDecimal total, String referenciaExterna,
             String estado) {
+    }
+
+    /** Fondo de cambio vigente: pendiente, aplicado al pago o liquidado. Los anulados no se incluyen. */
+    public record Fondo(Long id, BigDecimal monto, String estado, String cajero, OffsetDateTime fechaHora) {
     }
 
     public record Comanda(Long id, Long cuentaId, EstadoComanda estado, OffsetDateTime fechaHoraEnvio, int version,

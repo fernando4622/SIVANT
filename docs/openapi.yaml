@@ -1,14 +1,14 @@
 openapi: 3.1.0
 info:
   title: API de SIVANT
-  version: 0.5.0
+  version: 0.6.0
   license:
     name: Uso interno
     identifier: LicenseRef-SIVANT
   description: |
-    Contrato de las fases 0 a 5: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
+    Contrato de las fases 0 a 6: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
     (RF15 a RF18), servicio y consumo (RF01 a RF03, RF23 y RF24) y
-    cocina (RF19 a RF21), y cobro y ventas (RF04 a RF06 y RF22).
+    cocina (RF19 a RF21), cobro y ventas (RF04 a RF06 y RF22), y caja y fondo de cambio (RF25 y RF26).
     Cada fase agrega sus operaciones antes de enlazar sus pantallas.
 
     ## Convenciones
@@ -21,7 +21,8 @@ info:
 
     ## Idempotencia
     Los movimientos, las solicitudes de ajuste y su resolución, la apertura y el cierre de cuentas, el envío, la
-    cancelación y el servicio de comandas, el cobro y la cancelación de ventas exigen `Idempotency-Key`. Repetir la solicitud con la
+    cancelación y el servicio de comandas, el cobro y la cancelación de ventas, la entrega y la anulación del fondo de cambio y la recepción de
+    efectivo exigen `Idempotency-Key`. Repetir la solicitud con la
     misma clave y los mismos datos devuelve el resultado guardado sin aplicarla de nuevo; con otros datos responde 409.
     Si la operación falló, la clave queda libre.
 
@@ -66,6 +67,8 @@ tags:
     description: Bandeja personal
   - name: Ventas
     description: RF04 a RF06 y RF22. Cobra el mesero; consultan ADMINISTRADOR y CAJERO; cancela ADMINISTRADOR
+  - name: Caja
+    description: RF25 y RF26. CAJERO; el mesero responsable consulta el fondo de su cuenta
 security:
   - sesion: []
 
@@ -798,7 +801,9 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
-          description: '`CUENTA_CON_COMANDAS`, `CUENTA_CERRADA`, `VERSION_OBSOLETA` o `IDEMPOTENCIA_CONFLICTO`'
+          description: >-
+            `CUENTA_CON_COMANDAS`, `FONDO_PENDIENTE`, `CUENTA_CERRADA`, `VERSION_OBSOLETA` o
+            `IDEMPOTENCIA_CONFLICTO`
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -818,6 +823,9 @@ paths:
         El cargo con tarjeta se hace antes en la terminal. Si la respuesta no llega, se repite con la misma clave y la
         misma referencia: no se registra dos veces. Si la cuenta cambió después del cargo (`VERSION_OBSOLETA` o
         `TOTAL_CAMBIADO`), no se registra y el cargo se revierte en la terminal.
+
+        Si la cuenta tiene un fondo de cambio pendiente, solo se cobra en efectivo y el fondo queda APLICADO a ese
+        pago.
 
         La referencia se guarda en mayúsculas, sin espacios alrededor. Es obligatoria con tarjeta, opcional con
         transferencia y no se admite en efectivo. No puede repetirse con el mismo método el mismo día ni parecer el
@@ -845,7 +853,97 @@ paths:
         '409':
           description: >-
             `CUENTA_CERRADA`, `VERSION_OBSOLETA`, `CUENTA_SIN_COMANDAS`, `COMANDAS_PENDIENTES`, `TOTAL_INVALIDO`,
-            `TOTAL_CAMBIADO`, `REFERENCIA_REPETIDA` o `IDEMPOTENCIA_CONFLICTO`
+            `TOTAL_CAMBIADO`, `FONDO_PENDIENTE` (solo efectivo con un fondo pendiente), `REFERENCIA_REPETIDA` o
+            `IDEMPOTENCIA_CONFLICTO`
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /cuentas/{id}/fondo-cambio:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    get:
+      tags: [Caja]
+      operationId: consultarFondosDeCuenta
+      summary: Fondos de cambio de la cuenta (RF26)
+      description: CAJERO o el mesero responsable. Todos, también los anulados, del más reciente al más antiguo.
+      responses:
+        '200':
+          description: Fondos de la cuenta
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Fondo' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    post:
+      tags: [Caja]
+      operationId: entregarFondo
+      summary: Entregar fondo de cambio (RF26)
+      description: |
+        Solo CAJERO, después de entregar el efectivo al mesero de la cuenta. La cuenta debe estar abierta, con al menos
+        una comanda no cancelada y total positivo. Queda PENDIENTE: la cuenta solo se cobra en efectivo y no se cierra
+        sin cobro hasta anularlo. Una cuenta tiene a lo sumo un fondo vigente.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AltaFondo' }
+      responses:
+        '201':
+          description: Fondo PENDIENTE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Fondo' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`CUENTA_CERRADA`, `CUENTA_SIN_COMANDAS`, `TOTAL_INVALIDO`, `FONDO_VIGENTE` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /cuentas/{id}/fondo-cambio/anulacion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Caja]
+      operationId: anularFondo
+      summary: Anular el fondo devuelto antes del cobro (RF26)
+      description: |
+        Solo CAJERO, después de recibir el fondo completo. Pasa de PENDIENTE a ANULADO con cajero, fecha y
+        justificación. Se conserva y permite entregar otro. Un fondo aplicado no se anula.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnulacionFondo' }
+      responses:
+        '200':
+          description: Fondo ANULADO
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Fondo' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`SIN_FONDO_PENDIENTE` o `IDEMPOTENCIA_CONFLICTO`'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -1166,6 +1264,88 @@ paths:
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
           description: '`VENTA_CANCELADA`, `REFERENCIA_REPETIDA` o `IDEMPOTENCIA_CONFLICTO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /caja/fondos:
+    get:
+      tags: [Caja]
+      operationId: consultarFondos
+      summary: Seguimiento de fondos de cambio (RF26)
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoFondo' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Fondos, del más reciente al más antiguo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaFondos' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /caja/pagos-efectivo-pendientes:
+    get:
+      tags: [Caja]
+      operationId: consultarPagosPendientes
+      summary: Pagos en efectivo por entregar (RF25)
+      description: |
+        Pagos en efectivo que no están en ninguna entrega, por mesero y fecha. Incluye los de ventas canceladas: la
+        devolución sale de caja y el pago original se rinde.
+      parameters:
+        - name: meseroId
+          in: query
+          schema: { $ref: '#/components/schemas/Id' }
+      responses:
+        '200':
+          description: Pagos pendientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PagoEfectivo' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /caja/entregas-efectivo:
+    post:
+      tags: [Caja]
+      operationId: recibirEfectivo
+      summary: Registrar entrega de efectivo (RF25)
+      description: |
+        El cajero recibe uno o más pagos en efectivo del mismo mesero, pendientes de entregar, y por separado el fondo
+        de cambio aplicado a esos pagos. `montoRecibido` debe ser la suma exacta de los pagos y `fondoRecibido` la de
+        sus fondos. Los pagos se bloquean en orden de ID; cada uno figura en una sola entrega. Los fondos quedan
+        LIQUIDADOS en esta entrega.
+      security:
+        - sesion: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Recepcion' }
+      responses:
+        '201':
+          description: Entrega con sus pagos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entrega' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409':
+          description: >-
+            `PAGO_NO_EFECTIVO`, `PAGO_DE_OTRO_MESERO`, `PAGO_ENTREGADO`, `MONTO_DISTINTO`, `FONDO_DISTINTO` o
+            `IDEMPOTENCIA_CONFLICTO`
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -1697,9 +1877,20 @@ components:
             total: { $ref: '#/components/schemas/Dinero' }
             referenciaExterna: { type: string }
             estado: { $ref: '#/components/schemas/EstadoVenta' }
+        fondo:
+          description: Fondo de cambio vigente (no anulado)
+          type: object
+          required: [id, monto, estado, cajero, fechaHora]
+          properties:
+            id: { $ref: '#/components/schemas/Id' }
+            monto: { $ref: '#/components/schemas/Dinero' }
+            estado: { $ref: '#/components/schemas/EstadoFondo' }
+            cajero: { type: string }
+            fechaHora: { type: string, format: date-time }
         acciones:
+          description: ENTREGAR_FONDO y ANULAR_FONDO solo para CAJERO
           type: array
-          items: { type: string, enum: [ENVIAR_COMANDA, COBRAR, CERRAR_SIN_COBRO] }
+          items: { type: string, enum: [ENVIAR_COMANDA, COBRAR, CERRAR_SIN_COBRO, ENTREGAR_FONDO, ANULAR_FONDO] }
     ResumenCuenta:
       type: object
       properties:
@@ -1877,6 +2068,104 @@ components:
           type: boolean
         justificacion: { type: string, minLength: 1, maxLength: 500 }
         referenciaReversion: { $ref: '#/components/schemas/Referencia' }
+    EstadoFondo:
+      type: string
+      description: PENDIENTE al entregarlo, APLICADO al cobrar, LIQUIDADO al regresarlo a caja, ANULADO si se devuelve antes
+      enum: [PENDIENTE, APLICADO, LIQUIDADO, ANULADO]
+    AltaFondo:
+      type: object
+      required: [monto]
+      properties:
+        monto:
+          description: Mayor que 0
+          $ref: '#/components/schemas/Dinero'
+    AnulacionFondo:
+      type: object
+      required: [justificacion]
+      properties:
+        justificacion: { type: string, minLength: 1, maxLength: 500 }
+    Fondo:
+      type: object
+      required: [id, cuentaId, mesa, mesero, cajero, monto, fechaHora, estado]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        cuentaId: { $ref: '#/components/schemas/Id' }
+        mesa: { type: integer }
+        mesero: { type: string }
+        cajero: { type: string }
+        monto: { $ref: '#/components/schemas/Dinero' }
+        fechaHora: { type: string, format: date-time }
+        estado: { $ref: '#/components/schemas/EstadoFondo' }
+        ventaId:
+          description: Venta a cuyo pago se aplicó
+          $ref: '#/components/schemas/Id'
+        entregaId:
+          description: Entrega en la que se regresó a caja
+          $ref: '#/components/schemas/Id'
+        anulacion:
+          type: object
+          required: [cajero, fechaHora, justificacion]
+          properties:
+            cajero: { type: string }
+            fechaHora: { type: string, format: date-time }
+            justificacion: { type: string }
+    PaginaFondos:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            contenido:
+              type: array
+              items: { $ref: '#/components/schemas/Fondo' }
+    PagoEfectivo:
+      type: object
+      required: [id, ventaId, mesa, meseroId, mesero, fechaHora, monto, estadoVenta]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        ventaId: { $ref: '#/components/schemas/Id' }
+        mesa: { type: integer }
+        meseroId: { $ref: '#/components/schemas/Id' }
+        mesero: { type: string }
+        fechaHora: { type: string, format: date-time }
+        monto: { $ref: '#/components/schemas/Dinero' }
+        estadoVenta: { $ref: '#/components/schemas/EstadoVenta' }
+        fondo:
+          description: Fondo de cambio aplicado a este pago
+          $ref: '#/components/schemas/Dinero'
+    Recepcion:
+      type: object
+      required: [meseroId, pagoIds, montoRecibido]
+      properties:
+        meseroId: { $ref: '#/components/schemas/Id' }
+        pagoIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Id' }
+        montoRecibido:
+          description: Efectivo de los pagos. Mayor que 0
+          $ref: '#/components/schemas/Dinero'
+        fondoRecibido:
+          description: Fondo de cambio regresado. 0 por omisión
+          $ref: '#/components/schemas/Dinero'
+    Entrega:
+      type: object
+      required: [id, fechaHora, mesero, cajero, monto, montoFondo, pagos]
+      properties:
+        id: { $ref: '#/components/schemas/Id' }
+        fechaHora: { type: string, format: date-time }
+        mesero: { type: string }
+        cajero: { type: string }
+        monto:
+          description: Suma de los pagos
+          $ref: '#/components/schemas/Dinero'
+        montoFondo:
+          description: Fondo de cambio liquidado, aparte del importe de los pagos
+          $ref: '#/components/schemas/Dinero'
+        pagos:
+          type: array
+          items: { $ref: '#/components/schemas/PagoEfectivo' }
     Notificacion:
       type: object
       required: [id, tipo, mensaje, fechaHora, leida, contexto]
@@ -1954,6 +2243,14 @@ components:
             - TOTAL_CAMBIADO
             - REFERENCIA_REPETIDA
             - VENTA_CANCELADA
+            - FONDO_VIGENTE
+            - SIN_FONDO_PENDIENTE
+            - FONDO_PENDIENTE
+            - PAGO_NO_EFECTIVO
+            - PAGO_DE_OTRO_MESERO
+            - PAGO_ENTREGADO
+            - MONTO_DISTINTO
+            - FONDO_DISTINTO
             - ERROR_INTERNO
         erroresCampo:
           type: object

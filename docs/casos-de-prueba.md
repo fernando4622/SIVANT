@@ -1,4 +1,4 @@
-# Casos de prueba · Fases 0 a 6
+# Casos de prueba · Fases 0 a 7
 
 Casos derivados del diagrama de casos de uso, los RF implementados y los RNF08 (expiración de sesión), RNF09 (auditoría) y RNF10 (tiempo real).
 El identificador aparece en el nombre de la prueba automatizada, así que se puede buscar en el código o en el reporte.
@@ -15,9 +15,10 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 166 | 233 | 233 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 167 | 234 | 234 | 0 |
+| Rendimiento | `.\mvnw.cmd test "-Dexcluir=ninguna" "-Dgroups=rendimiento"` en `backend/` | 3 | 3 | 3 | 0 |
 | Frontend | `npm test -- --watch=false` en `frontend/` | 83 | 95 | 95 | 0 |
-| Navegador | Manual | 45 | 45 | 45 | 0 |
+| Navegador | Manual | 49 | 49 | 49 | 0 |
 
 Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
 pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
@@ -58,6 +59,9 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Cancelar venta | RF22 | CP-142 a CP-149, CP-150, CP-F74, CP-F75, CP-M32, CP-M33 |
 | Registrar entrega de efectivo | RF25 | CP-160 a CP-166, CP-F80, CP-F81, CP-M36, CP-M39 |
 | Entregar fondo de cambio (extiende Cobrar pedido) | RF26 | CP-152 a CP-159, CP-166, CP-F76 a CP-F79, CP-F82, CP-M34, CP-M35, CP-M37 a CP-M39 |
+| Aceptación: demostración con los cinco roles | Fase 7 | CP-167, CP-M49 |
+| Rendimiento y sesiones simultáneas | RNF01 a RNF03 | CP-168 a CP-170 |
+| Accesibilidad, móvil y maquetas | Fase 7 | CP-M46 a CP-M48 |
 
 ## Precondiciones comunes
 
@@ -507,6 +511,18 @@ Se repitieron con condiciones reales las comprobaciones que antes se simularon o
 |---|---|---|---|---|
 | CP-F83 | Sesión de cada rol | Mostrar el menú principal | Cada rol ve solo sus opciones; **Caja** solo el cajero | Aprobado (5 roles) |
 
+## Aceptación final · Fase 7
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-167 | Base nueva con los cinco roles | Insumo y preparado; entrada y ajuste autorizado; cuenta con dos comandas, una editada y otra cancelada; cocina las prepara; fondo de 100; servir; cobrar en efectivo; consultar y cancelar la venta; recibir el efectivo y el fondo | Saldos 480 y 426 tras el ajuste y el consumo; total 125.00; la cancelación no repone inventario; el fondo queda LIQUIDADO; cada acción auditada con su responsable | Aprobado |
+| CP-168 | 50 000 ventas de dos años y 100 000 movimientos | 20 veces: ventas sin filtros, por mesero y método, del último mes, última página, detalle, opciones y movimientos | p95 menor a 2 s en todas | Aprobado |
+| CP-169 | Base de prueba | Mesero, administrador y almacenista a la vez, 15 vueltas: catálogo, enviar y editar comandas, altas y ediciones de productos y empleados, movimientos | p95 menor a 1.5 s, sin errores | Aprobado |
+| CP-170 | La historia de CP-168 | Mesero, cocinero, almacenista y cajero a la vez, 15 vueltas | p95 menor a 1.5 s, sin errores; las 15 comandas quedan listas | Aprobado |
+
+Los tiempos están en [aceptacion.md](aceptacion.md#rendimiento). Para que la carga tome segundos, CP-168 y CP-170
+insertan la historia con las validaciones por fila suspendidas y después comprueban con una consulta que cuadre.
+
 ## Recorrido en el navegador
 
 | ID | Precondición | Pasos y datos | Resultado obtenido | Estado |
@@ -556,6 +572,10 @@ Se repitieron con condiciones reales las comprobaciones que antes se simularon o
 | CP-M43 | Un pago de Juan de 40 con fondo de 100 | Recibirlo como cajera | «Entrega 2 registrada: $40.00 de 1 pago(s) de Juan Pérez y $100.00 de fondo de cambio.» | Aprobado |
 | CP-M44 | Administrador | Alta con «MESERO@sivant.test», ya usado | El error aparece una vez en el campo de correo, el aviso general pide revisar lo marcado y se conservan los datos | Aprobado |
 | CP-M45 | Mesero en una nueva comanda a 360 px | Agregar un producto | El selector de cantidad mide 136 × 44 px y no hay desplazamiento horizontal | Aprobado |
+| CP-M46 | Los cinco roles; 36 pantallas | Auditoría en la página a 1024, 768 y 360 px: idioma, tipografía base, letra mínima, contraste AA, etiquetas, nombres accesibles, un `h1` y desplazamiento horizontal | Tipografía base de 16 px, ninguna letra menor a 14 px, contraste suficiente, todos los controles con etiqueta y nombre, un `h1` y sin desplazamiento horizontal | Aprobado tras corregir |
+| CP-M47 | Inicio de sesión | Recorrer con Tab | El control enfocado muestra un contorno azul de 2.4 px (`:focus-visible` global en todas las pantallas) | Aprobado |
+| CP-M48 | Maquetas de `Interfaces` | Comparar empleados, editar producto, movimientos y ajuste con su pantalla | Misma estructura, encabezado, tarjetas, tablas, avisos y botones; las diferencias están en [decisiones.md](decisiones.md) | Aprobado |
+| CP-M49 | Clon de la rama en otra carpeta, `.env` nuevo y base vacía (proyecto de Compose aparte) | Pasos del README; `npm ci`; `scripts/recorrido-demostracion.py`; entrar con los cinco roles | 9 migraciones aplicadas; `npm ci` sin errores; 19 de 19 pasos correctos; cada rol ve su menú | Aprobado |
 
 ### Defectos encontrados
 
@@ -577,6 +597,10 @@ Se repitieron con condiciones reales las comprobaciones que antes se simularon o
 | CP-147 | Sin el bloqueo de la venta, las cancelaciones simultáneas respondían `REFERENCIA_REPETIDA` y la prueba no lo detectaba | La prueba exige `VENTA_CANCELADA` |
 | CP-M36 | El aviso de entrega dejaba un espacio antes del punto final | Se unió el texto; CP-M43 lo confirma |
 | CP-166 | Quitar la entrega de un fondo liquidado no descuadraba la entrega porque el disparador solo revisaba la nueva | El disparador revisa la entrega anterior y la nueva |
+| CP-M46 | A 1024 px el cobro tenía 16 px de desplazamiento horizontal: «Transferencia» no cabía en su opción | Las opciones bajan a otra fila; se repitió la auditoría |
+
+En CP-M46 la revisión automática del foco da falsos positivos cuando la página no tiene el foco del sistema; por eso
+el foco se comprobó con el teclado en CP-M47.
 
 ## Sin cubrir
 
@@ -584,9 +608,10 @@ Se repitieron con condiciones reales las comprobaciones que antes se simularon o
 - Dispositivos físicos: el móvil se revisó con la vista de 360 px del navegador.
 - HTTPS con el proxy de producción, que aún no existe: CP-M41 usa TLS directamente en la API, y Angular se probó
   con su servidor de desarrollo en HTTP.
-- Tiempos de respuesta y sesiones simultáneas (RNF01 a RNF03), que el ROADMAP ubica en la fase 7.
+- Disponibilidad (98 % de 08:00 a 17:00): no hay un entorno observado.
+- Lectores de pantalla: se revisaron nombres y etiquetas, no se usó un lector.
 
 ## Casos de uso del diagrama
 
-Todos los casos de uso del diagrama tienen casos de prueba. La fase 7 agrega la aceptación final: rendimiento,
-sesiones simultáneas, accesibilidad y la demostración por rol.
+Todos los casos de uso del diagrama tienen casos de prueba. La evidencia de la aceptación final está en
+[aceptacion.md](aceptacion.md).

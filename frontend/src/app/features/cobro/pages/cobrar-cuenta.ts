@@ -241,7 +241,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
 
     .metodos {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(12.5rem, 100%), 1fr));
       gap: 0.75rem;
       margin: 0;
       padding: 0;

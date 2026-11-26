@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
   title: API de SIVANT
-  version: 0.6.0
+  version: 1.0.0
   license:
     name: Uso interno
     identifier: LicenseRef-SIVANT
   description: |
-    Contrato de las fases 0 a 6: identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
+    Contrato de SIVANT (RF01 a RF26): identidad, empleados (RF11 a RF14), catálogo (RF07 a RF10), inventario
     (RF15 a RF18), servicio y consumo (RF01 a RF03, RF23 y RF24) y
     cocina (RF19 a RF21), cobro y ventas (RF04 a RF06 y RF22), y caja y fondo de cambio (RF25 y RF26).
     Cada fase agrega sus operaciones antes de enlazar sus pantallas.

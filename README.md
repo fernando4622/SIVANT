@@ -2,11 +2,11 @@
 
 Sistema de ventas e inventario para Jiva House. Angular, Spring Boot (Java 21) y PostgreSQL 18.
 
-**Estado:** fases 0 a 6 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
+**Estado:** fases 0 a 7 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
 roles, empleados (RF11 a RF14), productos y recetas (RF07 a RF10), inventario (RF15 a RF18),
 mesas, cuentas y comandas (RF01 a RF03), cocina con avisos en tiempo real (RF19 a RF21),
 entrega con descuento de inventario (RF23 y RF24), cobro, historial y cancelación de ventas (RF04 a RF06 y RF22), y caja con fondo de cambio
-(RF25 y RF26).
+(RF25 y RF26). La [aceptación final](docs/aceptacion.md) reúne la evidencia de cada criterio.
 
 ## Estructura
 
@@ -15,7 +15,8 @@ entrega con descuento de inventario (RF23 y RF24), cobro, historial y cancelaci�
 | `backend/` | API Spring Boot. Migraciones en `src/main/resources/db/migration/` |
 | `frontend/` | Aplicación Angular |
 | `database/` | Configuración local de PostgreSQL |
-| `docs/` | Roadmap, arquitectura, modelo, [contrato OpenAPI](docs/openapi.yaml), [casos de prueba](docs/casos-de-prueba.md) y [decisiones](docs/decisiones.md) |
+| `docs/` | Roadmap, arquitectura, modelo lógico y [físico](docs/modelo-fisico.md), [contrato OpenAPI](docs/openapi.yaml), [casos de prueba](docs/casos-de-prueba.md), [decisiones](docs/decisiones.md), [aceptación](docs/aceptacion.md) y [guion de demostración](docs/demostracion.md) |
+| `scripts/` | Recorrido de demostración por la API |
 | `compose.yaml` | PostgreSQL 18 para desarrollo |
 
 ## Requisitos
@@ -160,6 +161,18 @@ cd frontend; npm test -- --watch=false
 ```
 
 Las pruebas del backend crean su propia base PostgreSQL 18 con Testcontainers y no tocan la de desarrollo.
+
+Las de rendimiento se ejecutan aparte y tardan unos minutos:
+
+```powershell
+cd backend; .\mvnw.cmd test "-Dexcluir=ninguna" "-Dgroups=rendimiento"
+```
+
+Con la API y Angular en marcha, el recorrido de demostración se comprueba por la API:
+
+```powershell
+python scripts/recorrido-demostracion.py
+```
 
 ## Repetir desde una base vacía
 

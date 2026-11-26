@@ -1,13 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { startWith } from 'rxjs';
 import { ClaveIdempotencia } from '../../../core/http/clave-idempotencia';
 import { leerProblema } from '../../../core/http/problema';
 import { PATRON_DINERO, dinero, fechaHora, normalizarDecimal, sumaDinero } from '../../../shared/formato';
 import { Icono } from '../../../shared/ui/icono';
-import { PestanasCaja } from '../components/pestanas-caja';
 import { CajaApi, Entrega, PagoEfectivo } from '../data-access/caja.api';
 
 interface Mesero {
@@ -22,10 +18,18 @@ function centavos(importe: string): bigint {
   return BigInt(entero + fraccion.padEnd(2, '0'));
 }
 
-/** RF25: el cajero recibe el efectivo de los cobros de un mesero y, aparte, el fondo de cambio aplicado. */
+function deCentavos(valor: bigint): string {
+  const texto = valor.toString().padStart(3, '0');
+  return `${texto.slice(0, -2)}.${texto.slice(-2)}`;
+}
+
+/**
+ * RF25 y RF26: el mesero trae a caja el efectivo de un cobro. El cajero captura lo que entregó el cliente y SIVANT
+ * calcula el cambio que le devuelve.
+ */
 @Component({
   selector: 'app-entregas',
-  imports: [ReactiveFormsModule, RouterLink, Icono, PestanasCaja],
+  imports: [RouterLink, Icono],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="pantalla__encabezado">
@@ -35,15 +39,13 @@ function centavos(importe: string): bigint {
       <h1>Recibir efectivo</h1>
     </div>
 
-    <app-pestanas-caja />
-
     <div role="status">
       @if (recibida(); as e) {
         <div class="aviso">
           <app-icono nombre="palomita" [tamano]="28" />
           <p>
-            Entrega {{ e.id }} registrada: {{ dinero(e.monto) }} de {{ e.pagos.length }} pago(s) de
-            {{ e.mesero }}{{ e.montoFondo !== '0.00' ? ' y ' + dinero(e.montoFondo) + ' de fondo de cambio' : '' }}.
+            Recepción {{ e.id }} registrada: {{ dinero(e.monto) }} de {{ e.pagos.length }} pago(s) de
+            {{ e.mesero }}{{ e.cambio !== '0.00' ? '. Entrega ' + dinero(e.cambio) + ' de cambio' : '' }}.
           </p>
         </div>
       }
@@ -62,78 +64,69 @@ function centavos(importe: string): bigint {
         <div class="columnas">
           <section class="pila" aria-labelledby="titulo-pagos">
             <div class="campo">
-              <label for="mesero">Mesero que entrega</label>
+              <label for="mesero">Mesero que trae el efectivo</label>
               <select id="mesero" class="control" [value]="meseroId()" (change)="elegir($any($event.target).value)">
                 @for (m of lista; track m.id) {
                   <option [value]="m.id">{{ m.nombre }} · {{ m.pagos.length }} pago(s)</option>
                 }
               </select>
             </div>
-            <h2 id="titulo-pagos">Pagos en efectivo por entregar</h2>
+            <h2 id="titulo-pagos">Cobros en efectivo por recibir</h2>
             <ul class="pagos">
               @for (p of mesero()?.pagos ?? []; track p.id) {
-                <li>
-                  <label>
+                <li [class.pago--elegido]="elegidos().has(p.id)">
+                  <label class="pago">
                     <input type="checkbox" [checked]="elegidos().has(p.id)" (change)="alternar(p.id)" />
-                    <span class="pago">
+                    <span class="pago__datos">
                       <strong>Venta {{ p.ventaId }} · Mesa {{ p.mesa }}</strong>
                       <span class="campo__ayuda">{{ fechaHora(p.fechaHora) }}</span>
                       @if (p.estadoVenta === 'CANCELADA') {
                         <span class="etiqueta etiqueta--mal">Venta cancelada</span>
                       }
-                      @if (p.fondo) {
-                        <span class="etiqueta etiqueta--proceso">Fondo {{ dinero(p.fondo) }}</span>
-                      }
                     </span>
                     <strong class="numero">{{ dinero(p.monto) }}</strong>
                   </label>
+                  @if (elegidos().has(p.id)) {
+                    <div class="recibido">
+                      <div class="campo">
+                        <label [for]="'recibido-' + p.id">Recibido del cliente</label>
+                        <input
+                          [id]="'recibido-' + p.id"
+                          class="control"
+                          inputmode="decimal"
+                          autocomplete="off"
+                          [value]="recibidos()[p.id] ?? ''"
+                          (input)="capturar(p.id, $any($event.target).value)"
+                          [attr.aria-invalid]="!!errorDe(p)"
+                          [attr.aria-describedby]="'recibido-error-' + p.id"
+                        />
+                        <span [id]="'recibido-error-' + p.id" class="campo__error" aria-live="polite">{{ errorDe(p) }}</span>
+                      </div>
+                      <p class="cambio">
+                        <span>Cambio</span>
+                        <strong>{{ cambioDe(p) === null ? '—' : dinero(cambioDe(p)!) }}</strong>
+                      </p>
+                    </div>
+                  }
                 </li>
               }
             </ul>
           </section>
 
-          <form class="tarjeta pila" [formGroup]="formulario" (ngSubmit)="recibir()" novalidate>
-            <h2>Resumen</h2>
+          <section class="tarjeta pila" aria-labelledby="titulo-resumen">
+            <h2 id="titulo-resumen">Resumen</h2>
             <dl class="datos-lista">
               <dt>Pagos seleccionados:</dt>
               <dd>{{ seleccion().length }}</dd>
-              <dt>Efectivo de los pagos:</dt>
-              <dd>
-                <strong>{{ dinero(totalPagos()) }}</strong>
-              </dd>
-              @if (hayFondo()) {
-                <dt>Fondo de cambio:</dt>
-                <dd>
-                  <strong>{{ dinero(totalFondo()) }}</strong>
-                </dd>
-              }
+              <dt>Importe de las ventas:</dt>
+              <dd>{{ dinero(totalPagos()) }}</dd>
+              <dt>Recibido del cliente:</dt>
+              <dd>{{ totalRecibido() === null ? '—' : dinero(totalRecibido()!) }}</dd>
             </dl>
-            <div class="campo">
-              <label for="montoRecibido">Efectivo recibido de los pagos</label>
-              <input
-                id="montoRecibido"
-                class="control"
-                inputmode="decimal"
-                formControlName="montoRecibido"
-                [attr.aria-invalid]="!!errorMonto()"
-                aria-describedby="monto-error"
-              />
-              <span id="monto-error" class="campo__error" aria-live="polite">{{ errorMonto() }}</span>
-            </div>
-            @if (hayFondo()) {
-              <div class="campo">
-                <label for="fondoRecibido">Fondo de cambio recibido</label>
-                <input
-                  id="fondoRecibido"
-                  class="control"
-                  inputmode="decimal"
-                  formControlName="fondoRecibido"
-                  [attr.aria-invalid]="!!errorFondo()"
-                  aria-describedby="fondo-error"
-                />
-                <span id="fondo-error" class="campo__error" aria-live="polite">{{ errorFondo() }}</span>
-              </div>
-            }
+            <p class="total">
+              <span>Cambio a entregar</span>
+              <strong>{{ totalCambio() === null ? '—' : dinero(totalCambio()!) }}</strong>
+            </p>
             <div class="aviso">
               <app-icono nombre="info" [tamano]="32" />
               <p>Cuenta el efectivo antes de registrar. Quedarás como cajero responsable de la recepción.</p>
@@ -141,14 +134,19 @@ function centavos(importe: string): bigint {
             @if (error(); as mensaje) {
               <p class="campo__error" role="alert">{{ mensaje }}</p>
             }
-            <button type="submit" class="boton boton--principal" [disabled]="guardando() || !seleccion().length">
+            <button
+              type="button"
+              class="boton boton--principal"
+              [disabled]="guardando() || !seleccion().length"
+              (click)="recibir()"
+            >
               <app-icono nombre="palomita" />
               {{ guardando() ? 'Registrando…' : 'Registrar recepción' }}
             </button>
-          </form>
+          </section>
         </div>
       } @else {
-        <p class="tarjeta">No hay pagos en efectivo por entregar.</p>
+        <p class="tarjeta">No hay cobros en efectivo por recibir.</p>
       }
     } @else {
       <p role="status">Cargando pagos…</p>
@@ -166,7 +164,7 @@ function centavos(importe: string): bigint {
       border-bottom: 2px solid var(--borde);
     }
 
-    .pagos label {
+    .pago {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
@@ -175,13 +173,13 @@ function centavos(importe: string): bigint {
       cursor: pointer;
     }
 
-    .pagos input {
+    .pago input {
       width: 1.4rem;
       height: 1.4rem;
       accent-color: var(--azul);
     }
 
-    .pago {
+    .pago__datos {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -189,12 +187,47 @@ function centavos(importe: string): bigint {
       overflow-wrap: anywhere;
     }
 
-    .pago strong {
+    .pago__datos strong {
       flex: 1 1 100%;
+    }
+
+    .recibido {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 1rem;
+      padding: 0 0.25rem 1rem 2.4rem;
+    }
+
+    .cambio {
+      display: grid;
+      justify-items: end;
+      margin: 0 0 1.6rem;
+    }
+
+    .cambio strong {
+      font-size: 1.25rem;
+    }
+
+    .total {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 0;
+      padding-top: 1rem;
+      border-top: 2px solid var(--borde);
+      font-size: 1.4rem;
+      font-weight: 650;
     }
 
     h2 {
       margin: 0;
+    }
+
+    @media (max-width: 30rem) {
+      .recibido {
+        padding-left: 0.25rem;
+      }
     }
   `,
 })
@@ -206,15 +239,11 @@ export class Entregas implements OnInit {
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly meseroId = signal('');
   protected readonly elegidos = signal(new Set<string>());
+  protected readonly recibidos = signal<Partial<Record<string, string>>>({});
   protected readonly recibida = signal<Entrega | null>(null);
   protected readonly enviado = signal(false);
   protected readonly guardando = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly errores = signal<Record<string, string>>({});
-  protected readonly formulario = inject(NonNullableFormBuilder).group({ montoRecibido: '', fondoRecibido: '' });
-  private readonly valores = toSignal(this.formulario.valueChanges.pipe(startWith(this.formulario.getRawValue())), {
-    initialValue: this.formulario.getRawValue(),
-  });
 
   protected readonly meseros = computed(() => {
     const pagos = this.pendientes();
@@ -232,21 +261,15 @@ export class Entregas implements OnInit {
   protected readonly mesero = computed(() => this.meseros()?.find((m) => m.id === this.meseroId()));
   protected readonly seleccion = computed(() => (this.mesero()?.pagos ?? []).filter((p) => this.elegidos().has(p.id)));
   protected readonly totalPagos = computed(() => sumaDinero(this.seleccion().map((p) => p.monto)));
-  protected readonly totalFondo = computed(() =>
-    sumaDinero(this.seleccion().flatMap((p) => (p.fondo ? [p.fondo] : []))),
-  );
-  protected readonly hayFondo = computed(() => this.totalFondo() !== '0.00');
-  protected readonly errorMonto = computed(() =>
-    this.errorImporte(this.valores().montoRecibido ?? '', this.totalPagos(), 'montoRecibido'),
-  );
-  protected readonly errorFondo = computed(() =>
-    this.errorImporte(this.valores().fondoRecibido ?? '', this.totalFondo(), 'fondoRecibido'),
-  );
+  protected readonly totalRecibido = computed(() => this.sumar((p) => this.recibidos()[p.id] ?? ''));
+  protected readonly totalCambio = computed(() => {
+    const cambios = this.seleccion().map((p) => this.cambioDe(p));
+    return cambios.some((c) => c === null) ? null : sumaDinero(cambios as string[]);
+  });
   protected readonly dinero = dinero;
   protected readonly fechaHora = fechaHora;
 
   ngOnInit(): void {
-    this.formulario.valueChanges.subscribe(() => this.errores.set({}));
     this.cargar();
   }
 
@@ -262,46 +285,68 @@ export class Entregas implements OnInit {
     });
   }
 
-  /** Al cambiar de mesero se seleccionan todos sus pagos. */
+  /** Al cambiar de mesero se selecciona su cobro más reciente; lo recibido inicia en el importe exacto. */
   protected elegir(id: string): void {
     this.meseroId.set(id);
-    this.elegidos.set(new Set(this.mesero()?.pagos.map((p) => p.id) ?? []));
+    const primero = this.mesero()?.pagos[0];
+    this.elegidos.set(new Set(primero ? [primero.id] : []));
+    this.recibidos.set(primero ? { [primero.id]: primero.monto } : {});
     this.enviado.set(false);
   }
 
   protected alternar(id: string): void {
     const elegidos = new Set(this.elegidos());
-    if (!elegidos.delete(id)) {
+    const recibidos = { ...this.recibidos() };
+    if (elegidos.delete(id)) {
+      delete recibidos[id];
+    } else {
       elegidos.add(id);
+      recibidos[id] = this.mesero()?.pagos.find((p) => p.id === id)?.monto ?? '';
     }
     this.elegidos.set(elegidos);
+    this.recibidos.set(recibidos);
   }
 
-  private errorImporte(texto: string, esperado: string, campo: string): string {
-    if (!this.enviado()) {
-      return this.errores()[campo] ?? '';
-    }
+  protected capturar(id: string, valor: string): void {
+    this.recibidos.set({ ...this.recibidos(), [id]: valor });
+  }
+
+  /** Nulo si lo capturado no es un importe o no cubre el pago. */
+  protected cambioDe(p: PagoEfectivo): string | null {
+    const texto = this.recibidos()[p.id] ?? '';
     if (!PATRON_DINERO.test(texto)) {
-      return 'Escribe el importe contado.';
+      return null;
     }
-    if (centavos(texto) !== centavos(esperado)) {
-      return `No coincide: deben ser ${dinero(esperado)}. Vuelve a contar o ajusta la selección.`;
+    const diferencia = centavos(texto) - centavos(p.monto);
+    return diferencia < 0n ? null : deCentavos(diferencia);
+  }
+
+  protected errorDe(p: PagoEfectivo): string {
+    if (!this.enviado()) {
+      return '';
     }
-    return this.errores()[campo] ?? '';
+    const texto = this.recibidos()[p.id] ?? '';
+    if (!PATRON_DINERO.test(texto)) {
+      return 'Escribe lo que entregó el cliente.';
+    }
+    return this.cambioDe(p) === null ? `No cubre el pago de ${dinero(p.monto)}.` : '';
+  }
+
+  private sumar(valor: (p: PagoEfectivo) => string): string | null {
+    const valores = this.seleccion().map(valor);
+    return valores.every((v) => PATRON_DINERO.test(v)) ? sumaDinero(valores.map(normalizarDecimal)) : null;
   }
 
   protected recibir(): void {
     this.enviado.set(true);
     this.error.set(null);
     this.recibida.set(null);
-    if (!this.seleccion().length || this.errorMonto() || (this.hayFondo() && this.errorFondo()) || this.guardando()) {
+    if (!this.seleccion().length || this.seleccion().some((p) => this.errorDe(p)) || this.guardando()) {
       return;
     }
     const recepcion = {
       meseroId: this.meseroId(),
-      pagoIds: this.seleccion().map((p) => p.id),
-      montoRecibido: normalizarDecimal(this.valores().montoRecibido ?? ''),
-      fondoRecibido: this.hayFondo() ? normalizarDecimal(this.valores().fondoRecibido ?? '') : '0',
+      pagos: this.seleccion().map((p) => ({ pagoId: p.id, montoRecibido: normalizarDecimal(this.recibidos()[p.id] ?? '') })),
     };
     this.guardando.set(true);
     this.api.recibir(recepcion, this.clave.para(recepcion)).subscribe({
@@ -309,15 +354,13 @@ export class Entregas implements OnInit {
         this.clave.completar();
         this.guardando.set(false);
         this.recibida.set(entrega);
-        this.formulario.reset();
         this.enviado.set(false);
         this.cargar();
       },
       error: (error: unknown) => {
         const problema = leerProblema(error);
         this.guardando.set(false);
-        this.error.set(problema.detalle);
-        this.errores.set(problema.erroresCampo);
+        this.error.set(problema.erroresCampo['pagos'] ?? problema.detalle);
         if (problema.estado === 409) {
           this.cargar();
         }

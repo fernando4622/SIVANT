@@ -106,18 +106,8 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
               <fieldset class="metodos">
                 <legend>Método de pago</legend>
                 @for (m of opciones; track m) {
-                  <label
-                    class="metodo"
-                    [class.metodo--activo]="metodo() === m"
-                    [class.metodo--bloqueado]="soloEfectivo() && m !== 'EFECTIVO'"
-                  >
-                    <input
-                      type="radio"
-                      formControlName="metodo"
-                      [value]="m"
-                      [attr.value]="m"
-                      [attr.disabled]="soloEfectivo() && m !== 'EFECTIVO' ? '' : null"
-                    />
+                  <label class="metodo" [class.metodo--activo]="metodo() === m">
+                    <input type="radio" formControlName="metodo" [value]="m" [attr.value]="m" />
                     <app-icono
                       [nombre]="m === 'EFECTIVO' ? 'billete' : m === 'TARJETA' ? 'tarjeta' : 'movil'"
                       [tamano]="27"
@@ -126,16 +116,6 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                   </label>
                 }
               </fieldset>
-
-              @if (soloEfectivo()) {
-                <div class="aviso">
-                  <app-icono nombre="info" [tamano]="32" />
-                  <p>
-                    La cuenta tiene un fondo de cambio de {{ dinero(c.fondo!.monto) }}: cóbrala en efectivo. El fondo
-                    se regresa a caja junto con el efectivo de la venta.
-                  </p>
-                </div>
-              }
 
               @if (metodo() !== 'EFECTIVO') {
                 <div class="campo">
@@ -238,7 +218,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                   <span class="efectivo__moneda">$</span>
                 </div>
                 <h2>Recibe el efectivo</h2>
-                <p>Confirma que recibiste {{ dinero(c.total) }}.</p>
+                <p>Recibe {{ dinero(c.total) }} y lleva el efectivo a caja: el cajero registra lo recibido y te da el cambio.</p>
               }
             }
           </aside>
@@ -338,13 +318,8 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
         color 150ms ease;
     }
 
-    .metodo:hover:not(.metodo--bloqueado) {
+    .metodo:hover {
       border-color: var(--azul);
-    }
-
-    .metodo--bloqueado {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
 
     .metodo--activo {
@@ -709,8 +684,6 @@ export class CobrarCuenta implements OnInit {
     { initialValue: this.formulario.getRawValue() },
   );
   protected readonly metodo = computed(() => this.valores().metodo ?? 'EFECTIVO');
-  /** Un fondo de cambio pendiente obliga a cobrar en efectivo. */
-  protected readonly soloEfectivo = computed(() => this.cuenta()?.fondo?.estado === 'PENDIENTE');
   protected readonly canceladas = computed(
     () => this.cuenta()?.comandas.filter((c) => c.estado === 'CANCELADA').length ?? 0,
   );
@@ -754,9 +727,6 @@ export class CobrarCuenta implements OnInit {
       next: (cuenta) => {
         this.cuenta.set(cuenta);
         this.errorCarga.set(null);
-        if (cuenta.fondo?.estado === 'PENDIENTE') {
-          this.formulario.controls.metodo.setValue('EFECTIVO');
-        }
       },
       error: (error: unknown) => this.errorCarga.set(leerProblema(error).detalle),
     });

@@ -8,6 +8,7 @@ Crea datos nuevos en cada ejecución.
 import json
 import os
 import sys
+from decimal import Decimal
 import uuid
 import http.cookiejar
 import urllib.request
@@ -154,23 +155,22 @@ e, cancelada = admin.pedir('POST', f"/ventas/{cobro['venta']['id']}/cancelacion"
 paso('14. El cajero consulta la venta y el administrador la cancela', ventas['totalElementos'] >= 1 and e == 200
      and cancelada['estado'] == 'CANCELADA')
 
-# 15 y 16 · Fondo de cambio y caja
+# 15 y 16 · Cobro en efectivo y cambio en caja
 e, cuenta2 = mesero.pedir('POST', '/cuentas', {'mesaId': libres[0]}, True)
 _, com2 = mesero.pedir('POST', f"/cuentas/{cuenta2['id']}/comandas", {'detalles': [{'productoId': prep['id'], 'cantidad': 1}]}, True)
 cocinero.pedir('POST', f"/comandas/{com2['id']}/preparacion", {'version': 0})
 cocinero.pedir('POST', f"/comandas/{com2['id']}/lista", {'version': 1})
 mesero.pedir('POST', f"/comandas/{com2['id']}/servicio", {'version': 2}, True)
-e, _ = cajero.pedir('POST', f"/cuentas/{cuenta2['id']}/fondo-cambio", {'monto': '200'}, True)
 _, c2 = mesero.pedir('GET', f"/cuentas/{cuenta2['id']}")
-e2, p = mesero.pedir('POST', f"/cuentas/{cuenta2['id']}/cobro", {'versionCuenta': c2['version'], 'metodo': 'TARJETA', 'referenciaExterna': REF + '-2', 'totalEsperado': c2['total']}, True)
 e3, cobro2 = mesero.pedir('POST', f"/cuentas/{cuenta2['id']}/cobro", {'versionCuenta': c2['version'], 'metodo': 'EFECTIVO', 'totalEsperado': c2['total']}, True)
-paso('15. Con fondo de cambio solo se cobra en efectivo', e == 201 and e2 == 409 and p['codigo'] == 'FONDO_PENDIENTE' and e3 == 201)
+paso('15. El mesero cobra en efectivo sin fondo previo', e3 == 201)
 _, pendientes = cajero.pedir('GET', '/caja/pagos-efectivo-pendientes')
 pendientes = [x for x in pendientes if x['id'] == cobro2['pago']['id']]
-e, entrega = cajero.pedir('POST', '/caja/entregas-efectivo', {'meseroId': pendientes[0]['meseroId'], 'pagoIds': [x['id'] for x in pendientes],
-                                                              'montoRecibido': c2['total'], 'fondoRecibido': '200'}, True)
-_, fondos = cajero.pedir('GET', f"/cuentas/{cuenta2['id']}/fondo-cambio")
-paso('16. El cajero recibe el efectivo y el fondo, que queda liquidado', len(pendientes) == 1 and e == 201 and fondos[0]['estado'] == 'LIQUIDADO')
+recibido = str(Decimal(c2['total']) + 50)
+e, entrega = cajero.pedir('POST', '/caja/entregas-efectivo', {'meseroId': pendientes[0]['meseroId'],
+                                                              'pagos': [{'pagoId': pendientes[0]['id'], 'montoRecibido': recibido}]}, True)
+paso('16. El cajero recibe el efectivo y da el cambio', len(pendientes) == 1 and e == 201
+     and Decimal(entrega['cambio']) == 50)
 
 fallas = [t for t, ok in resultados if not ok]
 print(f'\n{len(resultados) - len(fallas)} de {len(resultados)} pasos correctos')

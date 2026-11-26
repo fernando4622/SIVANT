@@ -29,7 +29,7 @@ class FlujoCompletoTest extends PruebaServicio {
     }
 
     @Test
-    @DisplayName("CP-167 Demostración: catálogo, inventario, cuenta, cocina, servicio, cobro, venta, fondo y caja")
+    @DisplayName("CP-167 Demostración: catálogo, inventario, cuenta, cocina, servicio, cobro, caja con cambio y venta")
     void demostracion() {
         ClienteApi almacen = sesionDe(crear("Pedro Almacén", "pedro@sivant.test", "ALMACENISTA"));
 
@@ -66,14 +66,11 @@ class FlujoCompletoTest extends PruebaServicio {
         ok(lista(idPrimera, 2), 200);
         assertThat(mesero.get("/notificaciones").texto()).contains("COMANDA_LISTA");
 
-        // Fondo de cambio (RF26) antes del cobro.
-        ok(cajero.postConClave("/cuentas/" + cuenta + "/fondo-cambio", clave(), Map.of("monto", "100")), 201);
-
         // Servicio y consumo (RF23, RF24).
         ok(mesero.postConClave("/comandas/" + idPrimera + "/servicio", clave(), Map.of("version", 3)), 200);
         assertThat(saldo(almacen, cafe)).as("480 - 3 × 18").isEqualTo("426");
 
-        // Cobro (RF04, RF05): con fondo pendiente solo en efectivo.
+        // Cobro en efectivo (RF04).
         JsonNode antes = mesero.get("/cuentas/" + cuenta).json();
         assertThat(antes.get("total").asString()).isEqualTo("125.00");
         var cobro = mesero.postConClave("/cuentas/" + cuenta + "/cobro", clave(), Map.of("versionCuenta",
@@ -82,24 +79,25 @@ class FlujoCompletoTest extends PruebaServicio {
         String venta = cobro.json().get("venta").get("id").asString();
         String pago = cobro.json().get("pago").get("id").asString();
 
+        // El mesero lleva a caja los 200 del cliente; caja recibe el pago y le da 75 de cambio (RF25, RF26).
+        var entrega = cajero.postConClave("/caja/entregas-efectivo", clave(), Map.of("meseroId",
+                juan.getId().toString(), "pagos", List.of(Map.of("pagoId", pago, "montoRecibido", "200"))));
+        ok(entrega, 201);
+        assertThat(entrega.json().get("monto").asString()).isEqualTo("125.00");
+        assertThat(entrega.json().get("cambio").asString()).isEqualTo("75.00");
+        assertThat(lista(cajero.get("/caja/pagos-efectivo-pendientes"))).isEmpty();
+
         // Historial y cancelación de venta (RF06, RF22).
         assertThat(cajero.get("/ventas").json().get("totalElementos").asInt()).isEqualTo(1);
         ok(admin.postConClave("/ventas/" + venta + "/cancelacion", clave(), Map.of("confirmado", true,
                 "justificacion", "Cobro de prueba")), 200);
         assertThat(saldo(almacen, cafe)).as("la cancelación no repone inventario").isEqualTo("426");
 
-        // Entrega de efectivo (RF25): el pago original y el fondo regresan a caja.
-        var entrega = cajero.postConClave("/caja/entregas-efectivo", clave(), Map.of("meseroId",
-                juan.getId().toString(), "pagoIds", List.of(pago), "montoRecibido", "125.00", "fondoRecibido", "100"));
-        ok(entrega, 201);
-        assertThat(lista(cajero.get("/cuentas/" + cuenta + "/fondo-cambio")).get(0).get("estado").asString())
-                .isEqualTo("LIQUIDADO");
-
         // Todo quedó auditado con su responsable.
         List<String> acciones = sql.queryForList("SELECT DISTINCT accion FROM sivant.auditoria", String.class);
         assertThat(acciones).contains("PRODUCTO_REGISTRADO", "MOVIMIENTO_REGISTRADO", "AJUSTE_SOLICITADO", "AJUSTE_AUTORIZADA",
                 "CUENTA_ABIERTA", "COMANDA_ENVIADA", "COMANDA_EDITADA", "COMANDA_CANCELADA", "COMANDA_EN_PREPARACION", "COMANDA_LISTA", "COMANDA_SERVIDA",
-                "FONDO_ENTREGADO", "VENTA_COBRADA", "VENTA_CANCELADA", "EFECTIVO_RECIBIDO");
+                "VENTA_COBRADA", "VENTA_CANCELADA", "EFECTIVO_RECIBIDO");
         assertThat(sql.queryForObject("SELECT count(*) FROM sivant.auditoria WHERE id_empleado IS NULL AND accion <> "
                 + "'EMPLEADO_REGISTRADO'", Integer.class)).isZero();
     }

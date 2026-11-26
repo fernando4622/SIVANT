@@ -264,7 +264,6 @@ class RendimientoTest extends PruebaServicio {
                         medir("cajero: ventas", () -> cajero.get("/ventas"));
                         medir("cajero: efectivo por entregar", () -> cajero.get("/caja/pagos-efectivo-pendientes?meseroId="
                                 + juan.getId()));
-                        medir("cajero: fondos", () -> cajero.get("/caja/fondos"));
                     }
                     return null;
                 }));

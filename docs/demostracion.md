@@ -26,11 +26,11 @@ Muestra el ciclo completo con los cinco roles. Las cuentas ficticias y la contra
 | 10 | Mesero | Modificar comanda | Cambiar una cantidad | Cocina recibe el aviso |
 | 11 | Cocinero | Cocina | Marcar lista | El mesero recibe el aviso en cualquier pantalla |
 | 12 | Cajero | Cuenta | Cancelar otra comanda con justificación | Cocina recibe el aviso; no se cobra |
-| 13 | Cajero | Cuenta, fondo | Entregar un fondo de cambio | El mesero solo puede cobrar en efectivo |
+| 13 | Cajero | Cuenta | Revisar la cuenta antes del cobro | Comandas, estados y total; sin fondo previo |
 | 14 | Mesero | Cuenta | Marcar servida | Se descuenta el inventario; el almacenista ve el cambio |
 | 15 | Mesero | Cobro | Cobrar en efectivo | La cuenta se cierra y la mesa queda libre |
 | 16 | Cajero | Ventas | Filtrar y abrir el detalle | Pago, comandas y cancelaciones |
 | 17 | Administrador | Ventas | Cancelar la venta con motivo y confirmación | Pago e inventario se conservan |
-| 18 | Cajero | Caja | Recibir el efectivo y el fondo | El fondo queda «Regresado a caja» |
+| 18 | Cajero | Caja | Recibir el efectivo con más de lo cobrado | Muestra el cambio a entregar y la lista queda vacía |
 
-Para mostrar la tarjeta, cobrar otra cuenta sin fondo con una referencia inventada (nunca el número de la tarjeta).
+Para mostrar la tarjeta, cobrar otra cuenta con una referencia inventada (nunca el número de la tarjeta).

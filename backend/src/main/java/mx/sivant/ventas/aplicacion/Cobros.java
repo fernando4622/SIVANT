@@ -12,7 +12,6 @@ import mx.sivant.ventas.aplicacion.DatosVentas.DatosCobro;
 import mx.sivant.ventas.aplicacion.DatosVentas.VentaConCuenta;
 import mx.sivant.ventas.dominio.MetodoPago;
 import mx.sivant.ventas.dominio.Referencias;
-import mx.sivant.ventas.infraestructura.CajaJdbc;
 import mx.sivant.ventas.infraestructura.VentasJdbc;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -29,11 +28,8 @@ public class Cobros {
     private final CobroDeCuentas cuentas;
     private final Idempotencia idempotencia;
     private final RegistroAuditoria auditoria;
-    private final CajaJdbc caja;
 
-    public Cobros(VentasJdbc ventas, CobroDeCuentas cuentas, Idempotencia idempotencia, RegistroAuditoria auditoria,
-            CajaJdbc caja) {
-        this.caja = caja;
+    public Cobros(VentasJdbc ventas, CobroDeCuentas cuentas, Idempotencia idempotencia, RegistroAuditoria auditoria) {
         this.ventas = ventas;
         this.cuentas = cuentas;
         this.idempotencia = idempotencia;
@@ -58,24 +54,16 @@ public class Cobros {
         if (cuenta.total().compareTo(datos.totalEsperado()) != 0) {
             throw ReglaNegocioException.conflicto("TOTAL_CAMBIADO", "El total de la cuenta cambió. Revísalo.");
         }
-        if (cuenta.fondoPendiente() && datos.metodo() != MetodoPago.EFECTIVO) {
-            throw ReglaNegocioException.conflicto("FONDO_PENDIENTE",
-                    "La cuenta tiene un fondo de cambio: cóbrala en efectivo.", "metodo");
-        }
         Cuenta cerrada = cuentas.cerrar(idCuenta);
         Long id = ventas.insertarVenta(idCuenta, cerrada.fechaHoraCierre(), cuenta.total());
         Long pago = ventas.insertarPago(id, actor.id(), cerrada.fechaHoraCierre(), cuenta.total(), datos.metodo(),
                 referencia).orElseThrow(() -> ReglaNegocioException.conflicto("REFERENCIA_REPETIDA",
                         "Esa referencia ya se registró hoy en otro cobro.", "referenciaExterna"));
-        if (cuenta.fondoPendiente()) {
-            caja.aplicarFondo(cuenta.fondo().id(), pago);
-        }
         Map<String, Object> detalle = new LinkedHashMap<>();
         detalle.put("cuenta", idCuenta);
         detalle.put("total", cuenta.total().toPlainString());
         detalle.put("metodo", datos.metodo().name());
         detalle.put("referenciaExterna", referencia);
-        detalle.put("fondo", cuenta.fondoPendiente() ? cuenta.fondo().id() : null);
         auditoria.registrar(actor.id(), "VENTA_COBRADA", "VENTA", id, detalle);
         return new VentaConCuenta(ventas.venta(id).orElseThrow(), cuentas.cuenta(idCuenta));
     }

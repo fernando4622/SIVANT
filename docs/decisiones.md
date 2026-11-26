@@ -31,7 +31,6 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | **Precio de productos y comandas** | El precio de venta del producto y el precio unitario aplicado al detalle de comanda deben ser mayores que cero. El alta y la edición admiten hasta dos decimales. V10 sustituye la regla de precios no negativos de los documentos de referencia | Decisión del responsable del proyecto, 25 de noviembre de 2026. Una cuenta con comandas vigentes tiene un importe positivo para cobrar |
 | **Cierre sin cobro** | Lo hace el mesero responsable si no hay comandas vigentes. Libera la mesa y queda en auditoría | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | **Mesero con cuentas abiertas** | Desactivarlo o cambiar su rol responde 409 `CUENTAS_ABIERTAS` | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
-| **Fondo pendiente al cerrar sin cobro** | Se rechaza (409 `FONDO_PENDIENTE`) hasta que el cajero lo anula al recibirlo | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | `POST /cuentas/:id/cierre` | Se agrega al contrato | Lo requiere el cierre sin cobro |
 | Edición de comanda | Devuelve la cuenta completa | Arquitectura pide la comanda y el total actualizado |
 | Cantidad máxima | 999 por producto en una comanda | Evita errores de captura; los RF no fijan límite |
@@ -58,15 +57,9 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | `GET /ventas/opciones` | Se agrega: meseros y mesas con ventas en la ventana | Los filtros piden mesero y mesa, y el cajero no consulta empleados |
 | `cobro` y `COBRAR` en la cuenta | La cuenta indica si puede cobrarse y, cerrada, con qué método | El mesero ve el resultado aunque se pierda la respuesta |
 | Rango del total de venta | 409 `TOTAL_INVALIDO` si el total calculado queda fuera del rango admitido. El límite superior es `999999999999.99` | La venta exige un total positivo que quepa en `numeric(14,2)` |
-| **Liquidación del fondo aplicado** | El cajero lo recibe en la misma entrega que el efectivo de sus pagos, con su propio importe (`fondoRecibido`). La entrega guarda la suma de los pagos en `monto` y el fondo en `monto_fondo`; el fondo pasa a LIQUIDADO con la entrega | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
-| Estado `LIQUIDADO`, `FONDO_CAMBIO.id_entrega` y `ENTREGA_EFECTIVO.monto_fondo` | Se agregan al modelo | Lo requiere la liquidación con la entrega |
-| Un fondo vigente por cuenta | Índice único sobre los que no están anulados (pendiente, aplicado o liquidado) | Arquitectura: uno pendiente o aplicado. El liquidado sigue siendo el fondo de esa cuenta |
-| Entregar un fondo | Exige cuenta abierta con comandas no canceladas y total positivo. No usa la versión de la cuenta | Arquitectura, sección 5. El fondo no depende del total exacto |
-| Fondo de un pago que no es en efectivo | No ocurre: con un fondo pendiente solo se cobra en efectivo | Arquitectura |
+| **Cambio al recibir el efectivo** | Caja ya no presta un fondo antes del cobro. Al cobrar en efectivo, el mesero lleva el dinero a caja; el cajero registra lo recibido de cada pago (al menos su importe) y le da el cambio. `FONDO_CAMBIO` guarda lo recibido y el cambio, ligado al pago y a la entrega; `ENTREGA_EFECTIVO.monto_fondo` es el cambio total. V13 conserva los fondos ya regresados a caja como cambio y borra los pendientes, aplicados sin entregar y anulados. Se actualizaron el modelo lógico y la arquitectura; los RF no cambian | Decisión del responsable del proyecto, 26 de noviembre de 2026. Sustituye la entrega previa del fondo, su anulación y su liquidación |
 | Pagos de ventas canceladas | Siguen pendientes de entregar por su importe original | Arquitectura: la devolución sale de caja |
-| `GET /caja/fondos` | Se agrega con filtro por estado | Permite seguir cada fondo hasta su liquidación o anulación |
-| `fondo`, `ENTREGAR_FONDO` y `ANULAR_FONDO` en la cuenta | La cuenta muestra su fondo vigente y ofrece al cajero entregarlo o anularlo | El cajero lo registra desde la cuenta y el mesero lo ve |
-| Recepción en la pantalla | No se envía si lo contado no coincide con la suma; la API lo vuelve a validar | Evita registrar una diferencia por error de captura |
+| Recepción en la pantalla | Propone el cobro más reciente del mesero con lo recibido igual al importe y calcula el cambio; no envía si lo recibido no cubre el pago. La API lo vuelve a validar (`MONTO_INSUFICIENTE`) | Evita registrar un cambio por error de captura |
 | Pruebas de rendimiento | Se ejecutan aparte (etiqueta `rendimiento`), con 50 000 ventas y 100 000 movimientos | Tardan minutos y miden el equipo, no la lógica |
 | Modelo físico | Se documenta aparte en `modelo-fisico.md`, generado desde la base | El modelo lógico recibido se conserva sin cambios |
 
@@ -95,7 +88,7 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 | «Autorizar pago con tarjeta» por el cajero (CU-05) | Lo registra el mesero responsable (RF05 vigente) |
 | «Registrar devolución» parcial con reposición de inventario (CU-15) | Cancelar venta con devolución completa y sin reponer inventario (RF22) |
 | «Registrar entrega de efectivo» asociado a mesero y cajero | La registra el cajero (arquitectura, sección 3) |
-| «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro; al cobrar en efectivo queda aplicado |
+| «Entregar fondo de cambio» extiende «Cobrar pedido» | El cajero da el cambio al recibir el efectivo del cobro, en la misma recepción |
 | Iniciar y cerrar sesión no aparecen | Se implementan como soporte de todos los actores |
 
 ## Pendiente

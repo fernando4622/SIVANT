@@ -99,17 +99,12 @@ erDiagram
     }
     FONDO_CAMBIO {
         bigint id_fondo_cambio PK
-        bigint id_cuenta FK
-        bigint id_pago FK,UK "nulo"
+        bigint id_pago FK,UK
+        bigint id_entrega FK
         bigint id_cajero FK
-        bigint id_mesero FK
+        numeric monto_recibido
         numeric monto
         timestamptz fecha_hora
-        varchar estado
-        bigint id_cajero_anulacion FK "nulo"
-        timestamptz fecha_hora_anulacion "nulo"
-        varchar justificacion_anulacion "nulo"
-        bigint id_entrega FK "nulo"
     }
     HISTORIAL_ESTADO_COMANDA {
         bigint id_historial PK
@@ -236,12 +231,9 @@ erDiagram
     INSUMO ||--o{ EXISTENCIA_INSUMO : "id_insumo"
     EXISTENCIA_INVENTARIO ||--o{ EXISTENCIA_PRODUCTO : "id_existencia"
     PRODUCTO_REVENTA ||--o{ EXISTENCIA_PRODUCTO : "id_producto_reventa"
-    CUENTA ||--o{ FONDO_CAMBIO : "id_cuenta"
     EMPLEADO ||--o{ FONDO_CAMBIO : "id_cajero"
-    EMPLEADO |o--o{ FONDO_CAMBIO : "id_cajero_anulacion"
-    EMPLEADO ||--o{ FONDO_CAMBIO : "id_mesero"
-    ENTREGA_EFECTIVO |o--o{ FONDO_CAMBIO : "id_entrega"
-    PAGO |o--o{ FONDO_CAMBIO : "id_pago"
+    ENTREGA_EFECTIVO ||--o{ FONDO_CAMBIO : "id_entrega"
+    PAGO ||--o| FONDO_CAMBIO : "id_pago"
     COMANDA ||--o{ HISTORIAL_ESTADO_COMANDA : "id_comanda"
     EMPLEADO ||--o{ HISTORIAL_ESTADO_COMANDA : "id_empleado"
     EMPLEADO ||--o{ IDEMPOTENCIA_OPERACION : "id_empleado"
@@ -281,8 +273,7 @@ erDiagram
 | `MOVIMIENTO_INVENTARIO.causa` (migración V12) | Causa obligatoria de toda salida manual; con «Otro», `motivo` guarda la descripción |
 | `SOLICITUD_AJUSTE.version_existencia_solicitada` | Arquitectura: autorizar solo si la existencia no cambió |
 | `NOTIFICACION.id_rol_destinatario`, `contexto` y `NOTIFICACION_LECTURA` | Arquitectura: avisos por rol con lectura individual |
-| `FONDO_CAMBIO.id_cuenta`, `estado`, campos de anulación | Arquitectura, sección 6 |
-| `FONDO_CAMBIO.estado = LIQUIDADO`, `id_entrega` y `ENTREGA_EFECTIVO.monto_fondo` | Decisión de la fase 6: el fondo regresa a caja con la entrega |
+| `FONDO_CAMBIO.monto_recibido`, `id_entrega` y `ENTREGA_EFECTIVO.monto_fondo` (migración V13) | Decisión del 26 de noviembre de 2026: el cajero da el cambio al recibir el efectivo; `monto_fondo` es el cambio total |
 
 Las reglas entre tablas se refuerzan con disparadores diferibles: subtipos de artículo y existencia, receta del
-preparado, detalle de comanda, venta con su pago y su cancelación, y entrega con sus pagos y fondos.
+preparado, detalle de comanda, venta con su pago y su cancelación, entrega con sus pagos y cambio ligado a un pago en efectivo.

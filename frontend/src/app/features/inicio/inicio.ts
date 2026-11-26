@@ -61,7 +61,7 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
   CAJERO: [
     {
       texto: 'Caja',
-      descripcion: 'Recibe efectivo y entrega fondos de cambio.',
+      descripcion: 'Recibe el efectivo de los cobros y da el cambio.',
       ruta: '/caja/entregas',
       icono: 'cobro',
     },

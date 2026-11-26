@@ -5,7 +5,7 @@ Sistema de ventas e inventario para Jiva House. Angular, Spring Boot (Java 21) y
 **Estado:** fases 0 a 7 del [ROADMAP](docs/ROADMAP.md). Incluye inicio y cierre de sesión, permisos para los cinco
 roles, empleados (RF11 a RF14), productos y recetas (RF07 a RF10), inventario (RF15 a RF18),
 mesas, cuentas y comandas (RF01 a RF03), cocina con avisos en tiempo real (RF19 a RF21),
-entrega con descuento de inventario (RF23 y RF24), cobro, historial y cancelación de ventas (RF04 a RF06 y RF22), y caja con fondo de cambio
+entrega con descuento de inventario (RF23 y RF24), cobro, historial y cancelación de ventas (RF04 a RF06 y RF22), y caja que recibe el efectivo y da el cambio
 (RF25 y RF26). La [aceptación final](docs/aceptacion.md) reúne la evidencia de cada criterio.
 
 ## Estructura
@@ -128,10 +128,9 @@ Recorrido sugerido:
     (nunca el número de la tarjeta). La cuenta se cierra y la mesa queda libre.
 14. Como cajero o administrador, abre **Ventas**, filtra y entra al detalle. Como administrador, cancela la venta con
     el motivo, la referencia de la reversión si no fue en efectivo y la confirmación de la devolución.
-15. Como cajero, abre una cuenta con comandas desde **Mesas** y entrega un fondo de cambio. El mesero solo puede
-    cobrarla en efectivo.
-16. Como cajero, abre **Caja**, elige al mesero, cuenta el efectivo de sus pagos y el fondo, y registra la recepción.
-    En **Fondos de cambio** se ve cada fondo hasta que regresa a caja o se anula.
+15. Como mesero, cobra otra cuenta en efectivo y lleva el dinero a caja.
+16. Como cajero, abre **Caja**, elige al mesero y su pago, escribe lo que entregó el cliente y registra la recepción.
+    La pantalla indica el cambio que se le da al mesero.
 
 El perfil `dev` también carga mesas, insumos, productos y existencias ficticias.
 

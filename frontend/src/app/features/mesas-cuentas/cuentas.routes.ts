@@ -9,12 +9,6 @@ export const rutasCuentas: Routes = [
     loadComponent: () => import('./pages/detalle-cuenta').then((m) => m.DetalleCuenta),
   },
   {
-    path: 'fondo',
-    title: 'Fondo de cambio · SIVANT',
-    canActivate: [conRol('CAJERO')],
-    loadComponent: () => import('../caja/pages/fondo-cuenta').then((m) => m.FondoCuenta),
-  },
-  {
     path: 'cobro',
     title: 'Cobrar cuenta · SIVANT',
     canActivate: [conRol('MESERO')],

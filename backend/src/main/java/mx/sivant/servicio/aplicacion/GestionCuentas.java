@@ -111,10 +111,6 @@ public class GestionCuentas {
                         throw ReglaNegocioException.conflicto("CUENTA_CON_COMANDAS",
                                 "La cuenta tiene comandas vigentes. Debe cobrarse.");
                     }
-                    if (datos.fondoPendiente()) {
-                        throw ReglaNegocioException.conflicto("FONDO_PENDIENTE",
-                                "La cuenta tiene un fondo de cambio. Regrésalo a caja para que lo anulen.");
-                    }
                     servicio.cerrarCuenta(id);
                     auditoria.registrar(actor.id(), "CUENTA_CERRADA_SIN_COBRO", CUENTA, id,
                             Map.of("mesa", cuenta.mesa()));

@@ -7,9 +7,4 @@ export const rutasCaja: Routes = [
     title: 'Recibir efectivo · SIVANT',
     loadComponent: () => import('./pages/entregas').then((m) => m.Entregas),
   },
-  {
-    path: 'fondos',
-    title: 'Fondos de cambio · SIVANT',
-    loadComponent: () => import('./pages/fondos').then((m) => m.Fondos),
-  },
 ];

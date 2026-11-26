@@ -28,7 +28,7 @@ La TPV opera de forma externa. El mesero captura la referencia de un cargo ya ap
 | Catálogo | Artículos, productos, subtipos y recetas | Inventario inicializa existencias para reventa. Comandas consulta precios. Inventario consulta receta al servir |
 | Servicio | Mesas, cuentas, comandas, detalles, estados y cancelación de comanda | Cocina y ventas usan sus interfaces de aplicación. Al servir invoca inventario y notificaciones |
 | Cocina | Vista ordenada y acciones de preparación | Ejecuta transiciones en servicio y consulta notificaciones |
-| Ventas y caja | Cobro, pagos, cancelación de ventas, rendición de efectivo y fondo de cambio | Cobro bloquea y cierra la cuenta mediante servicio. Caja usa pagos en efectivo |
+| Ventas y caja | Cobro, pagos, cancelación de ventas, rendición de efectivo y cambio | Cobro bloquea y cierra la cuenta mediante servicio. Caja usa pagos en efectivo |
 | Inventario | Existencias, movimientos, solicitudes y consumo al servir | Consulta catálogo y publica alertas persistentes |
 | Notificaciones | Bandeja por usuario y rol, lectura y eventos de operación | Persiste eventos emitidos por servicio, cocina e inventario |
 
@@ -80,7 +80,7 @@ Usar componentes standalone, carga diferida por funcionalidad, formularios react
 | `/cuentas/:id/cobro` | Mesero responsable | Total, método, referencia externa y confirmación |
 | `/cocina` | Cocinero | Cola, inicio, listo y avisos de modificación o cancelación |
 | `/ventas`, `/ventas/:id` | Administrador, cajero | Historial, filtros, detalle. Cancelación solo para administrador |
-| `/caja/entregas`, `/caja/fondos` | Cajero | Pagos en efectivo pendientes, entrega agrupada y fondo de cambio |
+| `/caja/entregas` | Cajero | Pagos en efectivo pendientes, recepción con lo recibido y cambio |
 | `/productos` | Administrador. Mesero con catálogo operativo | Búsqueda y estado. Alta, edición y desactivación para administrador |
 | `/empleados` | Administrador | Listado, filtros y gestión |
 | `/inventario`, `/inventario/ajustes` | Almacenista, administrador | Existencias e historial. Almacenista registra movimientos y solicita ajustes. Administrador resuelve solicitudes |
@@ -123,7 +123,7 @@ Sesión de Spring Security con cookie `HttpOnly`, `Secure` en HTTPS y `SameSite=
 | Gestionar empleados y productos | `ADMINISTRADOR`. Mesero puede consultar productos activos |
 | Consultar inventario y resolver ajuste | Consultar `ADMINISTRADOR` o `ALMACENISTA`. Resolver `ADMINISTRADOR` |
 | Registrar movimiento manual y solicitar ajuste | `ALMACENISTA` |
-| Registrar recepción de efectivo y entregar fondo | `CAJERO`. El mesero responsable consulta el fondo de su cuenta |
+| Registrar recepción de efectivo y cambio | `CAJERO` |
 | Leer notificación | Empleado destinatario o empleado activo del rol destinatario |
 
 ## 4. Contratos HTTP
@@ -153,8 +153,8 @@ Los DTO públicos continúan usando el nombre del rol, por ejemplo `MESERO` o `C
 | RF21 | `POST /comandas/:id/lista` | `version`. Devuelve comanda actualizada y genera notificación |
 | RF22 | `POST /ventas/:id/cancelacion` | `confirmado,justificacion,referenciaReversion` según método. Devuelve venta cancelada, pago original y auditoría |
 | RF23, RF24 | `POST /comandas/:id/servicio` | `version`. Devuelve comanda servida y resultado de consumo. El descuento es parte del caso de uso |
-| RF25 | `GET /caja/pagos-efectivo-pendientes`, `POST /caja/entregas-efectivo` | Filtro `meseroId`. Recepción con `meseroId,pagoIds[],montoRecibido`. Devuelve entrega, fecha, cajero y pagos |
-| RF26 | `GET /cuentas/:id/fondo-cambio`, `POST /cuentas/:id/fondo-cambio` | Cajero registra `monto` para el mesero de la cuenta. Consulta con estado y referencia de pago si ya se vinculó |
+| RF25 | `GET /caja/pagos-efectivo-pendientes`, `POST /caja/entregas-efectivo` | Filtro `meseroId`. Recepción con `meseroId` y `pagos[]` de `pagoId,montoRecibido`. Devuelve entrega, fecha, cajero, monto, cambio y cada pago con lo recibido y su cambio |
+| RF26 | `POST /caja/entregas-efectivo` | Cada pago lleva `montoRecibido`; el cambio es lo recibido menos el importe |
 | Soporte | `GET /notificaciones`, `PUT /notificaciones/:id/lectura` | Filtrar por estado de lectura del usuario actual. Marcar lectura individual |
 
 Usar `201` cuando se crea un recurso, `200` para consultas y operaciones que devuelven estado actualizado y `204` para logout y lectura registrada. Errores en formato Problem Details con `type,title,status,detail,instance,codigo` y `erroresCampo` cuando aplique. `400` para forma o campos inválidos, `401` para sesión ausente, `403` para rol sin permiso, `404` para recursos ausentes o fuera del ámbito del actor, `409` para versión obsoleta, transición inválida, duplicidad o existencias insuficientes en salida manual.
@@ -194,10 +194,10 @@ stateDiagram-v2
 
 ### Cobro, venta y efectivo
 
-1. **Cobrar.** Bloquear cuenta abierta, comprobar dueño, versión y total esperado. Exigir una comanda no cancelada como mínimo y que todas las comandas no canceladas estén `SERVIDA`. Calcular un total mayor que cero con los precios históricos. Para tarjeta exigir referencia de autorización. Transferencia admite una referencia opcional. Insertar venta `COMPLETADA` y su único pago por el total. Si existe fondo pendiente, exigir efectivo y asociarlo al pago. Cerrar la cuenta y registrar fecha de cierre en la misma transacción.
+1. **Cobrar.** Bloquear cuenta abierta, comprobar dueño, versión y total esperado. Exigir una comanda no cancelada como mínimo y que todas las comandas no canceladas estén `SERVIDA`. Calcular un total mayor que cero con los precios históricos. Para tarjeta exigir referencia de autorización. Transferencia admite una referencia opcional. Insertar venta `COMPLETADA` y su único pago por el total. En efectivo, el mesero lleva el dinero a caja. Cerrar la cuenta y registrar fecha de cierre en la misma transacción.
 2. **Cancelar venta.** Bloquear venta completada, confirmar decisión y justificación. El administrador registra una devolución completa. La referencia de reversión es obligatoria para tarjeta y transferencia. Para efectivo, caja realiza la devolución física y el administrador registra en SIVANT la cancelación y el importe devuelto. Conservar pago y cuenta cerrada. El estado de la venta pasa a `CANCELADA`. Las comandas mantienen su ciclo y los movimientos de consumo ya aplicados permanecen.
-3. **Entregar efectivo.** El cajero selecciona uno o más pagos en efectivo de monto positivo, del mismo mesero y pendientes de rendir. Bloquear pagos por ID ascendente. El monto recibido debe coincidir con la suma exacta. Registrar la entrega y asociar los pagos juntos. Una devolución previa se documenta por separado. El pago original sigue siendo rendible porque la devolución sale de caja. La asociación única impide rendir el mismo pago dos veces.
-4. **Dar fondo de cambio.** El cajero selecciona una cuenta abierta y confirma el monto positivo entregado físicamente. Crear un fondo pendiente ligado a cuenta y mesero. Admitir un fondo activo por cuenta. Exigir al menos una comanda no cancelada y total positivo al entregar el fondo. Al cobrar en efectivo, asociar al pago y marcar aplicado. Si se devuelve físicamente el fondo antes del cobro, el cajero puede anularlo con `POST /cuentas/:id/fondo-cambio/anulacion` y justificación. Conservar el registro y permitir un nuevo fondo pendiente. El fondo se audita por separado del importe de venta y del total entregado a caja.
+3. **Entregar efectivo.** El cajero selecciona uno o más pagos en efectivo de monto positivo, del mismo mesero y pendientes de rendir. Bloquear pagos por ID ascendente. Por cada pago, lo recibido debe cubrir su importe; la diferencia es el cambio que entrega el cajero. Registrar la entrega, asociar los pagos juntos y guardar en `FONDO_CAMBIO` lo recibido y el cambio de cada pago con cambio. Una devolución previa se documenta por separado. El pago original sigue siendo rendible porque la devolución sale de caja. La asociación única impide rendir el mismo pago dos veces.
+4. **Dar el cambio.** Al recibir un pago en efectivo, el cajero registra lo que entregó el cliente. Si es mayor que el importe, registrar el cambio ligado al pago y a la entrega. El total de cambio se guarda en la entrega.
 
 ### Inventario y notificaciones
 
@@ -212,7 +212,7 @@ Ejecutar los casos de uso de escritura con `@Transactional`. Para operaciones de
 
 Mantener `version` en cuenta, comanda y existencia. Incrementar la versión de cuenta al agregar, editar o cancelar comandas que afecten el cálculo. Incrementar la versión de comanda en cada edición o transición y la de existencia en cada cambio de saldo. Las validaciones se hacen sobre las filas bloqueadas.
 
-Exigir `Idempotency-Key` en los comandos de apertura, envío, cobro, cancelaciones, servicio, movimientos, solicitud y resolución de ajuste, entrega y fondo. Persistir en la misma transacción una fila única por actor, operación, recurso y clave, con huella del cuerpo y respuesta exitosa. Si coincide la huella, devolver el resultado guardado. Si cambia, responder `409`. El ámbito de la clave de apertura usa `mesaId`. Para las transiciones restantes, la versión y las restricciones de estado impiden aplicar el cambio dos veces.
+Exigir `Idempotency-Key` en los comandos de apertura, envío, cobro, cancelaciones, servicio, movimientos, solicitud y resolución de ajuste, y entrega de efectivo. Persistir en la misma transacción una fila única por actor, operación, recurso y clave, con huella del cuerpo y respuesta exitosa. Si coincide la huella, devolver el resultado guardado. Si cambia, responder `409`. El ámbito de la clave de apertura usa `mesaId`. Para las transiciones restantes, la versión y las restricciones de estado impiden aplicar el cambio dos veces.
 
 ## 6. PostgreSQL 18 · Relaciones físicas
 
@@ -230,7 +230,7 @@ Crear el esquema `sivant`. Usar nombres `snake_case`, IDs `bigint GENERATED BY D
 | Cuenta → venta → pago | 1 a 0..1 / 1 a 1 | `UNIQUE` en ambas FKs. Transacción garantiza pago y coincidencia con total |
 | Venta → cancelación | 1 a 0..1 | FK única. La cancelación referencia al administrador y conserva importe y referencia |
 | Pago ↔ entrega de efectivo | 0..1 entrega por pago. 1..N pagos por entrega | Tabla puente con PK compuesta y `UNIQUE(id_pago)` |
-| Cuenta → fondo de cambio → pago | 1 a N históricos. 0..1 activo por cuenta. 0..1 fondo aplicado por pago | Añadir FK de cuenta, hacer nullable la FK de pago y conservar su unicidad. Validar misma cuenta, mesero y método efectivo |
+| Pago → cambio ← entrega | 0..1 cambio por pago, dentro de la entrega que lo recibió | FK obligatorias a pago y entrega; validar método efectivo y que lo recibido sea el pago más el cambio |
 | Artículo → producto o insumo | 1 a exactamente un subtipo | PK compartida, FK, creación conjunta y validación de exclusividad |
 | Producto → preparado o reventa | 1 a exactamente un subtipo | PK compartida, FK y creación conjunta |
 | Preparado ↔ insumo | N a M por receta | Un preparado tiene al menos un componente. Par preparado–insumo único |
@@ -256,14 +256,14 @@ CREATE UNIQUE INDEX uq_consumo_detalle_existencia
 
 **Datos calculados.** Estado de mesa por cuenta abierta. Subtotales por cantidad y precio unitario guardado. Total de cuenta por suma de comandas no canceladas. Nivel bajo si `cantidad_actual <= nivel_minimo`. Guardar `VENTA.total` y `PAGO.monto` como importes históricos. La ventana de 24 meses limita la consulta operativa de RF06 y se calcula a partir de la fecha actual del negocio. Conservar las ventas históricas en base de datos.
 
-**Migraciones.** Prioridad: roles, identidad y mesas → catálogo y existencias → cuentas y comandas → ventas y caja → inventario y notificaciones → restricciones diferibles e índices. Crear `ROL` antes de `EMPLEADO` y cargar de forma idempotente `MESERO`, `CAJERO`, `COCINERO`, `ADMINISTRADOR` y `ALMACENISTA`. Añadir `version` e `idempotencia_operacion`. En `MOVIMIENTO_INVENTARIO` agregar `saldo_anterior` y `saldo_posterior`, con escala de inventario y validación de diferencia. En `SOLICITUD_AJUSTE`, agregar `version_existencia_solicitada`. En `FONDO_CAMBIO` implementar `id_cuenta`, `estado` y los campos de actor, fecha y justificación de anulación. Estados del fondo `PENDIENTE`, `APLICADO` y `ANULADO`. Crear índice único parcial por cuenta para fondos pendientes o aplicados. Crear `notificacion_lectura(id_notificacion,id_empleado,fecha_hora)` para la lectura individual y usar `contexto JSONB` para los datos estructurados del aviso. Referenciar todas las tablas por FK donde el modelo las identifica.
+**Migraciones.** Prioridad: roles, identidad y mesas → catálogo y existencias → cuentas y comandas → ventas y caja → inventario y notificaciones → restricciones diferibles e índices. Crear `ROL` antes de `EMPLEADO` y cargar de forma idempotente `MESERO`, `CAJERO`, `COCINERO`, `ADMINISTRADOR` y `ALMACENISTA`. Añadir `version` e `idempotencia_operacion`. En `MOVIMIENTO_INVENTARIO` agregar `saldo_anterior` y `saldo_posterior`, con escala de inventario y validación de diferencia. En `SOLICITUD_AJUSTE`, agregar `version_existencia_solicitada`. En `FONDO_CAMBIO` guardar `monto_recibido` y el cambio de un pago en efectivo, con `id_entrega` obligatorio. Crear `notificacion_lectura(id_notificacion,id_empleado,fecha_hora)` para la lectura individual y usar `contexto JSONB` para los datos estructurados del aviso. Referenciar todas las tablas por FK donde el modelo las identifica.
 
 ## 7. Entregables para el agente de implementación
 
 1. Generar el monorepo con las carpetas propuestas, Maven Wrapper, Angular CLI y Compose para PostgreSQL 18. Incluir arranque documentado, configuración por entorno y secretos aportados por variables.
 2. Crear migraciones reproducibles y preparar datos de desarrollo con la tabla `ROL`, sus cinco registros, mesas, productos de reventa, insumos y preparados con recetas. Para producción, provisionar los cinco roles antes de crear el administrador inicial, las mesas y los insumos mediante un proceso de carga autorizado. Las interfaces para administrar mesas, insumos y recetas se definirán posteriormente con los diseños proporcionados por el responsable del proyecto.
 3. Implementar OpenAPI, sesión, empleados y catálogo. Implementar cuentas, comandas, cocina y notificaciones sobre las tablas definitivas.
-4. Implementar inventario, servicio y consumo con una transacción de escritura. Implementar cobro, historial, cancelación, caja y fondo. Conectar Angular desde las rutas normales del usuario.
+4. Implementar inventario, servicio y consumo con una transacción de escritura. Implementar cobro, historial, cancelación, caja y cambio. Conectar Angular desde las rutas normales del usuario.
 5. Ejecutar pruebas de integración sobre PostgreSQL 18 con Testcontainers para las invariantes críticas y pruebas de navegación por rol para la operación completa. Documentar cómo arrancar y cómo verificar cada bloque.
 
 ## 8. Aceptación por flujo
@@ -278,7 +278,7 @@ CREATE UNIQUE INDEX uq_consumo_detalle_existencia
 | RF19–21 | Cola ordenada con estados vigentes. Saltar de enviada a lista falla. Marcar lista registra actor y fecha y avisa solo al mesero responsable |
 | RF22 | Solo el administrador cancela una venta completada. El pago se conserva, se registra la devolución y el historial de consumos no cambia |
 | RF23, RF24 | Servir dos veces aplica un solo consumo. Se registra existencia negativa y alerta si falta inventario. Un fallo de persistencia deja la comanda en su estado anterior |
-| RF25–26 | Rendición rechaza tarjeta, transferencia, duplicados o monto diferente. Un fondo pendiente puede registrarse antes del pago y queda asociado al cobrar en efectivo. La anulación queda auditada |
+| RF25–26 | Rendición rechaza tarjeta, transferencia, duplicados o lo recibido menor que el pago. El cambio queda ligado al pago y a la entrega, auditado |
 
 ## 9. Decisiones funcionales y operativas adoptadas
 
@@ -287,7 +287,7 @@ CREATE UNIQUE INDEX uq_consumo_detalle_existencia
 | Responsable operativo | El mesero que abrió la cuenta gestiona sus comandas y cobra. Reasignar cuentas requeriría un flujo propio |
 | Momento de cobro | Solo se permite cobrar cuando todas las comandas no canceladas estén `SERVIDA`. Al completar el pago se cierra la cuenta y se libera la mesa |
 | Venta cancelada | La cancelación se realiza sobre una venta completada después del servicio. Registra la devolución y conserva los movimientos de inventario ya aplicados |
-| Fondo de cambio | Se registra antes del pago y se vincula al cobrar. La anulación representa devolución del fondo pendiente. Un fondo pendiente obliga a resolverlo antes de usar otro método |
+| Fondo de cambio | El mesero lleva el efectivo a caja al cobrar; el cajero registra lo recibido y entrega el cambio. No se presta dinero antes del cobro |
 | Devolución en efectivo | Se efectúa desde caja. El importe original cobrado por el mesero sigue en su rendición. La devolución y la entrega conservan sus propios importes y registros |
 | Edición de comanda | Se editan cantidades o se eliminan líneas existentes. Para retirar todas las líneas se usa cancelación por cajero. Para agregar consumo se crea otra comanda |
 | Ajuste | La cantidad solicitada es la existencia final deseada. Si cambió la existencia desde la solicitud, se requiere una solicitud con la base actualizada para autorizar |

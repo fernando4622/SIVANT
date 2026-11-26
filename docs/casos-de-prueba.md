@@ -15,12 +15,12 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 170 | 240 | 240 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 164 | 230 | 230 | 0 |
 | Rendimiento | `.\mvnw.cmd test "-Dexcluir=ninguna" "-Dgroups=rendimiento"` en `backend/` | 3 | 3 | 3 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 87 | 102 | 102 | 0 |
-| Navegador | Manual | 50 | 50 | 50 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 85 | 100 | 100 | 0 |
+| Navegador | Manual | 44 | 44 | 44 | 0 |
 
-Fecha de la última ejecución: 26 de noviembre de 2026, con las migraciones 1 a 12 y 0 pruebas omitidas. Algunos casos se ejecutan varias
+Fecha de la última ejecución: 26 de noviembre de 2026, con las migraciones 1 a 13 y 0 pruebas omitidas. Algunos casos se ejecutan varias
 veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la pantalla de acceso anterior;
 CP-M16 y CP-M17 cubren la actual.
 
@@ -58,8 +58,8 @@ CP-M16 y CP-M17 cubren la actual.
 | Autorizar pago con tarjeta (extiende Cobrar pedido) | RF05 | CP-131 a CP-135, CP-F68, CP-F70, CP-M29, CP-M30 |
 | Consultar historial de ventas | RF06 | CP-136 a CP-141, CP-F72, CP-F73, CP-M31, CP-M33 |
 | Cancelar venta | RF22 | CP-142 a CP-149, CP-150, CP-F74, CP-F75, CP-M32, CP-M33 |
-| Registrar entrega de efectivo | RF25 | CP-160 a CP-166, CP-F80, CP-F81, CP-M36, CP-M39 |
-| Entregar fondo de cambio (extiende Cobrar pedido) | RF26 | CP-152 a CP-159, CP-166, CP-F76 a CP-F79, CP-F82, CP-M34, CP-M35, CP-M37 a CP-M39 |
+| Registrar entrega de efectivo | RF25 | CP-152 a CP-157, CP-159, CP-160, CP-F77 a CP-F80, CP-M51 |
+| Entregar fondo de cambio (extiende Cobrar pedido) | RF26 | CP-152, CP-153, CP-158, CP-160, CP-F76, CP-F78, CP-F79, CP-M51 |
 | Aceptación: demostración con los cinco roles | Fase 7 | CP-167, CP-M49 |
 | Rendimiento y sesiones simultáneas | RNF01 a RNF03 | CP-168 a CP-170 |
 | Accesibilidad, móvil y maquetas | Fase 7 | CP-M46 a CP-M48 |
@@ -482,42 +482,28 @@ servidas: 55.50, versión 1.
 Se comprobó que CP-124 falla si no se compara el total y que CP-147 falla si la venta no se bloquea antes de
 cancelarla.
 
-## Entregar fondo de cambio · RF26
+## Recibir el efectivo y dar el cambio · RF25 y RF26
 
-Precondición común de la fase 6: la de la fase 3. «Cuenta servida» es una cuenta de Juan con dos aguas servidas: 40.00.
-
-| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
-|---|---|---|---|---|
-| CP-152 | Cuenta servida | Como cajera, entregar 200 | 201 PENDIENTE a nombre de Juan y María; la cuenta muestra el fondo y ofrece anularlo; Juan lo consulta y Ana recibe 404; auditado | Aprobado |
-| CP-153 | Cuenta vacía, con su única comanda cancelada, cerrada e inexistente; cuenta servida | Entregar; montos 0, -1, «abc» y 1.005; sin clave; dos a la vez; otro después | `CUENTA_SIN_COMANDAS`, `CUENTA_CERRADA` y 404; 400 en cada monto y sin clave; 201 y 409; `FONDO_VIGENTE`; un solo fondo | Aprobado |
-| CP-154 | Cuenta servida y sesión de cada otro rol | Entregar, anular y consultar | 403; el mesero responsable solo puede consultar; sin fondo | Aprobado (4 roles) |
-| CP-155 | Cuenta servida con un fondo de 200 | Cobrar con tarjeta, con transferencia y en efectivo; anular después | 409 `FONDO_PENDIENTE` en el método; en efectivo se cobra y el fondo queda APLICADO a ese pago y venta, auditado; `SIN_FONDO_PENDIENTE` | Aprobado |
-| CP-156 | Cuenta servida | Anular sin fondo; entregar 200; anular en blanco y con « Lo regresó completo »; entregar 100 y cobrar | `SIN_FONDO_PENDIENTE`; 400; ANULADO con cajera y motivo recortado; se entrega otro; el historial conserva ambos y el nuevo queda APLICADO | Aprobado |
-| CP-157 | Cuenta con un fondo de 50 y su única comanda cancelada | Cerrar sin cobro; anular el fondo; cerrar | Sin acción de cierre y 409 `FONDO_PENDIENTE`; la cuenta sigue abierta; después del anulado se cierra | Aprobado |
-| CP-158 | Cuenta servida con un fondo, cuatro veces | Cobrar en efectivo y anular el fondo a la vez | El cobro siempre se registra; el fondo queda ANULADO si gana la anulación o APLICADO si gana el cobro, siempre coherente con su pago | Aprobado |
-| CP-159 | Fondos anulado, pendiente y aplicado | Consultar todos y por estado; estado desconocido | 3 en total; la anulación con su motivo; el pendiente de Ana; el aplicado con su venta y sin entrega; 400 | Aprobado |
-| CP-F76 | Cuenta con ENTREGAR_FONDO; cuenta del mesero con fondo pendiente y comandas canceladas | Abrir como cajero y como mesero | Enlace al fondo; el mesero ve «$200.00 · Pendiente» y que debe regresarlo para cerrar | Aprobado |
-| CP-F77 | Cuenta con ENTREGAR_FONDO | Montos vacío, 0, «abc», 1.005 y « 150,5 » | Pide un importe mayor que 0 sin llamar a la API; envía «150.5» y actualiza | Aprobado |
-| CP-F78 | Cuenta con un fondo pendiente y otro anulado | Anular vacío y con motivo, y 409 | Muestra el historial; pide el motivo; envía y muestra el motivo del 409 | Aprobado |
-| CP-F79 | Cuenta cobrable con fondo pendiente | Abrir el cobro | Avisa del fondo; tarjeta y transferencia deshabilitadas; efectivo elegido | Aprobado |
-| CP-F82 | Fondo liquidado | Abrir `/caja/fondos?estado=LIQUIDADO` | Consulta con el filtro; «Regresado a caja», «Entrega 8» y enlace a la cuenta | Aprobado |
-
-## Registrar entrega de efectivo · RF25
+Precondición común: la de la fase 3; Juan cobra en efectivo cuentas con dos aguas servidas (40.00 cada pago) y María
+es la cajera. Desde la migración V13 caja no presta un fondo antes del cobro: el mesero lleva el efectivo a caja y el
+cajero registra lo recibido de cada pago y le da el cambio.
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-160 | Dos pagos en efectivo de Juan (uno con fondo de 100 y otro de una venta cancelada), uno de Ana, uno con tarjeta y uno por transferencia | Consultar todos y los de Juan | Solo los en efectivo, por mesero y fecha; la venta cancelada se incluye con su estado; el fondo junto a su pago | Aprobado |
-| CP-161 | Pagos de 40 en efectivo, uno con fondo de 100 | Recibir los dos con 80 y fondo 100 | 201: monto 80, fondo 100, mesero, cajera y pagos en orden; el fondo queda LIQUIDADO en esa entrega; no quedan pendientes; auditado | Aprobado |
-| CP-162 | Pago con fondo de 100; pagos con tarjeta, transferencia y de Ana | 39.99; sin fondo; fondo 99; con tarjeta o transferencia; con el de Ana; inexistente; repetido; vacío; monto negativo; sin clave | `MONTO_DISTINTO` con el importe correcto; `FONDO_DISTINTO`; `PAGO_NO_EFECTIVO`; `PAGO_DE_OTRO_MESERO`; 400 en los demás; nada registrado | Aprobado |
-| CP-163 | Pagos en efectivo de Juan | Repetir con la misma clave y con otra; incluirlo en otra entrega; tres veces: entregas simultáneas con [a, b], [b, a] y [b] | Mismo resultado y `PAGO_ENTREGADO`; en cada ronda una sola entrega y las demás `PAGO_ENTREGADO`; ningún pago repetido | Aprobado |
-| CP-164 | Pago en efectivo y sesión de cada otro rol | Consultar pendientes, fondos y registrar | 403; sin entrega | Aprobado (4 roles) |
-| CP-165 | Pago con fondo y fallo simulado al asociar los pagos | Registrar y reintentar con la misma clave | 500; sin entrega y el fondo sigue APLICADO; el reintento lo registra y liquida el fondo | Aprobado |
-| CP-166 | Una entrega con fondo liquidado y un pago con tarjeta | Por SQL: cambiar monto o fondo, quitar o repetir un pago, regresar el fondo a pendiente, quitarle la entrega, anularlo, segundo fondo vigente, aplicarlo a la tarjeta, entregar la tarjeta | PostgreSQL rechaza cada una | Aprobado (10 sentencias) |
-| CP-F80 | Pagos de Ana y de Juan, uno con fondo | Elegir a Juan; contar 55 y fondo 200; después 55,50 | Agrupa por mesero; suma 55.50 y fondo 200; no envía si no coincide; envía los dos pagos y muestra la entrega | Aprobado |
-| CP-F81 | Pagos de Juan | Quitar el de fondo; contar 15.50; 409 | Oculta el campo del fondo y envía 0; muestra el motivo y actualiza | Aprobado |
-
-Se comprobó que CP-155 falla si se cobra con tarjeta teniendo un fondo pendiente y que CP-163 falla si los pagos no se
-bloquean antes de la entrega.
+| CP-152 | Un pago en efectivo de 40 | Recibirlo con 50 | 201: monto 40.00, cambio 10.00, mesero y cajera; el pago muestra 50.00 recibidos y 10.00 de cambio; `fondo_cambio` guarda 50.00/10.00; sale de pendientes; auditoría `EFECTIVO_RECIBIDO` con el cambio | Aprobado |
+| CP-153 | Un pago de 40; después dos más de Juan | Recibir el primero con 40.00; los otros dos juntos con 100 y 40 | Cambio 0.00 sin fila de cambio; la entrega conjunta suma 80.00 con 60.00 de cambio, pagos en orden de ID y una sola fila de cambio | Aprobado |
+| CP-154 | Pagos de Juan en efectivo, con tarjeta y por transferencia; un pago de Ana | 39.99; con la tarjeta o la transferencia; con el de Ana; inexistente; repetido; vacío; montos 0, -1, «abc» y 1.005; sin clave | 409 `MONTO_INSUFICIENTE` en `pagos` con el importe 40.00; `PAGO_NO_EFECTIVO`; `PAGO_DE_OTRO_MESERO`; 400 en los demás; nada registrado | Aprobado |
+| CP-155 | Pagos en efectivo de Juan | Repetir con la misma clave y con otra; tres rondas de recepciones simultáneas con [a, b], [b, a] y [b] | El mismo resultado y después `PAGO_ENTREGADO`; en cada ronda una sola entrega y las demás `PAGO_ENTREGADO`; ningún pago repetido | Aprobado |
+| CP-156 | Dos pagos de Juan (uno de una venta cancelada), uno de Ana, uno con tarjeta y uno por transferencia | Consultar todos y los de Juan | Solo los en efectivo, del más reciente al más antiguo; la venta cancelada aparece con su estado y su importe | Aprobado |
+| CP-157 | Pago en efectivo y sesión de cada otro rol | Consultar pendientes y recibir | 403; sin entrega | Aprobado (4 roles) |
+| CP-158 | Cuenta servida | Como cajera, `POST /cuentas/:id/fondo-cambio` y `GET /caja/fondos`; consultar la cuenta; cobrar con tarjeta | 403 y 404; la cuenta no ofrece acciones de fondo; el cobro con tarjeta se registra | Aprobado |
+| CP-159 | Pago en efectivo y fallo simulado al guardar el cambio | Recibir con 100 y reintentar con la misma clave | 500, sin entrega y el pago sigue pendiente; el reintento responde 201 con una fila de cambio | Aprobado |
+| CP-160 | Una entrega con cambio | Por SQL: cambio a un pago con tarjeta, lo recibido distinto del pago más el cambio, sin pago, sin entrega, segundo cambio del mismo pago, cambiar el monto o el cambio total de la entrega, quitar o repetir un pago | PostgreSQL rechaza cada una | Aprobado (9 sentencias) |
+| CP-F76 | Cuenta cobrable | Abrir como cajero; abrir el cobro como mesero | La cuenta no menciona el fondo; los tres métodos están habilitados y el efectivo indica llevar el dinero a caja | Aprobado |
+| CP-F77 | Pagos de Juan (480.00 y 15.50) y de Ana | Abrir **Caja** | Agrupa por mesero; propone el pago más reciente con lo recibido igual a su importe y cambio $0.00 | Aprobado |
+| CP-F78 | Pago de 480.00 elegido | Recibido 450; después 500 y registrar | «No cubre el pago de $480.00.» sin llamar a la API; cambio $20.00; envía `montoRecibido` 500 y muestra «Recepción 8 registrada: … Entrega $20.00 de cambio.»; actualiza la lista | Aprobado |
+| CP-F79 | El paso anterior sin registrar | Elegir también el de 15.50 con 20; quitar el de 480.00 | Suma $495.50 y $4.50 de cambio; después solo cuenta $15.50 | Aprobado |
+| CP-F80 | Pago ya recibido en otra caja | Registrar | Muestra el motivo de `PAGO_ENTREGADO` y actualiza la lista | Aprobado |
 
 ## Verificaciones pendientes
 
@@ -531,7 +517,7 @@ Se repitieron con condiciones reales las comprobaciones que antes se simularon o
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-167 | Base nueva con los cinco roles | Insumo y preparado; entrada y ajuste autorizado; cuenta con dos comandas, una editada y otra cancelada; cocina las prepara; fondo de 100; servir; cobrar en efectivo; consultar y cancelar la venta; recibir el efectivo y el fondo | Saldos 480 y 426 tras el ajuste y el consumo; total 125.00; la cancelación no repone inventario; el fondo queda LIQUIDADO; cada acción auditada con su responsable | Aprobado |
+| CP-167 | Base nueva con los cinco roles | Insumo y preparado; entrada y ajuste autorizado; cuenta con dos comandas, una editada y otra cancelada; cocina las prepara; servir; cobrar en efectivo; caja recibe 200 del cliente; consultar y cancelar la venta | Saldos 480 y 426 tras el ajuste y el consumo; total 125.00; caja da 75.00 de cambio; la cancelación no repone inventario; cada acción auditada con su responsable | Aprobado |
 | CP-168 | 50 000 ventas de dos años y 100 000 movimientos | 20 veces: ventas sin filtros, por mesero y método, del último mes, última página, detalle, opciones y movimientos | p95 menor a 2 s en todas | Aprobado |
 | CP-169 | Base de prueba | Mesero, administrador y almacenista a la vez, 15 vueltas: catálogo, enviar y editar comandas, altas y ediciones de productos y empleados, movimientos | p95 menor a 1.5 s, sin errores | Aprobado |
 | CP-170 | La historia de CP-168 | Mesero, cocinero, almacenista y cajero a la vez, 15 vueltas | p95 menor a 1.5 s, sin errores; las 15 comandas quedan listas | Aprobado |
@@ -576,22 +562,16 @@ insertan la historia con las validaciones por fila suspendidas y después compru
 | CP-M31 | Administrador con tres ventas | Historial y `?metodo=TRANSFERENCIA` | Muestra las ventas; el filtro deja la venta 1 y las mesas 2 y 5 | Aprobado |
 | CP-M32 | Venta 2 con tarjeta | Cancelar con motivo y «rev-778900», sin confirmar y después confirmando | Pide confirmar; el detalle queda Cancelada, conserva el pago 778900 y muestra Rodrigo Herrera, $40.00 y «REV-778900» | Aprobado |
 | CP-M33 | Mesero y administrador | Cobro en efectivo de la cuenta 5, historial, detalles y cancelar a 360 px | Sin desplazamiento horizontal; los filtros en dos columnas | Aprobado tras corregir |
-| CP-M34 | Cajera en la cuenta 6, servida por 40.00 | «Entregar fondo de cambio» y registrar 200 | El historial muestra $200.00 Pendiente de María López y ofrece anularlo | Aprobado |
-| CP-M35 | El paso anterior | Por la API, Juan cobra con tarjeta y después en efectivo | 409 `FONDO_PENDIENTE`; después 201 con el fondo APLICADO | Aprobado |
-| CP-M36 | Pagos de Juan de 40 y 40, uno con el fondo | **Caja**: contar 70 y fondo 200; después 80 | «No coincide: deben ser $80.00»; «Entrega 1 registrada: $80.00 de 2 pago(s) de Juan Pérez y $200.00 de fondo de cambio»; la lista queda vacía; **Fondos de cambio** muestra «Regresado a caja» y «Entrega 1» | Aprobado tras corregir |
-| CP-M37 | Cuenta 7 con un fondo pendiente de 150 | Anular con «La mesa pagó con el importe exacto» | Anulado con cajera, fecha y motivo; vuelve a ofrecer registrar un fondo | Aprobado |
-| CP-M38 | Cuenta 7 con un fondo nuevo de 100, como mesero | Abrir el cobro y cobrar | Avisa del fondo, solo efectivo habilitado y elegido; se registra la venta 5 | Aprobado |
-| CP-M39 | Cajera y mesero | Recibir efectivo con un pago y fondo, fondos, fondo de cuenta, cuenta y cobro a 360 px | Sin desplazamiento horizontal; el menú de la cajera muestra **Caja** | Aprobado |
 | CP-M40 | API de desarrollo con 45 minutos de inactividad; sesiones A y B del almacenista, de 19:27:16 a 20:14:29 | A: una consulta pasiva por minuto (como el sondeo). B: lo mismo y una solicitud activa cada 10 minutos. Al final, una activa en cada una | A responde 200 hasta el minuto 44 y 401 desde el minuto 45: esa primera solicitud cerró la sesión, así que la final responde 401 `SESION_REQUERIDA`. B responde 200 los 47 minutos. No se guardó el cuerpo de la primera respuesta 401; CP-10 y CP-11 comprueban con reloj simulado que su código es `SESION_EXPIRADA` | Aprobado (reloj real) |
 | CP-M41 | API en HTTPS (puerto 8443) con un certificado local validado por el cliente | Pedir CSRF, iniciar sesión, cerrar sesión sin token, HTTP al mismo puerto; STOMP por `wss`, suscribirse a `/topic/inventario` y registrar una entrada; conectar con otro origen | Cookies `XSRF-TOKEN` y `SIVANT_SESION` con `Secure` y `SameSite=Lax` (la de sesión también `HttpOnly`); 403 sin token; 400 por HTTP; `CONNECTED` y `EXISTENCIA_ACTUALIZADA` por `wss`; otro origen rechazado | Aprobado |
 | CP-M42 | Las cinco cuentas ficticias | Iniciar sesión con cada una, leer el menú y abrir `/caja/entregas` | Administrador: Inicio, Empleados, Productos, Ventas, Inventario y Avisos. Mesero: Inicio, Mesas, Productos y Avisos. Cajero: Inicio, Mesas, Caja, Ventas y Avisos. Cocinero: Inicio, Cocina y Avisos. Almacenista: Inicio, Inventario y Avisos. Solo el cajero abre `/caja`; los demás vuelven a su inicio | Aprobado |
-| CP-M43 | Un pago de Juan de 40 con fondo de 100 | Recibirlo como cajera | «Entrega 2 registrada: $40.00 de 1 pago(s) de Juan Pérez y $100.00 de fondo de cambio.» | Aprobado |
 | CP-M44 | Administrador | Alta con «MESERO@sivant.test», ya usado | El error aparece una vez en el campo de correo, el aviso general pide revisar lo marcado y se conservan los datos | Aprobado |
 | CP-M45 | Mesero en una nueva comanda a 360 px | Agregar un producto | El selector de cantidad mide 136 × 44 px y no hay desplazamiento horizontal | Aprobado |
 | CP-M46 | Los cinco roles; 36 pantallas | Auditoría en la página a 1024, 768 y 360 px: idioma, tipografía base, letra mínima, contraste AA, etiquetas, nombres accesibles, un `h1` y desplazamiento horizontal | Tipografía base de 16 px, ninguna letra menor a 14 px, contraste suficiente, todos los controles con etiqueta y nombre, un `h1` y sin desplazamiento horizontal | Aprobado tras corregir |
 | CP-M47 | Inicio de sesión | Recorrer con Tab | El control enfocado muestra un contorno azul de 2.4 px (`:focus-visible` global en todas las pantallas) | Aprobado |
 | CP-M48 | Maquetas de `Interfaces` | Comparar empleados, editar producto, movimientos y ajuste con su pantalla | Misma estructura, encabezado, tarjetas, tablas, avisos y botones; las diferencias están en [decisiones.md](decisiones.md) | Aprobado |
 | CP-M49 | Clon de la rama en otra carpeta, `.env` nuevo y base vacía (proyecto de Compose aparte) | Pasos del README; `npm ci`; `scripts/recorrido-demostracion.py`; entrar con los cinco roles | 9 migraciones aplicadas; `npm ci` sin errores; 19 de 19 pasos correctos; cada rol ve su menú | Aprobado |
+| CP-M51 | API con V13 sobre la base de desarrollo (5 fondos regresados a caja); cajera; cuenta 16 de Juan cobrada en efectivo por 40.00 | Revisar las entregas migradas; en **Caja** recibir 30 y después 100; repetir a 360 px | Los fondos migrados quedan como cambio (por ejemplo, recibido 240 y cambio 200); «No cubre el pago de $40.00»; cambio $60.00 y «Recepción 7 registrada… Entrega $60.00 de cambio.»; la lista queda vacía; sin desplazamiento horizontal, campos etiquetados y **Caja** en el menú | Aprobado |
 | CP-M50 | Almacenista en el Agua embotellada (93 pza, mínimo 12) | Salida de 1 sin causa; con merma y «Se rompió una botella»; mínimo 100; volver a 12; a 360 px | Pide la causa e indica usar un ajuste si no se sabe; queda en 92 y el historial muestra «Merma (caducado o dañado): Se rompió una botella»; el nivel pasa a bajo y vuelve a suficiente; sin desplazamiento horizontal y con todos los campos etiquetados | Aprobado |
 
 ### Defectos encontrados
@@ -612,8 +592,7 @@ insertan la historia con las validaciones por fila suspendidas y después compru
 | CP-M29 | El nombre del producto aparecía dentro de un recuadro en el cobro y en la cancelación de venta | El estilo usaba el nombre de una clase de la nueva comanda |
 | CP-M33 | A 360 px los filtros ocupaban la pantalla y las fechas se salían de su columna | Dos columnas y campos que se ajustan |
 | CP-147 | Sin el bloqueo de la venta, las cancelaciones simultáneas respondían `REFERENCIA_REPETIDA` y la prueba no lo detectaba | La prueba exige `VENTA_CANCELADA` |
-| CP-M36 | El aviso de entrega dejaba un espacio antes del punto final | Se unió el texto; CP-M43 lo confirma |
-| CP-166 | Quitar la entrega de un fondo liquidado no descuadraba la entrega porque el disparador solo revisaba la nueva | El disparador revisa la entrega anterior y la nueva |
+| CP-M51 | V13 fallaba en la base de desarrollo: «cannot ALTER TABLE fondo_cambio because it has pending trigger events» (la base vacía de Testcontainers no lo mostraba) | La migración empieza con `SET CONSTRAINTS ALL IMMEDIATE` |
 | CP-M46 | A 1024 px el cobro tenía 16 px de desplazamiento horizontal: «Transferencia» no cabía en su opción | Las opciones bajan a otra fila; se repitió la auditoría |
 
 En CP-M46 la revisión automática del foco da falsos positivos cuando la página no tiene el foco del sistema; por eso

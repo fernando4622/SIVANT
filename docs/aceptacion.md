@@ -5,7 +5,7 @@ detallados en [casos-de-prueba.md](casos-de-prueba.md).
 
 | Criterio | Evidencia | Resultado |
 |---|---|---|
-| Demostración reproducible con los cinco roles, incluida rendición, fondo y ajuste | CP-167 (por la API, en Testcontainers); CP-M49 (clon limpio, base vacía, [guion](demostracion.md) automatizado en 19 pasos) | Cumple |
+| Demostración reproducible con los cinco roles, incluida rendición con cambio y ajuste | CP-167 (por la API, en Testcontainers); CP-M49 (clon limpio, base vacía, [guion](demostracion.md) automatizado en 19 pasos) | Cumple |
 | Pruebas de integración con PostgreSQL 18 y Testcontainers | 234 ejecuciones del backend, todas aprobadas | Cumple |
 | Permisos por rol y propietario | CP-12 a CP-15, CP-112, CP-126, CP-140, CP-146, CP-154, CP-164, CP-F83, CP-M42 | Cumple |
 | Bloqueos, versiones, idempotencia, reintentos y restricciones | CP-62, CP-63, CP-78, CP-117, CP-118, CP-128, CP-130, CP-150, CP-151, CP-163, CP-165, CP-166 | Cumple |
@@ -57,7 +57,6 @@ La historia de 50 000 ventas equivale a unas diez veces lo esperado en 24 meses 
 | almacenista: movimientos | 15 | 250 | 699 | 699 |
 | almacenista: registrar entrada | 15 | 49 | 117 | 117 |
 | cajero: efectivo por entregar | 15 | 172 | 606 | 606 |
-| cajero: fondos | 15 | 26 | 84 | 84 |
 | cajero: ventas | 15 | 121 | 301 | 301 |
 | cocinero: cola | 15 | 34 | 93 | 93 |
 | cocinero: iniciar preparación | 15 | 76 | 138 | 138 |

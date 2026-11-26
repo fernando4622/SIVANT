@@ -130,16 +130,12 @@ erDiagram
 
     FONDO_CAMBIO {
         int id_fondo_cambio PK
-        int id_cuenta FK
         int id_pago FK,UK
+        int id_entrega FK
         int id_cajero FK
-        int id_mesero FK
+        decimal monto_recibido
         decimal monto
         datetime fecha_hora
-        string estado
-        int id_cajero_anulacion FK
-        datetime fecha_hora_anulacion
-        string justificacion_anulacion
     }
 
     ARTICULO {
@@ -247,11 +243,9 @@ erDiagram
     ENTREGA_EFECTIVO ||--|{ ENTREGA_EFECTIVO_PAGO : ""
     PAGO ||--o| ENTREGA_EFECTIVO_PAGO : ""
 
-    CUENTA ||--o{ FONDO_CAMBIO : ""
-    PAGO o|--o| FONDO_CAMBIO : ""
+    PAGO ||--o| FONDO_CAMBIO : ""
+    ENTREGA_EFECTIVO ||--o{ FONDO_CAMBIO : ""
     EMPLEADO ||--o{ FONDO_CAMBIO : ""
-    EMPLEADO ||--o{ FONDO_CAMBIO : ""
-    EMPLEADO o|--o{ FONDO_CAMBIO : ""
 
     ARTICULO ||--o| PRODUCTO : ""
     ARTICULO ||--o| INSUMO : ""
@@ -336,11 +330,10 @@ Sí se almacena `VENTA.total`, porque representa el importe histórico al moment
 - Solamente pueden agruparse pagos cuyo método sea `EFECTIVO`.
 - Cada pago en efectivo pertenece como máximo a una entrega.
 - `ENTREGA_EFECTIVO.monto` debe ser igual a la suma de los pagos agrupados.
-- El fondo de cambio se registra primero sobre una cuenta abierta y queda en estado `PENDIENTE`.
-- Al cobrar la cuenta, un fondo pendiente obliga a utilizar el método `EFECTIVO` y se asocia con el pago, pasando a `APLICADO`.
-- Cada cuenta puede tener como máximo un fondo `PENDIENTE` o `APLICADO`.
-- Cada pago puede tener como máximo un fondo de cambio.
-- Un fondo pendiente devuelto físicamente puede pasar a `ANULADO`, conservando cajero, fecha y justificación.
+- Al cobrar en efectivo, el mesero lleva el dinero a caja; el cajero registra lo recibido de cada pago, que debe cubrir su importe.
+- Si lo recibido supera el importe, `FONDO_CAMBIO` guarda lo recibido y el cambio entregado, ligado al pago en efectivo y a su entrega: `monto_recibido` = importe del pago + `monto`.
+- Cada pago puede tener como máximo un registro de cambio.
+- `ENTREGA_EFECTIVO.monto_fondo` es la suma del cambio de sus pagos.
 
 ### Productos y recetas
 
@@ -389,7 +382,6 @@ Sí se almacena `VENTA.total`, porque representa el importe histórico al moment
 | `TipoMovimiento` | `ENTRADA_MANUAL`, `SALIDA_MANUAL`, `CONSUMO_VENTA`, `AJUSTE` |
 | `EstadoSolicitud` | `PENDIENTE`, `AUTORIZADA`, `RECHAZADA` |
 | `UnidadMedida` | `PIEZA`, `GRAMO`, `KILOGRAMO`, `MILILITRO`, `LITRO` |
-| `EstadoFondoCambio` | `PENDIENTE`, `APLICADO`, `ANULADO` |
 
 Los roles no se implementan como un enumerado. Se almacenan en la tabla `ROL`, cargada inicialmente con los cinco valores definidos para el sistema.
 
@@ -409,7 +401,6 @@ Los roles no se implementan como un enumerado. Se almacenan en la tabla `ROL`, c
 - Índice sobre `SOLICITUD_AJUSTE(estado, fecha_hora_solicitud)`.
 - Restricción única sobre `RECETA_PRODUCTO(id_producto_preparado, id_insumo)`.
 - Restricción única sobre `ENTREGA_EFECTIVO_PAGO.id_pago`.
-- Índice único parcial para impedir más de un fondo `PENDIENTE` o `APLICADO` por cuenta.
 
 ## Consideración para el modelo físico
 

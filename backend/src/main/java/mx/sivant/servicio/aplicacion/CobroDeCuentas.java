@@ -48,28 +48,6 @@ public class CobroDeCuentas {
         return cuenta;
     }
 
-    /** Bloquea una cuenta abierta con consumo por cobrar, sin importar el mesero. Para el fondo de cambio. */
-    public Cuenta bloquearConConsumo(Long id) {
-        var bloqueada = servicio.bloquearCuenta(id).orElseThrow(GestionCuentas::sinCuenta);
-        if (bloqueada.estado() != EstadoCuenta.ABIERTA) {
-            throw ReglaNegocioException.conflicto("CUENTA_CERRADA", "La cuenta ya está cerrada.");
-        }
-        Cuenta cuenta = cuenta(id);
-        if (!cuenta.tieneComandasVigentes()) {
-            throw ReglaNegocioException.conflicto("CUENTA_SIN_COMANDAS", "La cuenta no tiene comandas por cobrar.");
-        }
-        if (cuenta.total().signum() <= 0) {
-            throw ReglaNegocioException.conflicto("TOTAL_INVALIDO", "El total de la cuenta no puede cobrarse.");
-        }
-        return cuenta;
-    }
-
-    /** Bloquea la cuenta para cambiar su fondo de cambio. */
-    public Cuenta bloquearCualquiera(Long id) {
-        servicio.bloquearCuenta(id).orElseThrow(GestionCuentas::sinCuenta);
-        return cuenta(id);
-    }
-
     public Cuenta cerrar(Long id) {
         servicio.cerrarCuenta(id);
         return cuenta(id);

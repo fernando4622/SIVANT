@@ -15,12 +15,12 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 164 | 230 | 230 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 169 | 229 | 229 | 0 |
 | Rendimiento | `.\mvnw.cmd test "-Dexcluir=ninguna" "-Dgroups=rendimiento"` en `backend/` | 3 | 3 | 3 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 85 | 100 | 100 | 0 |
-| Navegador | Manual | 44 | 44 | 44 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 89 | 104 | 104 | 0 |
+| Navegador | Manual | 45 | 45 | 45 | 0 |
 
-Fecha de la última ejecución: 26 de noviembre de 2026, con las migraciones 1 a 13 y 0 pruebas omitidas. Algunos casos se ejecutan varias
+Fecha de la última ejecución: 26 de noviembre de 2026, con las migraciones 1 a 14 y 0 pruebas omitidas. Algunos casos se ejecutan varias
 veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la pantalla de acceso anterior;
 CP-M16 y CP-M17 cubren la actual.
 
@@ -39,6 +39,7 @@ CP-M16 y CP-M17 cubren la actual.
 | Registrar producto | RF07 | CP-42 a CP-46, CP-171, CP-F20, CP-F21, CP-M13 |
 | Consultar producto | RF08 | CP-47 a CP-49, CP-F18, CP-F19, CP-M15 |
 | Modificar producto | RF09 | CP-50, CP-51, CP-F22, CP-F23, CP-F84, CP-M14 |
+| Imagen del producto | RF07, RF08 y RF09 | CP-174 a CP-178, CP-F88 a CP-F91, CP-M52 |
 | Desactivar producto | RF10 | CP-52, CP-53, CP-M14 |
 | Consultar inventario | RF16 | CP-54 a CP-56, CP-173, CP-F24 a CP-F26, CP-F86, CP-M10, CP-M50 |
 | Registrar movimiento de inventario | RF17 | CP-57 a CP-63, CP-72, CP-172, CP-F27, CP-F28, CP-F85, CP-F87, CP-M11, CP-M50 |
@@ -208,6 +209,23 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 | CP-F22 | Formulario de edición | Guardar sin cambios; cambiar solo el precio | No llama a la API; después envía solo el precio | Aprobado |
 | CP-F23 | Formulario de edición | La API responde 400 en `nombre` | Marca el campo y conserva lo capturado | Aprobado |
 | CP-F84 | Formulario de edición | Escribir `0.00` como precio de venta y enviar | Marca el campo con el mensaje de precio mayor que cero y no llama a la API | Aprobado |
+
+## Imagen del producto · RF07 a RF09
+
+Precondición: un administrador y el producto de reventa «Agua embotellada». Las pruebas usan los primeros bytes de
+cada formato y una carpeta de imágenes propia (`target/imagenes-prueba`).
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-174 | Producto sin imagen | Subir un PNG; consultarla; reemplazarla por un JPG y después por un WebP; consultar como mesero | 200 con `imagen` versionada; la base guarda `productos/<UUID>.png` y el archivo existe; se sirve con `image/png`, caché privada y `nosniff`; al reemplazar cambia la ruta y la URL y se borra el archivo anterior; tres auditorías; el mesero ve la URL en el listado y la imagen | Aprobado |
+| CP-175 | Producto sin imagen | Subir texto con nombre `.png`; archivo vacío; 2 MB + 1 byte; otra parte en lugar de `archivo`; producto inexistente | 400 «Usa una imagen JPG, PNG o WebP.» y «Selecciona una imagen.»; 413 «La imagen pesa más de 2 MB.»; 400; 404; no queda ruta ni archivo nuevo | Aprobado |
+| CP-176 | Producto con imagen y sesión de cada otro rol | Subir, quitar sin y con CSRF, consultar | 403 en subir y quitar; la imagen sigue; el mesero la consulta (200) y los demás reciben 403 | Aprobado (4 roles) |
+| CP-177 | Producto sin imagen | Quitar; subir; desactivarlo y consultarla como mesero y administrador; quitarla | 409 `SIN_IMAGEN`; 404 para el mesero y 200 para el administrador; al quitarla, sin `imagen`, ruta nula, archivo borrado, 404 al consultarla y auditoría | Aprobado |
+| CP-178 | Producto | Por SQL: rutas `../secreto.png`, `productos/foto.png`, una URL externa, extensión `.svg` y ruta absoluta | PostgreSQL rechaza cada una | Aprobado (5 rutas) |
+| CP-F88 | Un producto con imagen y otro sin ella | Abrir el listado; simular que la imagen no carga | Muestra la imagen solo en el primero; si no carga, muestra el marcador | Aprobado |
+| CP-F89 | Edición de un producto sin imagen | Elegir un SVG; un PNG de 2 MB + 1 byte; un WebP; guardar | Avisa del formato y del tamaño sin llamar a la API; muestra la vista previa y «Cambiar imagen»; al guardar solo sube la imagen y vuelve al listado | Aprobado |
+| CP-F90 | Edición de un producto con imagen | Quitar imagen y guardar | Deja de mostrar la vista previa y llama a quitarla | Aprobado |
+| CP-F91 | Alta de reventa con imagen; la API rechaza la imagen | Guardar; guardar otra vez | Sube la imagen al producto creado; avisa «El producto se registró, pero no se guardó la imagen…» con enlace a su edición y no lo registra de nuevo | Aprobado |
 
 ## Desactivar producto · RF10
 
@@ -572,6 +590,7 @@ insertan la historia con las validaciones por fila suspendidas y después compru
 | CP-M48 | Maquetas de `Interfaces` | Comparar empleados, editar producto, movimientos y ajuste con su pantalla | Misma estructura, encabezado, tarjetas, tablas, avisos y botones; las diferencias están en [decisiones.md](decisiones.md) | Aprobado |
 | CP-M49 | Clon de la rama en otra carpeta, `.env` nuevo y base vacía (proyecto de Compose aparte) | Pasos del README; `npm ci`; `scripts/recorrido-demostracion.py`; entrar con los cinco roles | 9 migraciones aplicadas; `npm ci` sin errores; 19 de 19 pasos correctos; cada rol ve su menú | Aprobado |
 | CP-M51 | API con V13 sobre la base de desarrollo (5 fondos regresados a caja); cajera; cuenta 16 de Juan cobrada en efectivo por 40.00 | Revisar las entregas migradas; en **Caja** recibir 30 y después 100; repetir a 360 px | Los fondos migrados quedan como cambio (por ejemplo, recibido 240 y cambio 200); «No cubre el pago de $40.00»; cambio $60.00 y «Recepción 7 registrada… Entrega $60.00 de cambio.»; la lista queda vacía; sin desplazamiento horizontal, campos etiquetados y **Caja** en el menú | Aprobado |
+| CP-M52 | API de la rama con V14 sobre la base de desarrollo; administrador, mesero y cajera | Con un script contra la API: subir un PNG a «Agua de jamaica», consultarla, reemplazarla, subir un SVG con nombre `.png`, consultar como mesero, subir como cajera; después quitarla | 200 con URL versionada y archivo en `backend/almacen/productos`; `image/png` con caché privada; el reemplazo cambia la URL y borra el anterior; el SVG se rechaza; el mesero la ve; la cajera recibe 403; al quitarla no queda archivo | Aprobado (7 de 7) |
 | CP-M50 | Almacenista en el Agua embotellada (93 pza, mínimo 12) | Salida de 1 sin causa; con merma y «Se rompió una botella»; mínimo 100; volver a 12; a 360 px | Pide la causa e indica usar un ajuste si no se sabe; queda en 92 y el historial muestra «Merma (caducado o dañado): Se rompió una botella»; el nivel pasa a bajo y vuelve a suficiente; sin desplazamiento horizontal y con todos los campos etiquetados | Aprobado |
 
 ### Defectos encontrados

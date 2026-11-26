@@ -37,6 +37,9 @@ compose.override.yaml
 database/**/*.local.*
 .claude/
 
+# Imágenes subidas en local (en el despliegue van a un volumen o almacén externo)
+backend/almacen/
+
 # Respaldos y datos de PostgreSQL
 *.dump
 *.backup

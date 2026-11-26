@@ -23,6 +23,8 @@ export interface Producto {
   tipo: TipoProducto;
   unidadMedida: UnidadMedida;
   activo: boolean;
+  /** URL de la imagen, con su versión. No viene si el producto no tiene imagen. */
+  imagen?: string;
   receta?: { insumoId: string; nombre: string; unidadMedida: UnidadMedida; cantidadRequerida: string }[];
   existencia?: { id: string; cantidadActual: string; nivelMinimo: string };
 }
@@ -40,6 +42,10 @@ export interface AltaProducto {
 export type CambiosProducto = Partial<Pick<AltaProducto, 'nombre' | 'descripcion' | 'precioVenta'>>;
 
 const API = '/api/v1/productos';
+
+/** Formatos y tamaño que acepta la API. */
+export const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'];
+export const TAMANO_MAXIMO_IMAGEN = 2 * 1024 * 1024;
 
 @Injectable({ providedIn: 'root' })
 export class ProductosApi {
@@ -69,6 +75,16 @@ export class ProductosApi {
 
   editar(id: string, cambios: CambiosProducto): Observable<Producto> {
     return this.http.patch<Producto>(`${API}/${encodeURIComponent(id)}`, cambios);
+  }
+
+  subirImagen(id: string, archivo: File): Observable<Producto> {
+    const datos = new FormData();
+    datos.append('archivo', archivo);
+    return this.http.put<Producto>(`${API}/${encodeURIComponent(id)}/imagen`, datos);
+  }
+
+  quitarImagen(id: string): Observable<Producto> {
+    return this.http.delete<Producto>(`${API}/${encodeURIComponent(id)}/imagen`);
   }
 
   desactivar(id: string): Observable<Producto> {

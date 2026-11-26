@@ -345,8 +345,9 @@ Sí se almacena `VENTA.total`, porque representa el importe histórico al moment
 - Un producto de reventa no necesita receta y tiene exactamente una existencia.
 - No puede repetirse el mismo insumo en la receta de un producto.
 - `cantidad_requerida` debe ser mayor que cero.
-- `PRODUCTO.imagen` es opcional y guarda solo el nombre del archivo de la imagen (por ejemplo, `agua-embotellada.webp`), no el archivo. No interviene en ventas, recetas ni inventario.
-- El nombre usa minúsculas, números y guiones, con extensión `.webp`, `.png` o `.jpg`, y no incluye carpetas.
+- `PRODUCTO.imagen` es opcional y guarda solo la ruta del archivo en el almacén de imágenes (por ejemplo, `productos/<identificador>.webp`), no el archivo. No interviene en ventas, recetas ni inventario.
+- El sistema genera el nombre del archivo al subirlo: un identificador único con extensión `.jpg`, `.png` o `.webp`, dentro de `productos/`.
+- Reemplazar la imagen sustituye la ruta y borra el archivo anterior; quitarla deja la ruta nula.
 
 ### Inventario
 

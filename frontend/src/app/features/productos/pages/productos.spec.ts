@@ -30,6 +30,8 @@ describe('Gestionar productos', () => {
     editar: vi.fn(),
     desactivar: vi.fn(),
     reactivar: vi.fn(),
+    subirImagen: vi.fn(),
+    quitarImagen: vi.fn(),
   };
   let harness: RouterTestingHarness;
   let el: HTMLElement;
@@ -51,6 +53,8 @@ describe('Gestionar productos', () => {
         { id: '2', nombre: 'Leche', unidadMedida: 'MILILITRO' },
       ]),
     );
+    URL.createObjectURL = vi.fn(() => 'blob:vista');
+    URL.revokeObjectURL = vi.fn();
     HTMLDialogElement.prototype.showModal = function () {
       this.open = true;
     };
@@ -96,6 +100,15 @@ describe('Gestionar productos', () => {
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
     await refrescar();
   }
+
+  async function elegir(archivo: File) {
+    const selector = el.querySelector<HTMLInputElement>('#imagen')!;
+    Object.defineProperty(selector, 'files', { value: [archivo], configurable: true });
+    selector.dispatchEvent(new Event('change'));
+    await refrescar();
+  }
+
+  const imagen = (tipo: string, bytes = 10) => new File([new Uint8Array(bytes)], 'foto', { type: tipo });
 
   async function datosComunes() {
     await escribir('nombre', 'Latte');
@@ -229,5 +242,80 @@ describe('Gestionar productos', () => {
     await enviar();
     expect(el.querySelector('#nombre-error')!.textContent).toContain('Nombre no válido.');
     expect(el.querySelector<HTMLInputElement>('#nombre')!.value).toBe('Otro');
+  });
+
+  it('CP-F88 el listado muestra la imagen del producto y, si no carga, el marcador', async () => {
+    api.listar.mockReturnValue(
+      of({
+        contenido: [{ ...CAFE, imagen: '/api/v1/productos/3/imagen?v=abc' }, AGUA],
+        page: 0,
+        size: 10,
+        totalElementos: 2,
+        totalPaginas: 1,
+      }),
+    );
+    await abrir('/productos');
+    const img = el.querySelector<HTMLImageElement>('.producto__imagen img')!;
+    expect(img.getAttribute('src')).toBe('/api/v1/productos/3/imagen?v=abc');
+    expect(el.querySelectorAll('.producto__imagen img')).toHaveLength(1);
+    img.dispatchEvent(new Event('error'));
+    await refrescar();
+    expect(el.querySelector('.producto__imagen img')).toBeNull();
+  });
+
+  it('CP-F89 valida el tipo y el tamaño de la imagen y la sube al guardar la edición', async () => {
+    api.subirImagen.mockReturnValue(of(CAFE));
+    await abrir('/productos/3');
+    expect(el.textContent).toContain('Agregar imagen');
+    await elegir(imagen('image/svg+xml'));
+    expect(el.querySelector('#imagen-error')!.textContent).toContain('Usa una imagen JPG, PNG o WebP.');
+    await elegir(imagen('image/png', 2 * 1024 * 1024 + 1));
+    expect(el.querySelector('#imagen-error')!.textContent).toContain('La imagen pesa más de 2 MB.');
+    const foto = imagen('image/webp');
+    await elegir(foto);
+    expect(el.querySelector('#imagen-error')!.textContent!.trim()).toBe('');
+    expect(el.querySelector<HTMLImageElement>('.imagen-producto__vista')!.getAttribute('src')).toBe('blob:vista');
+    expect(el.textContent).toContain('Cambiar imagen');
+    await enviar();
+    expect(api.editar).not.toHaveBeenCalled();
+    expect(api.subirImagen).toHaveBeenCalledWith('3', foto);
+    expect(TestBed.inject(Router).url).toBe('/productos');
+  });
+
+  it('CP-F90 quitar la imagen actual la elimina al guardar', async () => {
+    api.obtener.mockReturnValue(of({ ...CAFE, imagen: '/api/v1/productos/3/imagen?v=abc' }));
+    api.quitarImagen.mockReturnValue(of(CAFE));
+    await abrir('/productos/3');
+    expect(el.querySelector('.imagen-producto__vista')!.getAttribute('src')).toBe('/api/v1/productos/3/imagen?v=abc');
+    [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Quitar imagen'))!.click();
+    await refrescar();
+    expect(el.querySelector('.imagen-producto__vista')).toBeNull();
+    await enviar();
+    expect(api.quitarImagen).toHaveBeenCalledWith('3');
+  });
+
+  it('CP-F91 en el alta sube la imagen al producto creado; si falla no lo registra otra vez', async () => {
+    api.registrar.mockReturnValue(of({ ...AGUA, id: '9', activo: true }));
+    api.subirImagen.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 400,
+            error: { codigo: 'DATOS_INVALIDOS', detail: 'x', erroresCampo: { archivo: 'Usa una imagen JPG, PNG o WebP.' } },
+          }),
+      ),
+    );
+    await abrir('/productos/nuevo');
+    await datosComunes();
+    await escribir('tipo', 'REVENTA');
+    await escribir('nivelMinimo', '5');
+    const foto = imagen('image/png');
+    await elegir(foto);
+    await enviar();
+    expect(api.subirImagen).toHaveBeenCalledWith('9', foto);
+    expect(el.textContent).toContain('El producto se registró, pero no se guardó la imagen: Usa una imagen JPG, PNG o WebP.');
+    expect(el.querySelector('a[href="/productos/9"]')).not.toBeNull();
+    await enviar();
+    expect(api.registrar).toHaveBeenCalledTimes(1);
   });
 });

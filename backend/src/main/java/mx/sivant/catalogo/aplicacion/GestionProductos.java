@@ -1,6 +1,8 @@
 package mx.sivant.catalogo.aplicacion;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,6 +15,7 @@ import mx.sivant.catalogo.dominio.Producto;
 import mx.sivant.catalogo.dominio.ProductoPreparado;
 import mx.sivant.catalogo.dominio.ProductoReventa;
 import mx.sivant.catalogo.dominio.TipoProducto;
+import mx.sivant.catalogo.infraestructura.AlmacenImagenes;
 import mx.sivant.catalogo.infraestructura.InsumoRepository;
 import mx.sivant.catalogo.infraestructura.ProductoRepository;
 import mx.sivant.infraestructura.api.Pagina;
@@ -25,6 +28,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** RF07 a RF10. */
 @Service
@@ -37,13 +42,79 @@ public class GestionProductos {
     private final InsumoRepository insumos;
     private final Existencias existencias;
     private final RegistroAuditoria auditoria;
+    private final AlmacenImagenes almacen;
 
     public GestionProductos(ProductoRepository productos, InsumoRepository insumos, Existencias existencias,
-            RegistroAuditoria auditoria) {
+            RegistroAuditoria auditoria, AlmacenImagenes almacen) {
         this.productos = productos;
         this.insumos = insumos;
         this.existencias = existencias;
         this.auditoria = auditoria;
+        this.almacen = almacen;
+    }
+
+    /** Imagen guardada en el almacén, con su tipo de contenido. */
+    public record ArchivoImagen(Path archivo, String tipoContenido) {
+    }
+
+    /**
+     * Sustituye la imagen. El archivo nuevo se escribe antes de guardar su ruta: si la transacción falla se borra, y
+     * el anterior se borra solo después de confirmar.
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public DatosProducto cambiarImagen(Long actor, Long id, byte[] contenido) {
+        String extension = FormatoImagen.extension(contenido);
+        Producto producto = productos.bloquearPorId(id).orElseThrow(GestionProductos::noExiste);
+        String anterior = producto.getImagen();
+        String nueva = almacen.guardar(contenido, extension);
+        alTerminar(nueva, anterior);
+        producto.cambiarImagen(nueva);
+        auditoria.registrar(actor, "PRODUCTO_IMAGEN_CAMBIADA", ENTIDAD, id,
+                Map.of("imagen", cambio(anterior == null ? "" : anterior, nueva)));
+        return detalle(producto);
+    }
+
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public DatosProducto quitarImagen(Long actor, Long id) {
+        Producto producto = productos.bloquearPorId(id).orElseThrow(GestionProductos::noExiste);
+        String anterior = producto.getImagen();
+        if (anterior == null) {
+            throw ReglaNegocioException.conflicto("SIN_IMAGEN", "El producto no tiene imagen.");
+        }
+        alTerminar(null, anterior);
+        producto.cambiarImagen(null);
+        auditoria.registrar(actor, "PRODUCTO_IMAGEN_QUITADA", ENTIDAD, id, Map.of("imagen", cambio(anterior, "")));
+        return detalle(producto);
+    }
+
+    /** El mesero solo ve imágenes de productos activos. */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyAuthority('ADMINISTRADOR', 'MESERO')")
+    public ArchivoImagen imagen(Long id, boolean soloOperativo) {
+        Producto producto = productos.findById(id).filter(p -> !soloOperativo || p.isActivo())
+                .filter(p -> p.getImagen() != null).orElseThrow(GestionProductos::sinImagen);
+        Path archivo = almacen.archivo(producto.getImagen());
+        if (!Files.isRegularFile(archivo)) {
+            throw sinImagen();
+        }
+        return new ArchivoImagen(archivo, FormatoImagen.tipoContenido(producto.getImagen()));
+    }
+
+    private void alTerminar(String nueva, String anterior) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int estado) {
+                if (estado == STATUS_COMMITTED) {
+                    if (anterior != null) {
+                        almacen.borrar(anterior);
+                    }
+                } else if (nueva != null) {
+                    almacen.borrar(nueva);
+                }
+            }
+        });
     }
 
     @Transactional
@@ -194,6 +265,10 @@ public class GestionProductos {
 
     private static Map<String, String> cambio(String anterior, String nuevo) {
         return Map.of("anterior", anterior, "nuevo", nuevo);
+    }
+
+    private static ReglaNegocioException sinImagen() {
+        return ReglaNegocioException.noEncontrado("El producto no tiene imagen.");
     }
 
     private static ReglaNegocioException noExiste() {

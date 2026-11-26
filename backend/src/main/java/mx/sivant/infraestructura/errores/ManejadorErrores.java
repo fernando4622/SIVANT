@@ -59,6 +59,10 @@ public class ManejadorErrores extends ResponseEntityExceptionHandler {
         } else if (estado.value() == 404) {
             codigo = "NO_ENCONTRADO";
             detalle = "El recurso no existe.";
+        } else if (estado.value() == 413) {
+            codigo = "DATOS_INVALIDOS";
+            detalle = "La imagen pesa más de 2 MB.";
+            campos.put("archivo", detalle);
         } else if (estado.value() == 405) {
             codigo = "METODO_NO_PERMITIDO";
             detalle = "La operación no está disponible en esta ruta.";

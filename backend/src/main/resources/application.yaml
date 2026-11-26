@@ -28,6 +28,11 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      # La imagen de un producto pesa hasta 2 MB; el servicio vuelve a validarlo.
+      max-file-size: 2MB
+      max-request-size: 3MB
 
 server:
   port: ${SIVANT_HTTP_PORT:8080}
@@ -44,6 +49,9 @@ server:
         same-site: lax
 
 sivant:
+  imagenes:
+    # Carpeta local de las imágenes de productos. En el despliegue se apunta a un volumen persistente.
+    directorio: ${SIVANT_IMAGENES_DIR:almacen}
   sesion:
     inactividad: 45m
   administrador-inicial:

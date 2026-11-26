@@ -15,15 +15,34 @@
 } @else {
   <form class="pila" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
     <div class="columnas" [class.columnas--edicion]="edicion()">
-      <section class="tarjeta imagen-producto" aria-label="Imagen del producto">
-        <div class="imagen-producto__reserva" aria-hidden="true">
-          <app-icono nombre="productos" [tamano]="54" />
-          <span>Imagen del producto</span>
-        </div>
-        <button type="button" class="boton" disabled title="Disponible próximamente">
+      <section class="tarjeta imagen-producto" aria-labelledby="titulo-imagen">
+        <h2 id="titulo-imagen" class="solo-lector">Imagen del producto</h2>
+        @if (vistaPrevia(); as url) {
+          <img class="imagen-producto__vista" [src]="url" alt="Vista previa de la imagen del producto" />
+        } @else {
+          <div class="imagen-producto__reserva" aria-hidden="true">
+            <app-icono nombre="productos" [tamano]="54" />
+            <span>Imagen del producto</span>
+          </div>
+        }
+        <input
+          #selector
+          id="imagen"
+          class="solo-lector"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-describedby="imagen-ayuda imagen-error"
+          (change)="elegirImagen(selector)"
+        />
+        <label for="imagen" class="boton">
           <app-icono nombre="mas" />
-          Agregar imagen
-        </button>
+          {{ vistaPrevia() ? 'Cambiar imagen' : 'Agregar imagen' }}
+        </label>
+        @if (vistaPrevia()) {
+          <button type="button" class="boton" (click)="quitarImagen(selector)">Quitar imagen</button>
+        }
+        <span id="imagen-ayuda" class="campo__ayuda">JPG, PNG o WebP de hasta 2 MB. Se guarda al guardar el producto.</span>
+        <span id="imagen-error" class="campo__error" role="alert">{{ errorImagen() }}</span>
       </section>
 
       <section class="tarjeta pila datos-producto" aria-label="Datos del producto">
@@ -227,6 +246,9 @@
 
     @if (error(); as mensaje) {
       <p class="campo__error" role="alert">{{ mensaje }}</p>
+    }
+    @if (creado(); as id) {
+      <a class="boton" [routerLink]="['/productos', id]">Ir a editar el producto</a>
     }
 
   </form>

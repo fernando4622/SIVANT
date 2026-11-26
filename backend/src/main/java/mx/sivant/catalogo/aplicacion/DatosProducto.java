@@ -7,9 +7,9 @@ import mx.sivant.catalogo.dominio.TipoProducto;
 import mx.sivant.catalogo.dominio.UnidadMedida;
 import mx.sivant.inventario.aplicacion.Existencias.Saldo;
 
-/** `receta` y `existencia` son nulas en listados y en la consulta del mesero. */
+/** `receta` y `existencia` son nulas en listados y en la consulta del mesero. `imagen` es la ruta en el almacén. */
 public record DatosProducto(Long id, String nombre, String descripcion, BigDecimal precioVenta, TipoProducto tipo,
-        UnidadMedida unidadMedida, boolean activo, List<Componente> receta, Saldo existencia) {
+        UnidadMedida unidadMedida, boolean activo, String imagen, List<Componente> receta, Saldo existencia) {
 
     public record Componente(Long insumoId, String nombre, UnidadMedida unidadMedida, BigDecimal cantidadRequerida) {
     }
@@ -20,6 +20,6 @@ public record DatosProducto(Long id, String nombre, String descripcion, BigDecim
 
     static DatosProducto detalle(Producto p, List<Componente> receta, Saldo existencia) {
         return new DatosProducto(p.getId(), p.getNombre(), p.getDescripcion(), p.getPrecioVenta(), p.getTipo(),
-                p.getUnidadMedida(), p.isActivo(), receta, existencia);
+                p.getUnidadMedida(), p.isActivo(), p.getImagen(), receta, existencia);
     }
 }

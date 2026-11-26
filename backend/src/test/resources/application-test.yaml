@@ -3,3 +3,7 @@ server:
     session:
       cookie:
         secure: false
+
+sivant:
+  imagenes:
+    directorio: target/imagenes-prueba

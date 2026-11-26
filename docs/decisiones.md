@@ -26,6 +26,7 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Insumos | Se cargan con `database/cargas/insumos.sql` e inician en 0 | Su pantalla se definirá después |
 | Receta y nivel mínimo | No se editan desde la aplicación | El contrato de RF09 solo cambia nombre, descripción y precio |
 | Nombre de producto | Puede repetirse | Ningún RF ni el modelo exigen unicidad |
+| **Precio de productos y comandas** | El precio de venta del producto y el precio unitario aplicado al detalle de comanda deben ser mayores que cero. El alta y la edición admiten hasta dos decimales. V10 sustituye la regla de precios no negativos de los documentos de referencia | Decisión del responsable del proyecto, 25 de noviembre de 2026. Una cuenta con comandas vigentes tiene un importe positivo para cobrar |
 | **Cierre sin cobro** | Lo hace el mesero responsable si no hay comandas vigentes. Libera la mesa y queda en auditoría | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | **Mesero con cuentas abiertas** | Desactivarlo o cambiar su rol responde 409 `CUENTAS_ABIERTAS` | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | **Fondo pendiente al cerrar sin cobro** | Se rechaza (409 `FONDO_PENDIENTE`) hasta que el cajero lo anula al recibirlo | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
@@ -54,7 +55,7 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Ventana de 24 meses | Desde el inicio de ese día en la zona del negocio. Aplica también al detalle y a la cancelación (404 fuera) | RF06. Las ventas anteriores se conservan |
 | `GET /ventas/opciones` | Se agrega: meseros y mesas con ventas en la ventana | Los filtros piden mesero y mesa, y el cajero no consulta empleados |
 | `cobro` y `COBRAR` en la cuenta | La cuenta indica si puede cobrarse y, cerrada, con qué método | El mesero ve el resultado aunque se pierda la respuesta |
-| Total máximo | 409 `TOTAL_INVALIDO` si el total es 0 o superaría 12 enteros | La venta exige total positivo |
+| Rango del total de venta | 409 `TOTAL_INVALIDO` si el total calculado queda fuera del rango admitido. El límite superior es `999999999999.99` | La venta exige un total positivo que quepa en `numeric(14,2)` |
 | **Liquidación del fondo aplicado** | El cajero lo recibe en la misma entrega que el efectivo de sus pagos, con su propio importe (`fondoRecibido`). La entrega guarda la suma de los pagos en `monto` y el fondo en `monto_fondo`; el fondo pasa a LIQUIDADO con la entrega | Decisión del responsable del proyecto, 25 de noviembre de 2026 |
 | Estado `LIQUIDADO`, `FONDO_CAMBIO.id_entrega` y `ENTREGA_EFECTIVO.monto_fondo` | Se agregan al modelo | Lo requiere la liquidación con la entrega |
 | Un fondo vigente por cuenta | Índice único sobre los que no están anulados (pendiente, aplicado o liquidado) | Arquitectura: uno pendiente o aplicado. El liquidado sigue siendo el fondo de esa cuenta |
@@ -98,7 +99,5 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 ## Pendiente
 
 - `AGENTS.md` no está en el repositorio ni en los documentos recibidos, así que no se pudieron revisar sus reglas.
-- Una cuenta con comandas servidas cuyo total es 0 (productos con precio 0) no puede cobrarse ni cerrarse sin cobro.
-  Hace falta decidir si se prohíbe el precio 0 o se permite cerrarla.
 - «Efectivo por entregar» no está paginado; con miles de pagos pendientes de un mesero tarda más de medio segundo.
 - Proxy de producción con HTTPS y medición de disponibilidad en un entorno observado.

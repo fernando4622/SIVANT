@@ -1537,6 +1537,11 @@ components:
       type: string
       pattern: '^\d{1,12}(\.\d{1,2})?$'
       examples: ['55.00']
+    PrecioPositivo:
+      type: string
+      description: Precio mayor que cero, con hasta doce dígitos enteros y dos decimales.
+      pattern: '^(?=.*[1-9])\d{1,12}(\.\d{1,2})?$'
+      examples: ['0.01', '55.00']
     Cantidad:
       type: string
       description: Sin signo en las entradas. En las respuestas puede ser negativa
@@ -1555,7 +1560,7 @@ components:
       properties:
         nombre: { type: string, minLength: 1, maxLength: 120 }
         descripcion: { type: string, minLength: 1, maxLength: 500 }
-        precioVenta: { $ref: '#/components/schemas/Dinero' }
+        precioVenta: { $ref: '#/components/schemas/PrecioPositivo' }
         tipo: { $ref: '#/components/schemas/TipoProducto' }
         unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
         receta:
@@ -1579,7 +1584,7 @@ components:
       properties:
         nombre: { type: string, minLength: 1, maxLength: 120 }
         descripcion: { type: string, minLength: 1, maxLength: 500 }
-        precioVenta: { $ref: '#/components/schemas/Dinero' }
+        precioVenta: { $ref: '#/components/schemas/PrecioPositivo' }
     Producto:
       type: object
       required: [id, nombre, descripcion, precioVenta, tipo, unidadMedida, activo]
@@ -1587,7 +1592,7 @@ components:
         id: { $ref: '#/components/schemas/Id' }
         nombre: { type: string }
         descripcion: { type: string }
-        precioVenta: { $ref: '#/components/schemas/Dinero' }
+        precioVenta: { $ref: '#/components/schemas/PrecioPositivo' }
         tipo: { $ref: '#/components/schemas/TipoProducto' }
         unidadMedida: { $ref: '#/components/schemas/UnidadMedida' }
         activo: { type: boolean }
@@ -1823,7 +1828,7 @@ components:
         productoId: { $ref: '#/components/schemas/Id' }
         producto: { type: string }
         cantidad: { type: integer }
-        precioUnitario: { $ref: '#/components/schemas/Dinero' }
+        precioUnitario: { $ref: '#/components/schemas/PrecioPositivo' }
         subtotal: { $ref: '#/components/schemas/Dinero' }
         observaciones: { type: string }
     Comanda:

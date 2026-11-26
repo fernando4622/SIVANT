@@ -15,13 +15,14 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend | `.\mvnw.cmd test` en `backend/` | 167 | 234 | 234 | 0 |
+| Backend completo con V10 | `.\mvnw.cmd test` en `backend/` | 168 | 235 | 235 | 0 |
 | Rendimiento | `.\mvnw.cmd test "-Dexcluir=ninguna" "-Dgroups=rendimiento"` en `backend/` | 3 | 3 | 3 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 83 | 95 | 95 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 84 | 96 | 96 | 0 |
 | Navegador | Manual | 49 | 49 | 49 | 0 |
 
-Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
-pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
+La suite completa del backend con V10 terminó en 3 min 46 s, con 0 pruebas omitidas. Algunos casos se ejecutan varias
+veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la pantalla de acceso anterior;
+CP-M16 y CP-M17 cubren la actual.
 
 ## Trazabilidad
 
@@ -35,9 +36,9 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Editar empleado | RF13 | CP-24 a CP-29, CP-F16, CP-F17 |
 | Desactivar empleado | RF14 | CP-30 a CP-34, CP-F11, CP-F12, CP-M05, CP-M06 |
 | Auditoría de los anteriores | RNF09 | CP-35 a CP-41 |
-| Registrar producto | RF07 | CP-42 a CP-46, CP-F20, CP-F21, CP-M13 |
+| Registrar producto | RF07 | CP-42 a CP-46, CP-171, CP-F20, CP-F21, CP-M13 |
 | Consultar producto | RF08 | CP-47 a CP-49, CP-F18, CP-F19, CP-M15 |
-| Modificar producto | RF09 | CP-50, CP-51, CP-F22, CP-F23, CP-M14 |
+| Modificar producto | RF09 | CP-50, CP-51, CP-F22, CP-F23, CP-F84, CP-M14 |
 | Desactivar producto | RF10 | CP-52, CP-53, CP-M14 |
 | Consultar inventario | RF16 | CP-54 a CP-56, CP-F24 a CP-F26, CP-M10 |
 | Registrar movimiento de inventario | RF17 | CP-57 a CP-63, CP-72, CP-F27, CP-F28, CP-M11 |
@@ -181,9 +182,10 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 |---|---|---|---|---|
 | CP-42 | Insumos | Alta de un preparado con dos insumos | 201 con `Location`; nombre sin espacios; precio como cadena `55.00`; receta guardada; sin existencia propia | Aprobado |
 | CP-43 | P2 | Alta de reventa con nivel mínimo 5 | 201; existencia creada en 0 con mínimo 5; sin receta | Aprobado |
-| CP-44 | Insumos | Alta vacía; seis precios inválidos; preparado sin receta, con insumo repetido, inexistente o en cero, o con nivel mínimo; reventa sin mínimo o con receta | 400 con error en el campo; no se guarda nada | Aprobado |
+| CP-44 | Insumos | Alta vacía; ocho precios inválidos, incluidos `0` y `0.00`; preparado sin receta, con insumo repetido, inexistente o en cero, o con nivel mínimo; reventa sin mínimo o con receta | 400 con error en el campo; no se guarda nada | Aprobado |
 | CP-45 | Insumos | Por SQL: preparado sin receta, reventa sin existencia, artículo sin subtipo, existencia sin artículo, borrar una receta completa o una existencia de insumo | PostgreSQL rechaza todos | Aprobado |
 | CP-46 | Insumos | Consultar insumos | Lista los disponibles | Aprobado |
+| CP-171 | Base con V10 y producto de reventa | Cambiar por SQL el precio del producto a `0`; consultar el producto y la definición de `ck_detalle_precio` | PostgreSQL rechaza el cambio; el precio se conserva y el `CHECK` del detalle exige un precio unitario mayor que cero | Aprobado |
 | CP-F20 | Formulario de alta | Enviar vacío; cantidad 0; insumo repetido; datos correctos con coma decimal | Muestra cada error sin llamar a la API; al final envía `60.5` y `18.5` | Aprobado |
 | CP-F21 | Formulario de alta | Elegir Reventa y enviar sin nivel mínimo; después con 5 | Pide el nivel mínimo; luego envía sin receta y vuelve al listado | Aprobado |
 
@@ -202,9 +204,10 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
 | CP-50 | Un preparado | Cambiar solo el precio a `60.5` | 200 con `60.50`; conserva nombre y receta; queda en auditoría | Aprobado |
-| CP-51 | Un preparado | Edición vacía; nombre en blanco; precio negativo; campo `activo`; ID inexistente | 400 en las cuatro primeras; 404 en la última | Aprobado |
+| CP-51 | Un preparado | Edición vacía; nombre en blanco; precio negativo o `0.00`; campo `activo`; ID inexistente | 400 en las entradas inválidas, con error en `precioVenta` para ambos precios; 404 para el ID inexistente | Aprobado |
 | CP-F22 | Formulario de edición | Guardar sin cambios; cambiar solo el precio | No llama a la API; después envía solo el precio | Aprobado |
 | CP-F23 | Formulario de edición | La API responde 400 en `nombre` | Marca el campo y conserva lo capturado | Aprobado |
+| CP-F84 | Formulario de edición | Escribir `0.00` como precio de venta y enviar | Marca el campo con el mensaje de precio mayor que cero y no llama a la API | Aprobado |
 
 ## Desactivar producto · RF10
 
@@ -409,7 +412,7 @@ servidas: 55.50, versión 1.
 |---|---|---|---|---|
 | CP-122 | Cuenta con una comanda servida y otra cancelada; después sube el precio del agua a 99 | Cobrar 55.50 en efectivo con la versión consultada | 201: venta COMPLETADA y pago por 55.50 sin referencia; cuenta CERRADA con la misma fecha que la venta, sin acciones y con su cobro; pago a nombre de Juan; auditado; otra cuenta puede abrir la mesa | Aprobado |
 | CP-123 | Cuenta vacía, después con una comanda enviada, en preparación y lista, y otra con su única comanda cancelada | Cobrar en cada estado | 409 `CUENTA_SIN_COMANDAS` o `COMANDAS_PENDIENTES` y sin acción COBRAR; al cancelar la pendiente, se cobra | Aprobado |
-| CP-124 | Cuenta servida; otra con un producto de precio 0 | Versión 0; total 55.49; total 0 | 409 `VERSION_OBSOLETA`, `TOTAL_CAMBIADO` y `TOTAL_INVALIDO`; sin venta | Aprobado |
+| CP-124 | Cuenta servida de `55.50`; otra con dos unidades de `999999999999.99` | Cobrar la primera con versión `0` o con total `55.49`; cobrar la segunda con total esperado `1999999999999.98` o `999999999999.99` | 409 `VERSION_OBSOLETA` y `TOTAL_CAMBIADO` para la primera; 400 en `totalEsperado` o 409 `TOTAL_INVALIDO` para la segunda, respectivamente; sin venta | Aprobado |
 | CP-125 | Cuenta servida de Juan | Cobrar como Ana; cuenta inexistente; sin clave | 404, 404 y 400; sin venta | Aprobado |
 | CP-126 | Cuenta servida y sesión de cada otro rol | Cobrar | 403; sin venta | Aprobado (4 roles) |
 | CP-127 | Cuenta servida | Cuerpo vacío, método «CHEQUE», totales -1, 55.505, 1e3 y vacío, referencias «A B», «abc$» y de 41 caracteres | 400 con el error de cada campo | Aprobado |

@@ -200,8 +200,8 @@ describe('Caja y fondo de cambio', () => {
     await abrir('/cuentas/3/cobro');
     expect(el.textContent).toContain('fondo de cambio de $200.00: cóbrala en efectivo');
     const radios = [...el.querySelectorAll<HTMLInputElement>('input[type=radio]')];
-    expect(radios.map((r) => r.disabled)).toEqual([false, true, true]);
-    expect(radios[0].checked).toBe(true);
+    expect(radios.map((r) => r.disabled)).toEqual([true, false, true]);
+    expect(radios[1].checked).toBe(true);
   });
 
   it('CP-F80 la recepción agrupa por mesero, suma pagos y fondo, y exige que coincidan con lo contado', async () => {

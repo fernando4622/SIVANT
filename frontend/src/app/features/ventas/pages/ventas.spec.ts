@@ -251,7 +251,7 @@ describe('Cobro e historial de ventas', () => {
     expect(el.textContent).toContain('referencia A1 por $55.50');
     await pulsar('Ya lo revertí');
     expect(el.querySelector<HTMLInputElement>('#referencia')).toBeDefined();
-    expect(el.textContent).toContain('Registrar cobro de $75.50');
+    expect(el.textContent).toContain('Cobrar $75.50');
     expect(sessionStorage.length).toBe(0);
   });
 

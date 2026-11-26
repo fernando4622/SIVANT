@@ -56,6 +56,8 @@ export class DetalleExistencia implements OnInit {
   protected readonly historial = signal<Pagina<Historial> | null>(null);
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly mensaje = signal('');
+  protected readonly nivelActualizado = signal(false);
+  protected readonly movimientoRegistrado = signal<TipoMovimiento | null>(null);
 
   protected readonly movimiento = this.fb.group({
     tipo: this.fb.control<TipoMovimiento>('ENTRADA_MANUAL'),
@@ -146,6 +148,8 @@ export class DetalleExistencia implements OnInit {
     this.enviadoMovimiento.set(true);
     this.errorMovimiento.set(null);
     this.mensaje.set('');
+    this.nivelActualizado.set(false);
+    this.movimientoRegistrado.set(null);
     if (this.movimiento.invalid || this.errorCausa() || this.errorNota() || this.guardandoMovimiento()) {
       return;
     }
@@ -167,10 +171,7 @@ export class DetalleExistencia implements OnInit {
         this.movimiento.controls.causa.reset();
         this.movimiento.controls.nota.reset();
         this.existencia.set(existencia);
-        this.mensaje.set(
-          `${datos.tipo === 'ENTRADA_MANUAL' ? 'Entrada' : 'Salida'} registrada. ` +
-            `Existencia actual: ${cantidad(existencia.cantidadActual)} ${unidad(existencia.unidadMedida)}.`,
-        );
+        this.movimientoRegistrado.set(datos.tipo);
         this.cargarHistorial(0);
       },
       error: (error: unknown) => {
@@ -189,6 +190,8 @@ export class DetalleExistencia implements OnInit {
     this.enviadoMinimo.set(true);
     this.errorServidorMinimo.set(null);
     this.mensaje.set('');
+    this.nivelActualizado.set(false);
+    this.movimientoRegistrado.set(null);
     if (this.minimo.invalid || this.guardandoMinimo()) {
       return;
     }
@@ -199,10 +202,7 @@ export class DetalleExistencia implements OnInit {
         this.enviadoMinimo.set(false);
         this.minimo.reset();
         this.existencia.set(existencia);
-        this.mensaje.set(
-          `Nivel mínimo: ${cantidad(existencia.nivelMinimo)} ${unidad(existencia.unidadMedida)}. ` +
-            `Nivel ${existencia.nivelBajo ? 'bajo' : 'suficiente'}.`,
-        );
+        this.nivelActualizado.set(true);
       },
       error: (error: unknown) => {
         const problema = leerProblema(error);

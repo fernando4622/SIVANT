@@ -41,13 +41,38 @@ function deCentavos(valor: bigint): string {
 
     <div role="status">
       @if (recibida(); as e) {
-        <div class="aviso">
-          <app-icono nombre="palomita" [tamano]="28" />
-          <p>
-            Recepción {{ e.id }} registrada: {{ dinero(e.monto) }} de {{ e.pagos.length }} pago(s) de
-            {{ e.mesero }}{{ e.cambio !== '0.00' ? '. Entrega ' + dinero(e.cambio) + ' de cambio' : '' }}.
+        <section class="tarjeta comprobante" aria-labelledby="titulo-comprobante">
+          <header class="comprobante__encabezado">
+            <span class="comprobante__icono"><app-icono nombre="palomita" [tamano]="30" /></span>
+            <div>
+              <h2 id="titulo-comprobante">Recepción registrada</h2>
+              <p>Comprobante {{ e.id }}</p>
+            </div>
+            @if (e.fechaHora) {
+              <time [attr.datetime]="e.fechaHora">{{ fechaHora(e.fechaHora) }}</time>
+            }
+          </header>
+
+          <dl class="comprobante__datos">
+            <div>
+              <dt>Mesero</dt>
+              <dd>{{ e.mesero }}</dd>
+            </div>
+            <div>
+              <dt>Pagos recibidos</dt>
+              <dd>{{ e.pagos.length }}</dd>
+            </div>
+            <div>
+              <dt>Efectivo registrado</dt>
+              <dd>{{ dinero(e.monto) }}</dd>
+            </div>
+          </dl>
+
+          <p class="comprobante__cambio" [class.comprobante__cambio--cero]="e.cambio === '0.00'">
+            <span>{{ e.cambio === '0.00' ? 'Sin cambio pendiente' : 'Cambio a entregar' }}</span>
+            <strong>{{ dinero(e.cambio) }}</strong>
           </p>
-        </div>
+        </section>
       }
     </div>
 
@@ -153,6 +178,93 @@ function deCentavos(valor: bigint): string {
     }
   `,
   styles: `
+    .comprobante {
+      display: grid;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding: 1.25rem;
+      border-color: var(--azul);
+      background: var(--azul-aviso);
+    }
+
+    .comprobante__encabezado {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .comprobante__encabezado p,
+    .comprobante__encabezado time,
+    .comprobante__datos dt {
+      color: var(--texto-suave);
+    }
+
+    .comprobante__encabezado time {
+      text-align: right;
+    }
+
+    .comprobante__icono {
+      display: grid;
+      place-items: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      background: var(--azul);
+      color: white;
+    }
+
+    .comprobante__datos {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin: 0;
+      padding-block: 1rem;
+      border-block: 1px solid var(--borde);
+    }
+
+    .comprobante__datos > div {
+      display: grid;
+      gap: 0.25rem;
+      padding-inline: 1rem;
+      border-right: 1px solid var(--borde);
+    }
+
+    .comprobante__datos > div:first-child {
+      padding-left: 0;
+    }
+
+    .comprobante__datos > div:last-child {
+      padding-right: 0;
+      border-right: 0;
+    }
+
+    .comprobante__datos dd {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .comprobante__cambio {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 0;
+      color: var(--azul-fuerte);
+      font-size: 1.25rem;
+      font-weight: 650;
+    }
+
+    .comprobante__cambio strong {
+      font-size: 1.75rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .comprobante__cambio--cero {
+      color: var(--texto);
+    }
+
     .pagos {
       margin: 0;
       padding: 0;
@@ -225,6 +337,32 @@ function deCentavos(valor: bigint): string {
     }
 
     @media (max-width: 30rem) {
+      .comprobante__encabezado {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .comprobante__encabezado time {
+        grid-column: 2;
+        text-align: left;
+      }
+
+      .comprobante__datos {
+        grid-template-columns: 1fr;
+        padding-block: 0;
+      }
+
+      .comprobante__datos > div,
+      .comprobante__datos > div:first-child,
+      .comprobante__datos > div:last-child {
+        padding: 0.75rem 0;
+        border-right: 0;
+        border-bottom: 1px solid var(--borde);
+      }
+
+      .comprobante__datos > div:last-child {
+        border-bottom: 0;
+      }
+
       .recibido {
         padding-left: 0.25rem;
       }

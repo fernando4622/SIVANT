@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, si
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Observable, switchMap } from 'rxjs';
 import { leerProblema } from '../../../core/http/problema';
 import {
   NOMBRE_UNIDAD,
@@ -48,6 +49,7 @@ export class FormularioProducto implements OnInit {
     nombre: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
     descripcion: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(500)]],
     precioVenta: ['', [Validators.required, Validators.pattern(PATRON_DINERO_POSITIVO)]],
+    activo: true,
     tipo: this.fb.control<TipoProducto>('PREPARADO'),
     unidadMedida: this.fb.control<UnidadMedida>('PIEZA'),
     nivelMinimo: ['', [Validators.required, Validators.pattern(PATRON_CANTIDAD)]],
@@ -88,8 +90,8 @@ export class FormularioProducto implements OnInit {
     this.api.obtener(id).subscribe({
       next: (producto) => {
         this.original.set(producto);
-        const { nombre, descripcion, precioVenta } = producto;
-        this.formulario.patchValue({ nombre, descripcion, precioVenta });
+        const { nombre, descripcion, precioVenta, activo } = producto;
+        this.formulario.patchValue({ nombre, descripcion, precioVenta, activo });
         this.cargando.set(false);
       },
       error: (error: unknown) => this.falloCarga(error),
@@ -153,11 +155,16 @@ export class FormularioProducto implements OnInit {
       operacion = this.api.registrar(this.alta());
     } else {
       const cambios = this.cambios();
-      if (Object.keys(cambios).length === 0) {
+      const cambiaEstado = this.formulario.controls.activo.value !== this.original()?.activo;
+      if (Object.keys(cambios).length === 0 && !cambiaEstado) {
         this.error.set('No hay cambios por guardar.');
         return;
       }
-      operacion = this.api.editar(id, cambios);
+      const estado = () =>
+        this.formulario.controls.activo.value ? this.api.reactivar(id) : this.api.desactivar(id);
+      operacion = Object.keys(cambios).length
+        ? this.api.editar(id, cambios).pipe(switchMap((producto) => (cambiaEstado ? estado() : this.resultado(producto))))
+        : estado();
     }
     this.guardando.set(true);
     operacion.subscribe({
@@ -224,6 +231,13 @@ export class FormularioProducto implements OnInit {
       cambios.precioVenta = normalizarDecimal(v.precioVenta);
     }
     return cambios;
+  }
+
+  private resultado(producto: Producto): Observable<Producto> {
+    return new Observable((suscriptor) => {
+      suscriptor.next(producto);
+      suscriptor.complete();
+    });
   }
 
   private falloCarga(error: unknown): void {

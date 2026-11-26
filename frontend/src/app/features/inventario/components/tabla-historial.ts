@@ -31,7 +31,7 @@ import { Historial, NOMBRE_CAUSA, NOMBRE_HISTORIAL } from '../data-access/invent
             <th scope="row">{{ fechaHora(m.fechaHora) }}</th>
             @if (conArticulo()) {
               <td data-etiqueta="Artículo">
-                <a [routerLink]="['/inventario/existencias', m.existenciaId]">{{ m.articulo }}</a>
+                <a class="enlace-tabla" [routerLink]="['/inventario/existencias', m.existenciaId]">{{ m.articulo }}</a>
               </td>
             }
             <td data-etiqueta="Tipo">
@@ -52,7 +52,7 @@ import { Historial, NOMBRE_CAUSA, NOMBRE_HISTORIAL } from '../data-access/invent
             <td data-etiqueta="Empleado">{{ m.empleado }}</td>
             <td data-etiqueta="Referencia">
               @if (m.solicitudId) {
-                <a [routerLink]="['/inventario/ajustes', m.solicitudId]">Ajuste {{ m.solicitudId }}</a>
+                <a class="enlace-tabla" [routerLink]="['/inventario/ajustes', m.solicitudId]">Ajuste {{ m.solicitudId }}</a>
               } @else if (m.comandaId) {
                 Comanda {{ m.comandaId }}
               } @else if (m.causa) {
@@ -74,6 +74,15 @@ import { Historial, NOMBRE_CAUSA, NOMBRE_HISTORIAL } from '../data-access/invent
 
     .rechazo {
       color: var(--rojo);
+    }
+
+    .enlace-tabla {
+      text-decoration: none;
+    }
+
+    .enlace-tabla:hover,
+    .enlace-tabla:focus-visible {
+      color: var(--azul-fuerte);
     }
   `,
 })

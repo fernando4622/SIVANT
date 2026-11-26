@@ -14,8 +14,19 @@
   <p role="status">Cargando…</p>
 } @else {
   <form class="pila" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-    <div class="columnas">
-      <section class="tarjeta pila" aria-label="Datos del producto">
+    <div class="columnas" [class.columnas--edicion]="edicion()">
+      <section class="tarjeta imagen-producto" aria-label="Imagen del producto">
+        <div class="imagen-producto__reserva" aria-hidden="true">
+          <app-icono nombre="productos" [tamano]="54" />
+          <span>Imagen del producto</span>
+        </div>
+        <button type="button" class="boton" disabled title="Disponible próximamente">
+          <app-icono nombre="mas" />
+          Agregar imagen
+        </button>
+      </section>
+
+      <section class="tarjeta pila datos-producto" aria-label="Datos del producto">
         <div class="campo">
           <label for="nombre">Nombre del producto</label>
           <input
@@ -41,21 +52,33 @@
           <span id="descripcion-error" class="campo__error">{{ errorDe('descripcion') }}</span>
         </div>
 
-        <div class="campo">
-          <label for="precioVenta">Precio de venta</label>
-          <div class="precio">
-            <span aria-hidden="true">$</span>
-            <input
-              id="precioVenta"
-              class="control"
-              inputmode="decimal"
-              formControlName="precioVenta"
-              autocomplete="off"
-              [attr.aria-invalid]="!!errorDe('precioVenta')"
-              aria-describedby="precioVenta-error"
-            />
+        <div class="precio-estado">
+          <div class="campo">
+            <label for="precioVenta">Precio de venta</label>
+            <div class="precio">
+              <span aria-hidden="true">$</span>
+              <input
+                id="precioVenta"
+                class="control"
+                inputmode="decimal"
+                formControlName="precioVenta"
+                autocomplete="off"
+                [attr.aria-invalid]="!!errorDe('precioVenta')"
+                aria-describedby="precioVenta-error"
+              />
+            </div>
+            <span id="precioVenta-error" class="campo__error">{{ errorDe('precioVenta') }}</span>
           </div>
-          <span id="precioVenta-error" class="campo__error">{{ errorDe('precioVenta') }}</span>
+          @if (edicion()) {
+            <div class="campo estado-producto">
+              <span class="campo__etiqueta">Estado</span>
+              <label class="interruptor">
+                <input type="checkbox" formControlName="activo" />
+                <span class="interruptor__control" aria-hidden="true"></span>
+                <span>{{ formulario.controls.activo.value ? 'Activo' : 'Inactivo' }}</span>
+              </label>
+            </div>
+          }
         </div>
 
         @if (!edicion()) {
@@ -79,15 +102,13 @@
         }
       </section>
 
-      <div class="pila">
+      <div class="pila informacion-producto">
         @if (original(); as producto) {
           <section class="tarjeta" aria-labelledby="titulo-info">
             <h2 id="titulo-info">Información del artículo</h2>
             <dl class="datos-lista">
               <dt>Tipo:</dt>
               <dd>{{ nombreTipo[producto.tipo] }}</dd>
-              <dt>Estado:</dt>
-              <dd>{{ producto.activo ? 'Activo' : 'Inactivo' }}</dd>
               @if (producto.existencia; as existencia) {
                 <dt>Existencia:</dt>
                 <dd>{{ cantidad(existencia.cantidadActual) }} {{ unidad(producto.unidadMedida) }}</dd>
@@ -97,7 +118,7 @@
             </dl>
           </section>
           @if (producto.receta; as receta) {
-            <section class="tarjeta" aria-labelledby="titulo-receta-actual">
+            <section id="insumos-producto" class="tarjeta" aria-labelledby="titulo-receta-actual">
               <h2 id="titulo-receta-actual">Receta</h2>
               <dl class="datos-lista">
                 @for (c of receta; track c.insumoId) {
@@ -109,7 +130,12 @@
           }
           <div class="aviso">
             <app-icono nombre="info" [tamano]="32" />
-            <p>El precio nuevo se aplica a las siguientes comandas. Las ya registradas conservan su precio.</p>
+            <div>
+              <p>Este producto utiliza {{ producto.receta?.length ?? 0 }} insumo(s).</p>
+              @if (producto.receta?.length) {
+                <a href="#insumos-producto">Ver insumos</a>
+              }
+            </div>
           </div>
         } @else if (formulario.controls.tipo.value === 'PREPARADO') {
           <section class="tarjeta pila" aria-labelledby="titulo-receta" formArrayName="receta">
@@ -188,6 +214,14 @@
             <p>La existencia inicia en 0. Almacén registra las entradas.</p>
           </div>
         }
+
+        <div class="acciones acciones-producto">
+          <a class="boton" routerLink="/productos">Cancelar</a>
+          <button type="submit" class="boton boton--principal" [disabled]="guardando()">
+            <app-icono nombre="guardar" />
+            {{ guardando() ? 'Guardando…' : edicion() ? 'Guardar cambios' : 'Registrar producto' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -195,12 +229,5 @@
       <p class="campo__error" role="alert">{{ mensaje }}</p>
     }
 
-    <div class="acciones">
-      <a class="boton" routerLink="/productos">Cancelar</a>
-      <button type="submit" class="boton boton--principal" [disabled]="guardando()">
-        <app-icono nombre="guardar" />
-        {{ guardando() ? 'Guardando…' : edicion() ? 'Guardar cambios' : 'Registrar producto' }}
-      </button>
-    </div>
   </form>
 }

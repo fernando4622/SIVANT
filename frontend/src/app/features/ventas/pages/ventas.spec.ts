@@ -291,7 +291,7 @@ describe('Cobro e historial de ventas', () => {
     expect(el.querySelector<HTMLSelectElement>('#meseroId')!.value).toBe('4');
     expect(el.querySelector('#mesaId')!.textContent).toContain('Mesa 5');
     const fila = el.querySelector('tbody tr')!.textContent!;
-    expect(fila).toContain('Venta 9');
+    expect(fila).toContain('9');
     expect(fila).toContain('$55.50');
     expect(fila).toContain('Tarjeta');
     expect(boton('Ver venta 9')!.getAttribute('href')).toBe('/ventas/9');

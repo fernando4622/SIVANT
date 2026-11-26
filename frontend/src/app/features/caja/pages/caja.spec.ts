@@ -155,7 +155,10 @@ describe('Caja: recibir el efectivo y dar el cambio', () => {
       { meseroId: '2', pagos: [{ pagoId: '3', montoRecibido: '500' }] },
       expect.any(String),
     );
-    expect(el.textContent).toContain('Recepción 8 registrada: $480.00 de 1 pago(s) de Juan Pérez. Entrega $20.00 de cambio.');
+    expect(el.querySelector('.comprobante')?.textContent).toContain('Recepción registrada');
+    expect(el.querySelector('.comprobante')?.textContent).toContain('Comprobante 8');
+    expect(el.querySelector('.comprobante')?.textContent).toContain('Juan Pérez');
+    expect(el.querySelector('.comprobante__cambio')?.textContent).toContain('$20.00');
     expect(caja.pendientes).toHaveBeenCalledTimes(2);
   });
 

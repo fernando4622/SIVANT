@@ -329,7 +329,8 @@ describe('Inventario', () => {
     el.querySelector<HTMLFormElement>('form.minimo')!.dispatchEvent(new Event('submit'));
     await refrescar();
     expect(api.cambiarNivelMinimo).toHaveBeenCalledWith('5', '25.0');
-    expect(el.textContent).toContain('Nivel bajo.');
+    expect(el.textContent).toContain('Nivel bajo');
+    expect(el.textContent).toContain('en o por debajo del nivel mínimo (25 g)');
     perfil.set({ id: '9', nombre: 'A', rol: 'ADMINISTRADOR' });
     await abrir('/inventario');
     await abrir('/inventario/existencias/5');

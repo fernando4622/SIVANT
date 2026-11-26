@@ -71,7 +71,7 @@ export const NOMBRE_ESTADO: Record<EstadoSolicitud, string> = {
 
 export const CLASE_ESTADO: Record<EstadoSolicitud, string> = {
   PENDIENTE: 'etiqueta etiqueta--alerta',
-  AUTORIZADA: 'etiqueta etiqueta--bien',
+  AUTORIZADA: 'estado--autorizada',
   RECHAZADA: 'etiqueta etiqueta--mal',
 };
 

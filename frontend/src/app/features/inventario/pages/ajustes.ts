@@ -74,8 +74,15 @@ import { CLASE_ESTADO, InventarioApi, NOMBRE_ESTADO } from '../data-access/inven
                 <td data-etiqueta="Estado">
                   <span [class]="clase[s.estado]">{{ nombre[s.estado] }}</span>
                 </td>
-                <td>
-                  <a [routerLink]="['/inventario/ajustes', s.id]" [attr.aria-label]="'Ver ajuste ' + s.id">Ver ajuste</a>
+                <td class="celda-acciones">
+                  <a
+                    class="boton-icono"
+                    [routerLink]="['/inventario/ajustes', s.id]"
+                    [attr.aria-label]="'Ver ajuste ' + s.id"
+                    title="Ver ajuste"
+                  >
+                    <app-icono nombre="ver" />
+                  </a>
                 </td>
               </tr>
             }
@@ -90,6 +97,23 @@ import { CLASE_ESTADO, InventarioApi, NOMBRE_ESTADO } from '../data-access/inven
     }
   `,
   styleUrl: '../../../shared/ui/listado.css',
+  styles: `
+    .estado--autorizada {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      white-space: nowrap;
+    }
+
+    .estado--autorizada::before {
+      width: 0.6rem;
+      height: 0.6rem;
+      flex: none;
+      border-radius: 50%;
+      background: var(--verde);
+      content: '';
+    }
+  `,
 })
 export class Ajustes {
   private readonly api = inject(InventarioApi);

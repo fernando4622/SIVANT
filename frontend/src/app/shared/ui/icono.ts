@@ -26,6 +26,8 @@ const TRAZOS = {
   movil: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm3 3h4M11 19h2',
   candado: 'M5 11h14v10H5V11Zm3 0V7a4 4 0 0 1 8 0v4M12 15v2',
   mesas: 'M3 9h18M5 9v10M19 9v10M4 5h16l1 4H3l1-4Z',
+  mesaRedonda:
+    'M3 5.5C3 3.6 7 2.5 12 2.5s9 1.1 9 3-4 3-9 3-9-1.1-9-3Zm0 0v1c0 1.9 4 3 9 3s9-1.1 9-3v-1M12 9.5v10M8.25 21.5h7.5M9 19.5h6l.75 2h-7.5l.75-2Z',
   cocina: 'M4 10h16v4a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7v-4Zm4-7v3m4-4v4m4-3v3',
   campana: 'M6 10a6 6 0 1 1 12 0v5l2 3H4l2-3v-5Zm4 11h4',
   enviar: 'M3 11 21 3l-7 18-3-8-8-2Z',

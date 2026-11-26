@@ -36,7 +36,7 @@ import { Mesa, ServicioApi } from '../data-access/servicio.api';
             <li class="tarjeta">
               <div class="mesa-titulo">
                 <span class="mesa-redonda" aria-hidden="true">
-                  <i></i><i></i><i></i><i></i>
+                  <img src="/inicio-mesas.png" alt="" />
                 </span>
                 <h2>Mesa {{ mesa.numero }}</h2>
               </div>
@@ -83,60 +83,25 @@ import { Mesa, ServicioApi } from '../data-access/servicio.api';
     }
 
     .mesa-titulo {
-      display: flex;
+      display: grid;
+      grid-template-columns: 4.35rem minmax(0, 1fr);
       align-items: center;
       gap: 0.75rem;
     }
 
     .mesa-redonda {
-      position: relative;
-      display: block;
-      width: 3.75rem;
-      height: 3.25rem;
+      display: grid;
+      place-items: center;
+      width: 4.35rem;
+      height: 3.75rem;
       flex: none;
     }
 
-    .mesa-redonda::before {
-      position: absolute;
-      left: 0.15rem;
-      top: 0.35rem;
-      width: 3.45rem;
-      height: 1.05rem;
-      border: 0.18rem solid #6d452b;
-      border-radius: 50%;
-      background: #9a6843;
-      box-shadow:
-        inset 0 -0.18rem 0 rgb(109 69 43 / 35%),
-        0 0.2rem 0.35rem rgb(15 26 58 / 14%);
-      content: '';
-    }
-
-    .mesa-redonda::after {
-      position: absolute;
-      left: 50%;
-      top: 1.25rem;
-      width: 0.38rem;
-      height: 1.45rem;
-      border-radius: 0 0 0.2rem 0.2rem;
-      background: #6d452b;
-      content: '';
-      translate: -50% 0;
-    }
-
-    .mesa-redonda i {
-      display: none;
-    }
-
-    .mesa-redonda i:first-child {
-      position: absolute;
-      left: 50%;
-      bottom: 0.3rem;
-      display: block;
-      width: 1.75rem;
-      height: 0.3rem;
-      border-radius: 999px;
-      background: #6d452b;
-      translate: -50% 0;
+    .mesa-redonda img {
+      width: 4.35rem;
+      height: 3.75rem;
+      object-fit: contain;
+      transform: translateX(-0.55rem);
     }
 
     .situacion {

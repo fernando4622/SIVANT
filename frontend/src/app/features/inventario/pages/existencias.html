@@ -41,43 +41,45 @@
   </div>
 } @else if (listado.pagina(); as datos) {
   @if (datos.contenido.length) {
-    <table [attr.aria-busy]="listado.vista().cargando">
-      <caption class="solo-lector">
-        Existencias
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">Artículo</th>
-          <th scope="col">Tipo</th>
-          <th scope="col">Existencia</th>
-          <th scope="col">Nivel mínimo</th>
-          <th scope="col">Nivel</th>
-          <th scope="col">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (e of datos.contenido; track e.id) {
-          <tr>
-            <th scope="row">{{ e.nombre }}{{ e.activo ? '' : ' (inactivo)' }}</th>
-            <td data-etiqueta="Tipo">{{ e.tipo === 'INSUMO' ? 'Insumo' : 'Producto' }}</td>
-            <td data-etiqueta="Existencia" class="numero">{{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}</td>
-            <td data-etiqueta="Nivel mínimo" class="numero">{{ cantidad(e.nivelMinimo) }} {{ unidad(e.unidadMedida) }}</td>
-            <td data-etiqueta="Nivel">
-              @if (e.nivelBajo) {
-                <span class="etiqueta etiqueta--alerta">Bajo</span>
-              } @else {
-                <span class="etiqueta etiqueta--bien">Suficiente</span>
-              }
-            </td>
-            <td>
-              <a [routerLink]="['/inventario/existencias', e.id]" [attr.aria-label]="'Ver detalle de ' + e.nombre"
-                >Ver detalle</a
+    <ul class="existencias" [attr.aria-busy]="listado.vista().cargando">
+      @for (e of datos.contenido; track e.id) {
+        <li class="tarjeta existencia">
+          <div class="existencia__imagen" aria-hidden="true">
+            <app-icono [nombre]="e.tipo === 'INSUMO' ? 'inventario' : 'productos'" [tamano]="38" />
+          </div>
+
+          <div class="existencia__contenido">
+            <div class="existencia__encabezado">
+              <span class="nivel" [class.nivel--bajo]="e.nivelBajo">{{ e.nivelBajo ? 'Bajo' : 'Suficiente' }}</span>
+              <a
+                class="boton-icono"
+                [routerLink]="['/inventario/existencias', e.id]"
+                [attr.aria-label]="'Ver detalle de ' + e.nombre"
+                title="Ver detalle"
               >
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+                <app-icono nombre="ver" />
+              </a>
+            </div>
+
+            <div class="existencia__texto">
+              <h2>{{ e.nombre }}</h2>
+              <p>{{ e.tipo === 'INSUMO' ? 'Insumo' : 'Producto' }}{{ e.activo ? '' : ' · Inactivo' }}</p>
+            </div>
+
+            <dl class="existencia__cantidades">
+              <div>
+                <dt>Existencia</dt>
+                <dd>{{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}</dd>
+              </div>
+              <div>
+                <dt>Nivel mínimo</dt>
+                <dd>{{ cantidad(e.nivelMinimo) }} {{ unidad(e.unidadMedida) }}</dd>
+              </div>
+            </dl>
+          </div>
+        </li>
+      }
+    </ul>
     <app-paginacion [datos]="datos" elementos="artículos" (ir)="listado.irA($event)" />
   } @else {
     <p class="tarjeta">No hay artículos que coincidan con la búsqueda.</p>

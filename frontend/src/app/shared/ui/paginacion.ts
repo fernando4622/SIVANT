@@ -71,8 +71,7 @@ export class Paginacion {
   readonly ir = output<number>();
 
   protected readonly rango = computed(() => {
-    const { page, size, contenido, totalElementos } = this.datos();
-    const desde = page * size + 1;
-    return `Mostrando ${desde}–${desde + contenido.length - 1} de ${totalElementos} ${this.elementos()}`;
+    const { contenido, totalElementos } = this.datos();
+    return `Mostrando ${contenido.length} de ${totalElementos} ${this.elementos()}`;
   });
 }

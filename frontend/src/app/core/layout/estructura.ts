@@ -20,7 +20,7 @@ interface Opcion {
 /** Cada fase agrega aquí sus opciones con los roles que pueden usarlas. */
 const OPCIONES: Opcion[] = [
   { ruta: '/inicio', texto: 'Inicio', icono: 'inicio' },
-  { ruta: '/mesas', texto: 'Mesas', icono: 'mesas', incluye: '/cuentas', roles: ['MESERO', 'CAJERO'] },
+  { ruta: '/mesas', texto: 'Mesas', icono: 'mesaRedonda', incluye: '/cuentas', roles: ['MESERO', 'CAJERO'] },
   { ruta: '/cocina', texto: 'Cocina', icono: 'cocina', roles: ['COCINERO'] },
   { ruta: '/empleados', texto: 'Empleados', icono: 'empleados', roles: ['ADMINISTRADOR'] },
   { ruta: '/productos', texto: 'Productos', icono: 'productos', roles: ['ADMINISTRADOR', 'MESERO'] },

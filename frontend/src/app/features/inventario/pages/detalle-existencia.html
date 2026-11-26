@@ -11,7 +11,33 @@
     <p>{{ mensajeError }}</p>
   </div>
 } @else if (existencia(); as e) {
-  <p class="mensaje" role="status">{{ mensaje() }}</p>
+  @if (nivelActualizado()) {
+    <div class="mensaje-nivel" [class.mensaje-nivel--bajo]="e.nivelBajo" role="status">
+      <span class="mensaje-nivel__icono">
+        <app-icono [nombre]="e.nivelBajo ? 'info' : 'palomita'" [tamano]="26" />
+      </span>
+      <div>
+        <strong>Nivel {{ e.nivelBajo ? 'bajo' : 'suficiente' }}</strong>
+        <p>
+          La existencia ({{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}) está
+          {{ e.nivelBajo ? 'en o por debajo' : 'por encima' }} del nivel mínimo ({{ cantidad(e.nivelMinimo) }}
+          {{ unidad(e.unidadMedida) }}).
+        </p>
+      </div>
+    </div>
+  } @else if (movimientoRegistrado(); as tipoMovimiento) {
+    <div class="mensaje-nivel" role="status">
+      <span class="mensaje-nivel__icono">
+        <app-icono nombre="palomita" [tamano]="26" />
+      </span>
+      <div>
+        <strong>{{ tipoMovimiento === 'ENTRADA_MANUAL' ? 'Entrada registrada' : 'Salida registrada' }}</strong>
+        <p>La existencia actual es {{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}.</p>
+      </div>
+    </div>
+  } @else {
+    <p class="mensaje" role="status">{{ mensaje() }}</p>
+  }
 
   <div class="paneles">
     <section class="tarjeta" aria-labelledby="titulo-info">
@@ -46,7 +72,7 @@
             <span id="nivelMinimo-ayuda" class="campo__ayuda">Con esta cantidad o menos, la existencia se marca baja.</span>
             <span id="nivelMinimo-error" class="campo__error" aria-live="polite">{{ errorMinimo() }}</span>
           </div>
-          <button type="submit" class="boton" [disabled]="guardandoMinimo()">
+          <button type="submit" class="boton boton--principal" [disabled]="guardandoMinimo()">
             <app-icono nombre="guardar" />
             {{ guardandoMinimo() ? 'Guardando…' : 'Guardar nivel mínimo' }}
           </button>

@@ -102,11 +102,34 @@ import { CLASE_VENTA, NOMBRE_METODO, NOMBRE_VENTA, Opciones, VentasApi } from '.
           <tbody>
             @for (v of datos.contenido; track v.id) {
               <tr>
-                <th scope="row">Venta {{ v.id }}</th>
-                <td data-etiqueta="Fecha">{{ fechaHora(v.fechaHora) }}</td>
-                <td data-etiqueta="Mesa">{{ v.mesa }}</td>
-                <td data-etiqueta="Mesero">{{ v.mesero }}</td>
-                <td data-etiqueta="Método">{{ nombreMetodo[v.metodo] }}</td>
+                <th scope="row">{{ v.id }}</th>
+                <td data-etiqueta="Fecha">
+                  <span class="dato-icono">
+                    <app-icono nombre="calendario" [tamano]="19" />
+                    {{ fechaHora(v.fechaHora) }}
+                  </span>
+                </td>
+                <td data-etiqueta="Mesa">
+                  <span class="dato-icono">
+                    <app-icono nombre="mesaRedonda" [tamano]="21" />
+                    {{ v.mesa }}
+                  </span>
+                </td>
+                <td data-etiqueta="Mesero">
+                  <span class="dato-icono">
+                    <app-icono nombre="persona" [tamano]="19" />
+                    {{ v.mesero }}
+                  </span>
+                </td>
+                <td data-etiqueta="Método">
+                  <span class="dato-icono">
+                    <app-icono
+                      [nombre]="v.metodo === 'EFECTIVO' ? 'billete' : v.metodo === 'TARJETA' ? 'tarjeta' : 'movil'"
+                      [tamano]="20"
+                    />
+                    {{ nombreMetodo[v.metodo] }}
+                  </span>
+                </td>
                 <td data-etiqueta="Total" class="numero">{{ dinero(v.total) }}</td>
                 <td data-etiqueta="Estado"><span [class]="clase[v.estado]">{{ nombreEstado[v.estado] }}</span></td>
                 <td class="celda-acciones">
@@ -148,6 +171,20 @@ import { CLASE_VENTA, NOMBRE_METODO, NOMBRE_VENTA, Opciones, VentasApi } from '.
     .campo__ayuda {
       margin: 0.75rem 0 1rem;
     }
+
+    .dato-icono {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--texto);
+      white-space: nowrap;
+    }
+
+    .dato-icono app-icono {
+      flex: none;
+      color: var(--texto-suave);
+    }
+
   `,
 })
 export class Ventas {

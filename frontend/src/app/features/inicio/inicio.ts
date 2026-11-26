@@ -9,6 +9,7 @@ interface Funcion {
   descripcion: string;
   ruta: string;
   icono: NombreIcono;
+  imagen?: 'ajustes' | 'caja' | 'empleados' | 'inventario' | 'mesas' | 'productos' | 'ventas';
 }
 
 const FUNCIONES: Record<Rol, readonly Funcion[]> = {
@@ -18,30 +19,35 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
       descripcion: 'Gestiona al personal y sus accesos.',
       ruta: '/empleados',
       icono: 'empleados',
+      imagen: 'empleados',
     },
     {
       texto: 'Productos',
       descripcion: 'Administra el catálogo y los precios.',
       ruta: '/productos',
       icono: 'productos',
+      imagen: 'productos',
     },
     {
       texto: 'Ventas',
       descripcion: 'Consulta el historial y cancela ventas.',
       ruta: '/ventas',
       icono: 'ventas',
+      imagen: 'ventas',
     },
     {
       texto: 'Inventario',
       descripcion: 'Consulta existencias y movimientos.',
       ruta: '/inventario',
       icono: 'inventario',
+      imagen: 'inventario',
     },
     {
       texto: 'Ajustes de inventario',
       descripcion: 'Autoriza o rechaza solicitudes de ajuste.',
       ruta: '/inventario/ajustes',
       icono: 'ajuste',
+      imagen: 'ajustes',
     },
   ],
   MESERO: [
@@ -50,12 +56,14 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
       descripcion: 'Abre cuentas, registra y sirve comandas, y cobra.',
       ruta: '/mesas',
       icono: 'mesas',
+      imagen: 'mesas',
     },
     {
       texto: 'Catálogo',
       descripcion: 'Consulta los productos y sus precios.',
       ruta: '/productos',
       icono: 'productos',
+      imagen: 'productos',
     },
   ],
   CAJERO: [
@@ -64,18 +72,21 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
       descripcion: 'Recibe el efectivo de los cobros y da el cambio.',
       ruta: '/caja/entregas',
       icono: 'cobro',
+      imagen: 'caja',
     },
     {
       texto: 'Mesas',
       descripcion: 'Consulta cuentas y cancela comandas.',
       ruta: '/mesas',
       icono: 'mesas',
+      imagen: 'mesas',
     },
     {
       texto: 'Ventas',
       descripcion: 'Consulta el historial de ventas.',
       ruta: '/ventas',
       icono: 'ventas',
+      imagen: 'ventas',
     },
   ],
   COCINERO: [
@@ -92,12 +103,14 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
       descripcion: 'Consulta existencias y registra movimientos.',
       ruta: '/inventario',
       icono: 'inventario',
+      imagen: 'inventario',
     },
     {
       texto: 'Ajustes de inventario',
       descripcion: 'Consulta tus solicitudes y su estado.',
       ruta: '/inventario/ajustes',
       icono: 'ajuste',
+      imagen: 'ajustes',
     },
   ],
 };
@@ -120,9 +133,9 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
         @for (funcion of funciones(); track funcion.ruta) {
           <li>
             <a class="acceso" [routerLink]="funcion.ruta">
-              <span class="acceso__icono" [class.acceso__icono--mesa]="funcion.icono === 'mesas'">
-                @if (funcion.icono === 'mesas') {
-                  <span class="mesa-redonda" aria-hidden="true"><i></i></span>
+              <span class="acceso__icono" [class.acceso__icono--imagen]="funcion.imagen">
+                @if (funcion.imagen; as imagen) {
+                  <img [src]="'/inicio-' + imagen + '.png'" alt="" />
                 } @else {
                   <app-icono [nombre]="funcion.icono" />
                 }
@@ -142,6 +155,8 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
     .rol {
       margin-top: 0.35rem;
       color: var(--texto-suave);
+      font-size: 1.1rem;
+      font-weight: 600;
     }
 
     .accesos {
@@ -187,49 +202,18 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
       color: var(--texto-suave);
     }
 
-    .mesa-redonda {
-      position: relative;
-      display: block;
-      width: 2.45rem;
-      height: 2.1rem;
+    .acceso__icono--imagen {
+      width: 4.5rem;
+      height: 4.5rem;
+      overflow: hidden;
+      border-radius: 1rem;
+      background: var(--cabecera);
     }
 
-    .mesa-redonda::before {
-      position: absolute;
-      left: 0.08rem;
-      top: 0.2rem;
-      width: 2.25rem;
-      height: 0.68rem;
-      border: 0.13rem solid #6d452b;
-      border-radius: 50%;
-      background: #9a6843;
-      box-shadow:
-        inset 0 -0.12rem 0 rgb(109 69 43 / 35%),
-        0 0.14rem 0.25rem rgb(15 26 58 / 14%);
-      content: '';
-    }
-
-    .mesa-redonda::after {
-      position: absolute;
-      left: 50%;
-      top: 0.78rem;
-      width: 0.26rem;
-      height: 0.95rem;
-      border-radius: 0 0 0.14rem 0.14rem;
-      background: #6d452b;
-      content: '';
-      translate: -50% 0;
-    }
-
-    .mesa-redonda i {
-      position: absolute;
-      left: 50%;
-      bottom: 0.16rem;
-      width: 1.15rem;
-      height: 0.2rem;
-      border-radius: 999px;
-      background: #6d452b;
-      translate: -50% 0;
+    .acceso__icono--imagen img {
+      width: 4.2rem;
+      height: 4.2rem;
+      object-fit: contain;
     }
 
     .acceso__flecha {

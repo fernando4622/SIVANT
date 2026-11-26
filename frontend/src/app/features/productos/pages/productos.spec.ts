@@ -103,33 +103,29 @@ describe('Gestionar productos', () => {
     await escribir('precioVenta', '60,5');
   }
 
-  it('CP-F18 lista con precio y estado; solo los activos pueden desactivarse', async () => {
+  it('CP-F18 lista con precio y estado; la única acción lleva a editar', async () => {
     await abrir('/productos?q=a&tipo=REVENTA&activo=false&page=1');
     expect(api.listar).toHaveBeenCalledWith({ q: 'a', tipo: 'REVENTA', activo: 'false', page: 1 });
     expect(el.textContent).toContain('$1,055.00');
-    expect(el.querySelector('[aria-label="Desactivar Capuchino"]')).not.toBeNull();
-    expect(el.querySelector('[aria-label="Desactivar Agua"]')).toBeNull();
-    expect(el.querySelector('[aria-label="Reactivar Agua"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="Editar Capuchino"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="Editar Agua"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label^="Desactivar"], [aria-label^="Reactivar"]')).toBeNull();
+    expect(el.querySelectorAll('.producto__encabezado .boton-icono')).toHaveLength(2);
   });
 
-  it('reactiva un producto tras confirmar y actualiza su estado', async () => {
-    await abrir('/productos');
+  it('reactiva un producto al guardar desde la edición', async () => {
+    api.obtener.mockReturnValue(of(AGUA));
     const aguaActiva = { ...AGUA, activo: true };
     api.reactivar.mockReturnValue(of(aguaActiva));
-    api.listar.mockReturnValueOnce(
-      of({ contenido: [CAFE, aguaActiva], page: 0, size: 10, totalElementos: 2, totalPaginas: 1 }),
-    );
-
-    el.querySelector<HTMLButtonElement>('[aria-label="Reactivar Agua"]')!.click();
+    await abrir('/productos/4');
+    const estado = el.querySelector<HTMLInputElement>('input[formControlName="activo"]')!;
+    expect(estado.checked).toBe(false);
+    estado.click();
     await refrescar();
-    expect(el.querySelector('dialog')!.open).toBe(true);
-    expect(api.reactivar).not.toHaveBeenCalled();
-    el.querySelector<HTMLButtonElement>('dialog .boton--principal')!.click();
-    await refrescar();
-
+    await enviar();
     expect(api.reactivar).toHaveBeenCalledWith(AGUA.id);
-    expect(el.querySelector('dialog')!.open).toBe(false);
-    expect(el.querySelector('[aria-label="Desactivar Agua"]')).not.toBeNull();
+    expect(api.editar).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/productos');
   });
 
   it('CP-F19 el mesero ve el catálogo sin acciones y no entra a la edición', async () => {

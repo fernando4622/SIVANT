@@ -5,6 +5,52 @@
   font-weight: 600;
 }
 
+.mensaje-nivel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  border-left: 0.4rem solid var(--verde);
+  border-radius: var(--radio);
+  background: #e7f7ee;
+  color: var(--texto);
+}
+
+.mensaje-nivel__icono {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--verde);
+  color: #fff;
+}
+
+.mensaje-nivel strong {
+  color: var(--verde);
+  font-size: 1.15rem;
+}
+
+.mensaje-nivel p {
+  margin-top: 0.15rem;
+  color: var(--texto-suave);
+}
+
+.mensaje-nivel--bajo {
+  border-left-color: var(--naranja);
+  background: #fff5e5;
+}
+
+.mensaje-nivel--bajo .mensaje-nivel__icono {
+  background: var(--naranja);
+}
+
+.mensaje-nivel--bajo strong {
+  color: #9a5700;
+}
+
 .paneles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));

@@ -16,8 +16,8 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
 | Backend | `.\mvnw.cmd test` en `backend/` | 166 | 233 | 233 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 82 | 90 | 90 | 0 |
-| Navegador | Manual | 39 | 39 | 39 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 83 | 95 | 95 | 0 |
+| Navegador | Manual | 45 | 45 | 45 | 0 |
 
 Algunos casos se ejecutan varias veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la
 pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
@@ -27,8 +27,8 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Caso de uso | Requisito | Casos |
 |---|---|---|
 | Soporte: arranque | Fase 0 | CP-01 a CP-03 |
-| Iniciar y cerrar sesión (soporte) | RNF08 | CP-04 a CP-11, CP-F01, CP-F02, CP-F04, CP-F06 a CP-F09, CP-F34 a CP-F37, CP-M01 a CP-M03, CP-M08, CP-M16, CP-M17 |
-| Generalización de Empleado en cinco actores | Permisos | CP-12 a CP-15, CP-F03, CP-F05, CP-M07 |
+| Iniciar y cerrar sesión (soporte) | RNF08 | CP-04 a CP-11, CP-F01, CP-F02, CP-F04, CP-F06 a CP-F09, CP-F34 a CP-F37, CP-M01 a CP-M03, CP-M08, CP-M16, CP-M17, CP-M40 |
+| Generalización de Empleado en cinco actores | Permisos | CP-12 a CP-15, CP-F03, CP-F05, CP-F83, CP-M07, CP-M42 |
 | Registrar empleado | RF11 | CP-16 a CP-19, CP-F14, CP-F15, CP-M04 |
 | Consultar empleado | RF12 | CP-20 a CP-23, CP-F10, CP-F13, CP-M09 |
 | Editar empleado | RF13 | CP-24 a CP-29, CP-F16, CP-F17 |
@@ -49,7 +49,7 @@ pantalla de acceso anterior; CP-M16 y CP-M17 cubren la actual.
 | Consultar cola de pedidos | RF19 | CP-92, CP-93, CP-F52, CP-F55, CP-M20 |
 | Marcar pedido en preparación | RF20 | CP-94 a CP-97, CP-F53, CP-F54, CP-M20 |
 | Marcar pedido listo y avisos | RF21 | CP-98 a CP-101, CP-F56 a CP-F58, CP-M19 |
-| Tiempo real | RNF10 | CP-102 a CP-108, CP-121, CP-F38 a CP-F41, CP-M19, CP-M20 |
+| Tiempo real | RNF10 | CP-102 a CP-108, CP-121, CP-F38 a CP-F41, CP-M19, CP-M20, CP-M41 |
 | Marcar pedido servido | RF23 | CP-109 a CP-112, CP-F59, CP-F60, CP-M25 |
 | Descontar inventario (automático) | RF24 | CP-113 a CP-120, CP-F61 a CP-F65, CP-M26, CP-M27 |
 | Cobrar pedido | RF04 | CP-122 a CP-130, CP-150, CP-151, CP-F66, CP-F67, CP-F69, CP-F71, CP-M28, CP-M33 |
@@ -499,6 +499,14 @@ Precondición común de la fase 6: la de la fase 3. «Cuenta servida» es una cu
 Se comprobó que CP-155 falla si se cobra con tarjeta teniendo un fondo pendiente y que CP-163 falla si los pagos no se
 bloquean antes de la entrega.
 
+## Verificaciones pendientes
+
+Se repitieron con condiciones reales las comprobaciones que antes se simularon o no se habían vuelto a hacer.
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-F83 | Sesión de cada rol | Mostrar el menú principal | Cada rol ve solo sus opciones; **Caja** solo el cajero | Aprobado (5 roles) |
+
 ## Recorrido en el navegador
 
 | ID | Precondición | Pasos y datos | Resultado obtenido | Estado |
@@ -542,33 +550,40 @@ bloquean antes de la entrega.
 | CP-M37 | Cuenta 7 con un fondo pendiente de 150 | Anular con «La mesa pagó con el importe exacto» | Anulado con cajera, fecha y motivo; vuelve a ofrecer registrar un fondo | Aprobado |
 | CP-M38 | Cuenta 7 con un fondo nuevo de 100, como mesero | Abrir el cobro y cobrar | Avisa del fondo, solo efectivo habilitado y elegido; se registra la venta 5 | Aprobado |
 | CP-M39 | Cajera y mesero | Recibir efectivo con un pago y fondo, fondos, fondo de cuenta, cuenta y cobro a 360 px | Sin desplazamiento horizontal; el menú de la cajera muestra **Caja** | Aprobado |
+| CP-M40 | API de desarrollo con 45 minutos de inactividad; sesiones A y B del almacenista, de 19:27:16 a 20:14:29 | A: una consulta pasiva por minuto (como el sondeo). B: lo mismo y una solicitud activa cada 10 minutos. Al final, una activa en cada una | A responde 200 hasta el minuto 44 y 401 desde el minuto 45: esa primera solicitud cerró la sesión, así que la final responde 401 `SESION_REQUERIDA`. B responde 200 los 47 minutos. No se guardó el cuerpo de la primera respuesta 401; CP-10 y CP-11 comprueban con reloj simulado que su código es `SESION_EXPIRADA` | Aprobado (reloj real) |
+| CP-M41 | API en HTTPS (puerto 8443) con un certificado local validado por el cliente | Pedir CSRF, iniciar sesión, cerrar sesión sin token, HTTP al mismo puerto; STOMP por `wss`, suscribirse a `/topic/inventario` y registrar una entrada; conectar con otro origen | Cookies `XSRF-TOKEN` y `SIVANT_SESION` con `Secure` y `SameSite=Lax` (la de sesión también `HttpOnly`); 403 sin token; 400 por HTTP; `CONNECTED` y `EXISTENCIA_ACTUALIZADA` por `wss`; otro origen rechazado | Aprobado |
+| CP-M42 | Las cinco cuentas ficticias | Iniciar sesión con cada una, leer el menú y abrir `/caja/entregas` | Administrador: Inicio, Empleados, Productos, Ventas, Inventario y Avisos. Mesero: Inicio, Mesas, Productos y Avisos. Cajero: Inicio, Mesas, Caja, Ventas y Avisos. Cocinero: Inicio, Cocina y Avisos. Almacenista: Inicio, Inventario y Avisos. Solo el cajero abre `/caja`; los demás vuelven a su inicio | Aprobado |
+| CP-M43 | Un pago de Juan de 40 con fondo de 100 | Recibirlo como cajera | «Entrega 2 registrada: $40.00 de 1 pago(s) de Juan Pérez y $100.00 de fondo de cambio.» | Aprobado |
+| CP-M44 | Administrador | Alta con «MESERO@sivant.test», ya usado | El error aparece una vez en el campo de correo, el aviso general pide revisar lo marcado y se conservan los datos | Aprobado |
+| CP-M45 | Mesero en una nueva comanda a 360 px | Agregar un producto | El selector de cantidad mide 136 × 44 px y no hay desplazamiento horizontal | Aprobado |
 
 ### Defectos encontrados
 
 | Caso | Defecto | Corrección |
 |---|---|---|
 | CP-M09 | A 360 px el encabezado oculto de la tabla ensanchaba la página a 402 px | Se ajustó el estilo y se repitió el caso |
-| CP-M04 | El error de correo aparecía dos veces | El mensaje general indica revisar los datos marcados. No se repitió en el navegador; CP-F15 cubre el error por campo |
+| CP-M04 | El error de correo aparecía dos veces | El mensaje general indica revisar los datos marcados; CP-M44 lo confirma y CP-F15 cubre el error por campo |
 | CP-M17 | Las columnas de los listados partían palabras, como «Entrad-a» | Las celdas ya no se estrechan por debajo de una palabra |
 | CP-M17 | Movimientos se desbordaba 20 px a 980 px | El menú lateral se pliega antes |
 | CP-M17 | A 360 px se cortaba «Ingresa tu contraseña» | Se ajustó el margen interno |
 | CP-F10, CP-F18 | Fallaban por tiempo con el equipo cargado | Las pantallas se precargan antes de los casos |
 | CP-M18 | «Mesas» no quedaba resaltado dentro de una cuenta | Se separó la clase de la opción incluida |
-| CP-M24 | El selector de cantidad se estiraba en móvil | Se ajustó el estilo; no se repitió en el navegador |
+| CP-M24 | El selector de cantidad se estiraba en móvil | Se ajustó el estilo; CP-M45 lo confirma |
 | CP-102, CP-103, CP-107 | El cliente de prueba no leía eventos JSON y otros casos pasaban sin recibir nada | Se corrigió y se exige recibir antes de comprobar el silencio |
 | CP-F65 | Los listados que se recargaban solos contaban como actividad y podían alargar la sesión | Las recargas automáticas se envían como pasivas |
 | CP-M29 | Una transferencia aceptaba como referencia el número de una tarjeta y lo guardaba | Se rechaza con cualquier método, también en la reversión; lo cubren CP-132, CP-144 y CP-F68 |
 | CP-M29 | El nombre del producto aparecía dentro de un recuadro en el cobro y en la cancelación de venta | El estilo usaba el nombre de una clase de la nueva comanda |
 | CP-M33 | A 360 px los filtros ocupaban la pantalla y las fechas se salían de su columna | Dos columnas y campos que se ajustan |
 | CP-147 | Sin el bloqueo de la venta, las cancelaciones simultáneas respondían `REFERENCIA_REPETIDA` y la prueba no lo detectaba | La prueba exige `VENTA_CANCELADA` |
-| CP-M36 | El aviso de entrega dejaba un espacio antes del punto final | Se unió el texto; no se repitió en el navegador |
+| CP-M36 | El aviso de entrega dejaba un espacio antes del punto final | Se unió el texto; CP-M43 lo confirma |
 | CP-166 | Quitar la entrega de un fondo liquidado no descuadraba la entrega porque el disparador solo revisaba la nueva | El disparador revisa la entrega anterior y la nueva |
 
 ## Sin cubrir
 
-- Los 45 minutos de inactividad en tiempo real: CP-10 y CP-11 usan un reloj simulado.
 - Un cargo real en una terminal: el recorrido usa referencias inventadas.
-- Operación con HTTPS (incluido WebSocket seguro) y en dispositivos físicos.
+- Dispositivos físicos: el móvil se revisó con la vista de 360 px del navegador.
+- HTTPS con el proxy de producción, que aún no existe: CP-M41 usa TLS directamente en la API, y Angular se probó
+  con su servidor de desarrollo en HTTP.
 - Tiempos de respuesta y sesiones simultáneas (RNF01 a RNF03), que el ROADMAP ubica en la fase 7.
 
 ## Casos de uso del diagrama

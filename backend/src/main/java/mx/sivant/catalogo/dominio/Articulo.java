@@ -48,6 +48,10 @@ public abstract class Articulo {
         activo = false;
     }
 
+    public void reactivar() {
+        activo = true;
+    }
+
     public Long getId() {
         return id;
     }

@@ -61,4 +61,13 @@ class NotificacionController {
             throw ReglaNegocioException.noEncontrado("El aviso no existe.");
         }
     }
+
+    @PutMapping("/{id}/descarte")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void descartar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id) {
+        if (!notificaciones.descartar(id, actor.id())) {
+            throw ReglaNegocioException.noEncontrado("El aviso no existe.");
+        }
+    }
 }

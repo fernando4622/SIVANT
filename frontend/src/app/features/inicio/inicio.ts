@@ -2,37 +2,103 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { NOMBRE_ROL, Rol } from '../../core/auth/rol';
 import { Sesion } from '../../core/auth/sesion';
-import { Icono } from '../../shared/ui/icono';
+import { Icono, NombreIcono } from '../../shared/ui/icono';
 
 interface Funcion {
   texto: string;
-  ruta?: string;
+  descripcion: string;
+  ruta: string;
+  icono: NombreIcono;
 }
 
-/** Al implementar una fase se agrega la ruta de cada función. Sin ruta todavía no está disponible. */
-const FUNCIONES: Record<Rol, Funcion[]> = {
+const FUNCIONES: Record<Rol, readonly Funcion[]> = {
   ADMINISTRADOR: [
-    { texto: 'Gestionar empleados', ruta: '/empleados' },
-    { texto: 'Gestionar productos', ruta: '/productos' },
-    { texto: 'Consultar y cancelar ventas', ruta: '/ventas' },
-    { texto: 'Consultar inventario', ruta: '/inventario' },
-    { texto: 'Resolver ajustes de inventario', ruta: '/inventario/ajustes' },
+    {
+      texto: 'Empleados',
+      descripcion: 'Gestiona al personal y sus accesos.',
+      ruta: '/empleados',
+      icono: 'empleados',
+    },
+    {
+      texto: 'Productos',
+      descripcion: 'Administra el catálogo y los precios.',
+      ruta: '/productos',
+      icono: 'productos',
+    },
+    {
+      texto: 'Ventas',
+      descripcion: 'Consulta el historial y cancela ventas.',
+      ruta: '/ventas',
+      icono: 'ventas',
+    },
+    {
+      texto: 'Inventario',
+      descripcion: 'Consulta existencias y movimientos.',
+      ruta: '/inventario',
+      icono: 'inventario',
+    },
+    {
+      texto: 'Ajustes de inventario',
+      descripcion: 'Autoriza o rechaza solicitudes de ajuste.',
+      ruta: '/inventario/ajustes',
+      icono: 'ajuste',
+    },
   ],
   MESERO: [
-    { texto: 'Consultar el catálogo', ruta: '/productos' },
-    { texto: 'Abrir cuentas y registrar comandas', ruta: '/mesas' },
-    { texto: 'Servir comandas', ruta: '/mesas' },
-    { texto: 'Cobrar cuentas', ruta: '/mesas' },
+    {
+      texto: 'Mesas',
+      descripcion: 'Abre cuentas, registra y sirve comandas, y cobra.',
+      ruta: '/mesas',
+      icono: 'mesas',
+    },
+    {
+      texto: 'Catálogo',
+      descripcion: 'Consulta los productos y sus precios.',
+      ruta: '/productos',
+      icono: 'productos',
+    },
   ],
   CAJERO: [
-    { texto: 'Cancelar comandas', ruta: '/mesas' },
-    { texto: 'Consultar ventas', ruta: '/ventas' },
-    { texto: 'Recibir efectivo y entregar fondo de cambio', ruta: '/caja/entregas' },
+    {
+      texto: 'Caja',
+      descripcion: 'Recibe efectivo y entrega fondos de cambio.',
+      ruta: '/caja/entregas',
+      icono: 'cobro',
+    },
+    {
+      texto: 'Mesas',
+      descripcion: 'Consulta cuentas y cancela comandas.',
+      ruta: '/mesas',
+      icono: 'mesas',
+    },
+    {
+      texto: 'Ventas',
+      descripcion: 'Consulta el historial de ventas.',
+      ruta: '/ventas',
+      icono: 'ventas',
+    },
   ],
-  COCINERO: [{ texto: 'Consultar la cola y preparar comandas', ruta: '/cocina' }],
+  COCINERO: [
+    {
+      texto: 'Cocina',
+      descripcion: 'Revisa la cola y actualiza la preparación de las comandas.',
+      ruta: '/cocina',
+      icono: 'cocina',
+    },
+  ],
   ALMACENISTA: [
-    { texto: 'Consultar inventario y registrar movimientos', ruta: '/inventario' },
-    { texto: 'Consultar solicitudes de ajuste', ruta: '/inventario/ajustes' },
+    {
+      texto: 'Inventario',
+      descripcion: 'Consulta existencias y registra movimientos.',
+      ruta: '/inventario',
+      icono: 'inventario',
+    },
+    {
+      texto: 'Ajustes de inventario',
+      descripcion: 'Consulta tus solicitudes y su estado.',
+      ruta: '/inventario/ajustes',
+      icono: 'ajuste',
+    },
   ],
 };
 
@@ -42,60 +108,112 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="pantalla__encabezado">
-      <h1>Hola, {{ perfil()?.nombre }}</h1>
+      <div>
+        <h1>Hola, {{ perfil()?.nombre }}</h1>
+        <p class="rol">{{ nombreRol() }}</p>
+      </div>
     </div>
 
-    <div class="contenido">
-      <section class="tarjeta" aria-labelledby="funciones">
-        <h2 id="funciones">Funciones de {{ nombreRol() }}</h2>
-        <ul>
-          @for (funcion of funciones(); track funcion.texto) {
-            <li>
-              @if (funcion.ruta) {
-                <a [routerLink]="funcion.ruta">{{ funcion.texto }}</a>
-              } @else {
-                <span>{{ funcion.texto }}</span>
-                <span class="pendiente">Próximamente</span>
-              }
-            </li>
-          }
-        </ul>
-      </section>
-
-      @if (hayPendientes()) {
-        <div class="aviso">
-          <app-icono nombre="info" [tamano]="32" />
-          <p>Las funciones marcadas como «Próximamente» se habilitarán en las siguientes fases.</p>
-        </div>
-      }
-    </div>
+    <nav aria-labelledby="funciones">
+      <h2 id="funciones">Accesos rápidos</h2>
+      <ul class="accesos">
+        @for (funcion of funciones(); track funcion.ruta) {
+          <li>
+            <a class="acceso" [routerLink]="funcion.ruta">
+              <span class="acceso__icono"><app-icono [nombre]="funcion.icono" /></span>
+              <span class="acceso__texto">
+                <strong>{{ funcion.texto }}</strong>
+                <span>{{ funcion.descripcion }}</span>
+              </span>
+              <app-icono class="acceso__flecha" nombre="siguiente" [tamano]="20" />
+            </a>
+          </li>
+        }
+      </ul>
+    </nav>
   `,
   styles: `
-    .contenido {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
-      align-items: start;
-      gap: 1.25rem;
+    .rol {
+      margin-top: 0.35rem;
+      color: var(--texto-suave);
     }
 
-    ul {
+    .accesos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
+      gap: 1rem;
       margin: 1rem 0 0;
       padding: 0;
       list-style: none;
     }
 
-    li {
-      display: flex;
-      flex-wrap: wrap;
+    .acceso {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
-      gap: 0.25rem 1rem;
-      min-height: 3.25rem;
-      border-top: 2px solid var(--borde);
+      gap: 0.85rem;
+      height: 100%;
+      min-height: 7rem;
+      padding: 1.1rem;
+      border: 2px solid var(--borde);
+      border-radius: var(--radio);
+      background: var(--superficie);
+      color: var(--texto);
+      text-decoration: none;
     }
 
-    .pendiente {
+    .acceso:hover,
+    .acceso:focus-visible {
+      border-color: var(--azul);
+    }
+
+    .acceso:focus-visible {
+      outline: none;
+    }
+
+    .acceso__icono {
+      display: grid;
+      place-items: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: var(--radio-chico);
+      background: var(--cabecera);
       color: var(--texto-suave);
+    }
+
+    .acceso__flecha {
+      color: var(--texto-suave);
+    }
+
+    .acceso:hover .acceso__icono,
+    .acceso:focus-visible .acceso__icono {
+      background: var(--azul-aviso);
+    }
+
+    .acceso:hover :is(.acceso__icono, .acceso__flecha),
+    .acceso:focus-visible :is(.acceso__icono, .acceso__flecha) {
+      color: var(--azul);
+    }
+
+    .acceso__texto {
+      display: grid;
+      gap: 0.25rem;
+      overflow-wrap: anywhere;
+    }
+
+    .acceso__texto strong {
+      font-size: 1.125rem;
+      font-weight: 650;
+    }
+
+    .acceso__texto > span {
+      color: var(--texto-suave);
+    }
+
+    @media (forced-colors: active) {
+      .acceso:focus-visible {
+        border-color: Highlight;
+      }
     }
   `,
 })
@@ -109,5 +227,4 @@ export class Inicio {
     const perfil = this.perfil();
     return perfil ? FUNCIONES[perfil.rol] : [];
   });
-  protected readonly hayPendientes = computed(() => this.funciones().some((f) => !f.ruta));
 }

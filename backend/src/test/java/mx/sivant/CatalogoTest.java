@@ -275,6 +275,28 @@ class CatalogoTest extends PruebaIntegracion {
             assertThat(admin.get("/productos/" + id).json().get("nombre").asString()).isEqualTo("Refresco");
             assertThat(admin.post(ruta, Map.of("confirmado", true)).codigo()).isEqualTo("PRODUCTO_INACTIVO");
         }
+
+        @Test
+        void reactivarDevuelveElProductoAlCatalogo() {
+            String id = alta(reventa("Refresco"));
+            String producto = "/productos/" + id;
+            String reactivacion = producto + "/reactivacion";
+            var mesero = sesionDe(crear("MESERO"));
+            var original = admin.get(producto).json();
+
+            assertThat(admin.post(producto + "/desactivacion", Map.of("confirmado", true)).estado()).isEqualTo(200);
+            assertThat(mesero.get(producto).estado()).isEqualTo(404);
+            assertThat(mesero.post(reactivacion, Map.of("confirmado", true)).estado()).isEqualTo(403);
+            assertThat(admin.post(reactivacion, Map.of("confirmado", false)).estado()).isEqualTo(400);
+            assertThat(admin.get(producto).json().get("activo").asBoolean()).isFalse();
+
+            var respuesta = admin.post(reactivacion, Map.of("confirmado", true));
+            assertThat(respuesta.estado()).isEqualTo(200);
+            assertThat(respuesta.json()).isEqualTo(original);
+            assertThat(mesero.get(producto).estado()).isEqualTo(200);
+            assertThat(mesero.get("/productos").json().get("contenido").get(0).get("id").asString()).isEqualTo(id);
+            assertThat(admin.post(reactivacion, Map.of("confirmado", true)).codigo()).isEqualTo("PRODUCTO_ACTIVO");
+        }
     }
 
     @ParameterizedTest(name = "CP-53 {0} no puede modificar el catálogo")

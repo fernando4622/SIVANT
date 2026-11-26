@@ -63,7 +63,7 @@
             [attr.aria-pressed]="verContrasena()"
             (click)="verContrasena.set(!verContrasena())"
           >
-            <app-icono nombre="ver" />
+            <app-icono [nombre]="verContrasena() ? 'ver' : 'ocultar'" />
           </button>
         </div>
         <span id="contrasena-error" class="campo__error" aria-live="polite">

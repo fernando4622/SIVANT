@@ -67,6 +67,15 @@ h1 {
   padding-left: 4rem;
 }
 
+.con-icono .control:focus {
+  border-color: var(--azul);
+  outline: none;
+}
+
+.con-icono:has(> .control:focus) > app-icono {
+  color: var(--azul);
+}
+
 .con-icono .control--con-boton {
   padding-right: 4rem;
 }
@@ -95,10 +104,46 @@ h1 {
 }
 
 .recordar input {
-  width: 1.6rem;
-  height: 1.6rem;
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
   margin: 0;
-  accent-color: var(--azul);
+  border: 2px solid var(--borde-control);
+  border-radius: 0.35rem;
+  background: var(--superficie);
+  color: #fff;
+  cursor: inherit;
+}
+
+.recordar input:checked {
+  border-color: var(--azul);
+  background: var(--azul);
+}
+
+.recordar input:checked::before {
+  width: 0.4rem;
+  height: 0.65rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-1px) rotate(45deg);
+  content: '';
+}
+
+@media (forced-colors: active) {
+  .con-icono .control:focus {
+    border-color: Highlight;
+  }
+
+  .recordar input {
+    appearance: auto;
+  }
+
+  .recordar input:checked::before {
+    content: none;
+  }
 }
 
 .enlace {

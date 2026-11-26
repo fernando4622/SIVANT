@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { NOMBRE_ROL, ROLES } from '../../../core/auth/rol';
@@ -26,9 +26,10 @@ export class ListadoEmpleados {
     this.api.listar({ q: p.get('q') ?? '', rol: p.get('rol') ?? '', estado: p.get('estado') ?? '', page }),
   );
 
-  protected readonly porDesactivar = signal<Empleado | null>(null);
-  protected readonly desactivando = signal(false);
-  protected readonly errorDesactivacion = signal<string | null>(null);
+  protected readonly seleccionado = signal<Empleado | null>(null);
+  protected readonly reactivacion = computed(() => this.seleccionado()?.estado === 'INACTIVO');
+  protected readonly actualizando = signal(false);
+  protected readonly errorActualizacion = signal<string | null>(null);
   protected readonly mensaje = signal('');
   private readonly confirmacion = viewChild.required(Confirmacion);
 
@@ -45,28 +46,33 @@ export class ListadoEmpleados {
   }
 
   protected pedirConfirmacion(empleado: Empleado): void {
-    this.errorDesactivacion.set(null);
+    this.errorActualizacion.set(null);
     this.mensaje.set('');
-    this.porDesactivar.set(empleado);
+    this.seleccionado.set(empleado);
     this.confirmacion().abrir();
   }
 
-  protected desactivar(): void {
-    const empleado = this.porDesactivar();
-    if (!empleado || this.desactivando()) {
+  protected cambiarEstado(): void {
+    const empleado = this.seleccionado();
+    if (!empleado || this.actualizando()) {
       return;
     }
-    this.desactivando.set(true);
-    this.api.desactivar(empleado.id).subscribe({
+    const reactivar = empleado.estado === 'INACTIVO';
+    const solicitud = reactivar ? this.api.reactivar(empleado.id) : this.api.desactivar(empleado.id);
+    this.actualizando.set(true);
+    this.errorActualizacion.set(null);
+    solicitud.subscribe({
       next: () => {
-        this.desactivando.set(false);
+        this.actualizando.set(false);
         this.confirmacion().cerrar();
-        this.mensaje.set(`${empleado.nombreCompleto} quedó inactivo y ya no puede acceder.`);
+        this.mensaje.set(reactivar
+          ? `${empleado.nombreCompleto} ya puede iniciar sesión.`
+          : `${empleado.nombreCompleto} quedó inactivo y ya no puede acceder.`);
         this.listado.recargar();
       },
       error: (error: unknown) => {
-        this.desactivando.set(false);
-        this.errorDesactivacion.set(leerProblema(error).detalle);
+        this.actualizando.set(false);
+        this.errorActualizacion.set(leerProblema(error).detalle);
       },
     });
   }

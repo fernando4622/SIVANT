@@ -27,7 +27,7 @@ final class EmpleadoDtos {
             @Pattern(regexp = CORREO, message = "Escribe un correo válido.") String correo,
             @NotBlank(message = "Escribe la contraseña inicial.")
             @Size(min = 8, max = 72, message = "Usa entre 8 y 72 caracteres.") String contrasena,
-            @NotBlank(message = "Selecciona un rol.") String rol) {
+            @NotBlank(message = "Selecciona un cargo.") String rol) {
 
         @Override
         public String toString() {
@@ -42,7 +42,7 @@ final class EmpleadoDtos {
             @Pattern(regexp = CORREO, message = "Escribe un correo válido.") String correo,
             @Pattern(regexp = CON_CONTENIDO, message = "Escribe la contraseña.")
             @Size(min = 8, max = 72, message = "Usa entre 8 y 72 caracteres.") String contrasena,
-            @Pattern(regexp = CON_CONTENIDO, message = "Selecciona un rol.") String rol) {
+            @Pattern(regexp = CON_CONTENIDO, message = "Selecciona un cargo.") String rol) {
 
         boolean sinCambios() {
             return nombreCompleto == null && correo == null && contrasena == null && rol == null;
@@ -61,6 +61,11 @@ final class EmpleadoDtos {
     record Desactivacion(
             @NotNull(message = "Confirma la desactivación.")
             @AssertTrue(message = "Confirma la desactivación.") Boolean confirmado) {
+    }
+
+    record Reactivacion(
+            @NotNull(message = "Confirma la reactivación.")
+            @AssertTrue(message = "Confirma la reactivación.") Boolean confirmado) {
     }
 
     record EmpleadoRespuesta(String id, String nombreCompleto, String correo, String rol, String estado) {

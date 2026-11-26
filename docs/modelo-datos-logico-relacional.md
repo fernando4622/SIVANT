@@ -84,6 +84,7 @@ erDiagram
         int id_notificacion PK,FK
         int id_empleado PK,FK
         datetime fecha_hora
+        boolean descartada
     }
 
     VENTA {

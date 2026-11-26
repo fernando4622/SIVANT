@@ -37,7 +37,7 @@ const pagina = (...contenido: Notificacion[]) =>
 
 describe('Cocina y avisos', () => {
   const cocina = { cola: vi.fn(), iniciar: vi.fn(), marcarLista: vi.fn() };
-  const notificaciones = { listar: vi.fn(), leer: vi.fn() };
+  const notificaciones = { listar: vi.fn(), leer: vi.fn(), descartar: vi.fn() };
   const conectado = signal(true);
   const perfil = signal({ id: '1', nombre: 'A', rol: 'COCINERO' });
   let eventos: Subject<null>;
@@ -52,6 +52,7 @@ describe('Cocina y avisos', () => {
     cocina.cola.mockReturnValue(of([ENVIADA, PREPARACION]));
     notificaciones.listar.mockReturnValue(pagina());
     notificaciones.leer.mockReturnValue(of(undefined));
+    notificaciones.descartar.mockReturnValue(of(undefined));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'notificaciones', component: Notificaciones }]),
@@ -168,6 +169,18 @@ describe('Cocina y avisos', () => {
     marcar[0].click();
     await refrescar();
     expect(notificaciones.leer).toHaveBeenCalledWith('1');
+  });
+
+  it('descarta un aviso sin eliminarlo desde la interfaz', async () => {
+    notificaciones.listar.mockReturnValue(pagina(aviso('1', 'COMANDA_LISTA')));
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/notificaciones');
+    fixture = harness.fixture;
+    el = fixture.nativeElement;
+    await refrescar();
+    el.querySelector<HTMLButtonElement>('[aria-label^="Descartar:"]')!.click();
+    await refrescar();
+    expect(notificaciones.descartar).toHaveBeenCalledWith('1');
   });
 
   it('CP-F64 el almacenista recibe el faltante destacado, con enlace a la existencia', async () => {

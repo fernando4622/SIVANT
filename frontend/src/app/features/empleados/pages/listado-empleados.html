@@ -1,13 +1,9 @@
 <div class="pantalla__encabezado">
   <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
   <h1>Gestionar empleados</h1>
-  <a class="boton boton--principal" routerLink="/empleados/nuevo">
-    <app-icono nombre="mas" />
-    Nuevo empleado
-  </a>
 </div>
 
-<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+<form class="filtros filtros--con-accion" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
   <div class="buscador">
     <app-icono nombre="buscar" />
     <input
@@ -19,8 +15,8 @@
       maxlength="150"
     />
   </div>
-  <select class="control" formControlName="rol" aria-label="Filtrar por rol">
-    <option value="">Todos los roles</option>
+  <select class="control" formControlName="rol" aria-label="Filtrar por cargo">
+    <option value="">Todos los cargos</option>
     @for (rol of roles; track rol) {
       <option [value]="rol">{{ nombreRol[rol] }}</option>
     }
@@ -30,6 +26,10 @@
     <option value="ACTIVO">Activo</option>
     <option value="INACTIVO">Inactivo</option>
   </select>
+  <a class="boton boton--principal" routerLink="/empleados/nuevo">
+    <app-icono nombre="mas" />
+    Nuevo empleado
+  </a>
 </form>
 
 <p class="mensaje" role="status">{{ mensaje() }}</p>
@@ -52,7 +52,7 @@
         <tr>
           <th scope="col">Nombre</th>
           <th scope="col">Correo</th>
-          <th scope="col">Rol</th>
+          <th scope="col">Cargo</th>
           <th scope="col">Estado</th>
           <th scope="col">Acciones</th>
         </tr>
@@ -82,17 +82,17 @@
               >
                 <app-icono nombre="editar" />
               </a>
-              @if (empleado.estado === 'ACTIVO') {
-                <button
-                  type="button"
-                  class="boton-icono boton-icono--peligro"
-                  [attr.aria-label]="'Desactivar a ' + empleado.nombreCompleto"
-                  title="Desactivar"
-                  (click)="pedirConfirmacion(empleado)"
-                >
-                  <app-icono nombre="basura" />
-                </button>
-              }
+              <button
+                type="button"
+                class="boton-icono"
+                [class.boton-icono--peligro]="empleado.estado === 'ACTIVO'"
+                [class.boton-icono--reactivar]="empleado.estado === 'INACTIVO'"
+                [attr.aria-label]="(empleado.estado === 'ACTIVO' ? 'Desactivar a ' : 'Reactivar a ') + empleado.nombreCompleto"
+                [title]="empleado.estado === 'ACTIVO' ? 'Desactivar' : 'Reactivar'"
+                (click)="pedirConfirmacion(empleado)"
+              >
+                <app-icono [nombre]="empleado.estado === 'ACTIVO' ? 'basura' : 'reactivar'" />
+              </button>
             </td>
           </tr>
         }
@@ -108,12 +108,18 @@
 }
 
 <app-confirmacion
-  titulo="Desactivar empleado"
-  accion="Desactivar"
-  [ocupado]="desactivando()"
-  [error]="errorDesactivacion()"
-  (confirmado)="desactivar()"
+  [titulo]="reactivacion() ? 'Reactivar empleado' : 'Desactivar empleado'"
+  [accion]="reactivacion() ? 'Reactivar' : 'Desactivar'"
+  [peligro]="!reactivacion()"
+  [icono]="reactivacion() ? 'reactivar' : 'basura'"
+  [ocupado]="actualizando()"
+  [error]="errorActualizacion()"
+  (confirmado)="cambiarEstado()"
 >
-  <strong>{{ porDesactivar()?.nombreCompleto }}</strong> ya no podrá iniciar sesión y perderá el acceso si tiene una
-  sesión abierta. Se conservan sus datos y su historial.
+  <strong>{{ seleccionado()?.nombreCompleto }}</strong>
+  @if (reactivacion()) {
+    podrá volver a iniciar sesión con su cargo actual.
+  } @else {
+    perderá el acceso al sistema y se cerrarán sus sesiones abiertas. Sus datos e historial se conservan.
+  }
 </app-confirmacion>

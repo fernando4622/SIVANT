@@ -163,6 +163,7 @@ erDiagram
         bigint id_notificacion PK,FK
         bigint id_empleado PK,FK
         timestamptz fecha_hora
+        boolean descartada
     }
     PAGO {
         bigint id_pago PK

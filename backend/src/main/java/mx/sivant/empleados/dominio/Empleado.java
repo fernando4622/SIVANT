@@ -79,6 +79,11 @@ public class Empleado {
         invalidarSesiones();
     }
 
+    public void reactivar() {
+        estado = EstadoEmpleado.ACTIVO;
+        invalidarSesiones();
+    }
+
     private void invalidarSesiones() {
         sesionVersion++;
     }

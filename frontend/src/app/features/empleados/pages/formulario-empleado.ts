@@ -95,7 +95,7 @@ export class FormularioEmpleado implements OnInit {
       case 'contrasena':
         return 'Usa entre 8 y 72 caracteres.';
       case 'rol':
-        return 'Selecciona un rol.';
+        return 'Selecciona un cargo.';
     }
   }
 

@@ -130,6 +130,18 @@ public class GestionProductos {
         return detalle(producto);
     }
 
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public DatosProducto reactivar(Long actor, Long id) {
+        Producto producto = productos.bloquearPorId(id).orElseThrow(GestionProductos::noExiste);
+        if (producto.isActivo()) {
+            throw ReglaNegocioException.conflicto("PRODUCTO_ACTIVO", "El producto ya está activo.");
+        }
+        producto.reactivar();
+        auditoria.registrar(actor, "PRODUCTO_REACTIVADO", ENTIDAD, id, Map.of("activo", cambio("false", "true")));
+        return detalle(producto);
+    }
+
     private static void validarTipo(AltaProducto alta) {
         boolean conReceta = alta.receta() != null && !alta.receta().isEmpty();
         if (alta.tipo() == TipoProducto.PREPARADO) {

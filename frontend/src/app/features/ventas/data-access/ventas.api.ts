@@ -19,8 +19,8 @@ export const NOMBRE_VENTA: Record<EstadoVenta, string> = {
 };
 
 export const CLASE_VENTA: Record<EstadoVenta, string> = {
-  COMPLETADA: 'etiqueta etiqueta--bien',
-  CANCELADA: 'etiqueta etiqueta--mal',
+  COMPLETADA: 'estado',
+  CANCELADA: 'estado estado--cancelado',
 };
 
 export interface Pago {

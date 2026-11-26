@@ -272,7 +272,7 @@ paths:
       tags: [Empleados]
       operationId: desactivarEmpleado
       summary: Desactivar empleado (RF14)
-      description: Conserva el registro e invalida las sesiones abiertas. El empleado no vuelve a iniciar sesión.
+      description: Conserva el registro e invalida las sesiones abiertas. El empleado pierde el acceso mientras está inactivo.
       security:
         - sesion: []
           csrf: []
@@ -293,6 +293,43 @@ paths:
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
           description: '`EMPLEADO_INACTIVO`, `ULTIMO_ADMINISTRADOR` o `CUENTAS_ABIERTAS`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /empleados/{id}/reactivacion:
+    parameters:
+      - $ref: '#/components/parameters/IdEmpleado'
+    post:
+      tags: [Empleados]
+      operationId: reactivarEmpleado
+      summary: Reactivar empleado
+      description: Solo ADMINISTRADOR. Restablece el acceso con el cargo actual. El empleado debe iniciar una sesión nueva.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmado]
+              properties:
+                confirmado: { type: boolean, const: true }
+      responses:
+        '200':
+          description: Empleado ACTIVO
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empleado' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`EMPLEADO_ACTIVO`'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -426,6 +463,43 @@ paths:
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
           description: '`PRODUCTO_INACTIVO`'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /productos/{id}/reactivacion:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    post:
+      tags: [Productos]
+      operationId: reactivarProducto
+      summary: Reactivar producto
+      description: Solo ADMINISTRADOR. Devuelve el producto al catálogo de venta con sus datos actuales.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmado]
+              properties:
+                confirmado: { type: boolean, const: true }
+      responses:
+        '200':
+          description: Producto activo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Producto' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: '`PRODUCTO_ACTIVO`'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -1386,6 +1460,25 @@ paths:
       responses:
         '204':
           description: Lectura registrada
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /notificaciones/{id}/descarte:
+    parameters:
+      - $ref: '#/components/parameters/IdRecurso'
+    put:
+      tags: [Notificaciones]
+      operationId: descartarNotificacion
+      summary: Descartar una notificación
+      description: Oculta la notificación solo para el empleado autenticado, sin eliminarla. Es idempotente.
+      security:
+        - sesion: []
+          csrf: []
+      responses:
+        '204':
+          description: Descarte registrado
         '400': { $ref: '#/components/responses/DatosInvalidos' }
         '401': { $ref: '#/components/responses/SinSesion' }
         '403': { $ref: '#/components/responses/SinPermiso' }

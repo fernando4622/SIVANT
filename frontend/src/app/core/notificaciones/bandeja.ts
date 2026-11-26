@@ -62,4 +62,15 @@ export class Bandeja {
       },
     });
   }
+
+  descartar(id: string): void {
+    this.error.set(false);
+    this.api.descartar(id).subscribe({
+      next: () => this.actualizar(),
+      error: () => {
+        this.error.set(true);
+        this.actualizar();
+      },
+    });
+  }
 }

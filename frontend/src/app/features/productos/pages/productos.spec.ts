@@ -29,6 +29,7 @@ describe('Gestionar productos', () => {
     registrar: vi.fn(),
     editar: vi.fn(),
     desactivar: vi.fn(),
+    reactivar: vi.fn(),
   };
   let harness: RouterTestingHarness;
   let el: HTMLElement;
@@ -108,6 +109,27 @@ describe('Gestionar productos', () => {
     expect(el.textContent).toContain('$1,055.00');
     expect(el.querySelector('[aria-label="Desactivar Capuchino"]')).not.toBeNull();
     expect(el.querySelector('[aria-label="Desactivar Agua"]')).toBeNull();
+    expect(el.querySelector('[aria-label="Reactivar Agua"]')).not.toBeNull();
+  });
+
+  it('reactiva un producto tras confirmar y actualiza su estado', async () => {
+    await abrir('/productos');
+    const aguaActiva = { ...AGUA, activo: true };
+    api.reactivar.mockReturnValue(of(aguaActiva));
+    api.listar.mockReturnValueOnce(
+      of({ contenido: [CAFE, aguaActiva], page: 0, size: 10, totalElementos: 2, totalPaginas: 1 }),
+    );
+
+    el.querySelector<HTMLButtonElement>('[aria-label="Reactivar Agua"]')!.click();
+    await refrescar();
+    expect(el.querySelector('dialog')!.open).toBe(true);
+    expect(api.reactivar).not.toHaveBeenCalled();
+    el.querySelector<HTMLButtonElement>('dialog .boton--principal')!.click();
+    await refrescar();
+
+    expect(api.reactivar).toHaveBeenCalledWith(AGUA.id);
+    expect(el.querySelector('dialog')!.open).toBe(false);
+    expect(el.querySelector('[aria-label="Desactivar Agua"]')).not.toBeNull();
   });
 
   it('CP-F19 el mesero ve el catálogo sin acciones y no entra a la edición', async () => {
@@ -115,7 +137,7 @@ describe('Gestionar productos', () => {
     await abrir('/productos');
     expect(el.textContent).toContain('Catálogo');
     expect(el.textContent).not.toContain('Nuevo producto');
-    expect(el.querySelector('[aria-label^="Editar"], [aria-label^="Desactivar"]')).toBeNull();
+    expect(el.querySelector('[aria-label^="Editar"], [aria-label^="Desactivar"], [aria-label^="Reactivar"]')).toBeNull();
     await harness.navigateByUrl('/productos/3');
     expect(TestBed.inject(Router).url).toBe('/inicio');
   });

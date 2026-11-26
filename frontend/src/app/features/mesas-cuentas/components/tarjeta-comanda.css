@@ -1,9 +1,15 @@
+article {
+  box-shadow: var(--sombra);
+}
+
 header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 2px solid var(--borde);
 }
 
 .dato {
@@ -11,6 +17,7 @@ header {
   align-items: center;
   gap: 1rem;
   margin-top: 0.75rem;
+  color: var(--texto-suave);
 }
 
 ul {
@@ -26,6 +33,10 @@ li {
   gap: 0.75rem;
   padding: 0.75rem 0;
   border-bottom: 2px solid var(--borde);
+}
+
+li strong {
+  font-variant-numeric: tabular-nums;
 }
 
 .cantidad {
@@ -48,6 +59,7 @@ li {
   gap: 1rem;
   margin: 0.9rem 0;
   font-size: 1.15rem;
+  font-weight: 600;
 }
 
 .cancelada ul,

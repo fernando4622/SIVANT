@@ -17,8 +17,113 @@
 }
 
 .mesa--cerrada::before {
-  border: 2px solid var(--texto-suave);
-  background: transparent;
+  background: var(--rojo);
+}
+
+.columnas {
+  grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.85fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.seccion-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+}
+
+.seccion-encabezado p,
+.resumen-titulo p,
+.estado-vacio p {
+  color: var(--texto-suave);
+}
+
+.seccion-encabezado > span {
+  display: grid;
+  place-items: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding-inline: 0.5rem;
+  border-radius: 999px;
+  background: var(--cabecera);
+  font-weight: 650;
+}
+
+.panel-lateral {
+  position: sticky;
+  top: 1rem;
+}
+
+.resumen-cuenta {
+  padding: 1.25rem;
+  box-shadow: var(--sombra);
+}
+
+.resumen-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.resumen-titulo > span,
+.estado-vacio > span {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  border-radius: var(--radio-chico);
+  background: var(--azul-aviso);
+  color: var(--azul);
+}
+
+.resumen-cuenta .datos-lista {
+  gap: 0;
+}
+
+.resumen-cuenta .datos-lista dt,
+.resumen-cuenta .datos-lista dd {
+  margin: 0;
+  padding-block: 0.55rem;
+  border-bottom: 1px solid var(--borde);
+}
+
+.resumen-cuenta .datos-lista dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.estado-cuenta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--verde);
+  font-weight: 600;
+}
+
+.estado-cuenta::before {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.estado-cuenta--cerrada {
+  color: var(--texto-suave);
+}
+
+.accion-cuenta {
+  width: 100%;
+}
+
+.estado-vacio {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .total {
@@ -28,8 +133,13 @@
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: 2px solid var(--borde);
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 650;
+}
+
+.total strong {
+  color: var(--texto);
+  font-variant-numeric: tabular-nums;
 }
 
 .aviso {
@@ -42,7 +152,15 @@
 
 /* En pantallas angostas el total y las acciones van antes que las comandas. */
 @media (max-width: 60rem) {
+  .columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .columnas > :last-child {
     order: -1;
+  }
+
+  .panel-lateral {
+    position: static;
   }
 }

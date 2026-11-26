@@ -33,6 +33,13 @@
 @if (cuenta(); as c) {
   <div class="columnas">
     <div class="pila">
+      <div class="seccion-encabezado">
+        <div>
+          <h2>Comandas</h2>
+          <p>Productos registrados en esta cuenta.</p>
+        </div>
+        <span>{{ c.comandas.length }}</span>
+      </div>
       @for (comanda of c.comandas; track comanda.id) {
         <app-tarjeta-comanda [comanda]="comanda">
           @if (comanda.acciones.length) {
@@ -72,16 +79,32 @@
           }
         </app-tarjeta-comanda>
       } @empty {
-        <p class="tarjeta">Aún no hay comandas.</p>
+        <div class="tarjeta estado-vacio">
+          <span><app-icono nombre="productos" [tamano]="28" /></span>
+          <div>
+            <h2>Aún no hay comandas</h2>
+            <p>Agrega productos para comenzar la cuenta.</p>
+          </div>
+        </div>
       }
     </div>
 
-    <div class="pila">
-      <section class="tarjeta" aria-labelledby="titulo-cuenta">
-        <h2 id="titulo-cuenta">Información de la cuenta</h2>
+    <div class="pila panel-lateral">
+      <section class="tarjeta resumen-cuenta" aria-labelledby="titulo-cuenta">
+        <div class="resumen-titulo">
+          <span><app-icono nombre="ventas" [tamano]="26" /></span>
+          <div>
+            <h2 id="titulo-cuenta">Información de la cuenta</h2>
+            <p>Mesa {{ c.mesa }}</p>
+          </div>
+        </div>
         <dl class="datos-lista">
           <dt>Estado:</dt>
-          <dd>{{ c.estado === 'ABIERTA' ? 'Abierta' : 'Cerrada' }}</dd>
+          <dd>
+            <span class="estado-cuenta" [class.estado-cuenta--cerrada]="c.estado === 'CERRADA'">
+              {{ c.estado === 'ABIERTA' ? 'Abierta' : 'Cerrada' }}
+            </span>
+          </dd>
           <dt>Mesero:</dt>
           <dd>{{ c.mesero }}</dd>
           <dt>Apertura:</dt>
@@ -110,7 +133,7 @@
       </section>
 
       @if (c.acciones.includes('COBRAR')) {
-        <a class="boton boton--principal" [routerLink]="['/cuentas', c.id, 'cobro']">
+        <a class="boton boton--principal accion-cuenta" [routerLink]="['/cuentas', c.id, 'cobro']">
           <app-icono nombre="cobro" />
           Cobrar {{ dinero(c.total) }}
         </a>
@@ -118,13 +141,13 @@
         <p class="campo__ayuda">Para cobrar, todas las comandas no canceladas deben estar servidas.</p>
       }
       @if (c.acciones.includes('ENVIAR_COMANDA')) {
-        <a class="boton" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
+        <a class="boton accion-cuenta" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
           <app-icono nombre="mas" />
           Nueva comanda
         </a>
       }
       @if (c.acciones.includes('CERRAR_SIN_COBRO')) {
-        <button type="button" class="boton" (click)="pedirCierre()">Cerrar sin cobro</button>
+        <button type="button" class="boton accion-cuenta" (click)="pedirCierre()">Cerrar sin cobro</button>
       }
     </div>
   </div>

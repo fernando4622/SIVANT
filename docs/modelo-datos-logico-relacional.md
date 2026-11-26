@@ -149,6 +149,7 @@ erDiagram
         int id_producto PK,FK
         string descripcion
         decimal precio_venta
+        string imagen
     }
 
     PRODUCTO_PREPARADO {
@@ -344,6 +345,8 @@ Sí se almacena `VENTA.total`, porque representa el importe histórico al moment
 - Un producto de reventa no necesita receta y tiene exactamente una existencia.
 - No puede repetirse el mismo insumo en la receta de un producto.
 - `cantidad_requerida` debe ser mayor que cero.
+- `PRODUCTO.imagen` es opcional y guarda solo el nombre del archivo de la imagen (por ejemplo, `agua-embotellada.webp`), no el archivo. No interviene en ventas, recetas ni inventario.
+- El nombre usa minúsculas, números y guiones, con extensión `.webp`, `.png` o `.jpg`, y no incluye carpetas.
 
 ### Inventario
 

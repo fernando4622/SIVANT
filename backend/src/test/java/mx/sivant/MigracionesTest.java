@@ -21,7 +21,7 @@ class MigracionesTest extends PruebaIntegracion {
         assertThat(sql.queryForObject("SHOW server_version", String.class)).startsWith("18");
         // La creación del esquema queda registrada sin versión.
         assertThat(flyway.info().applied()).filteredOn(m -> m.getVersion() != null)
-                .extracting(m -> m.getVersion().getVersion()).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
+                .extracting(m -> m.getVersion().getVersion()).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
     }

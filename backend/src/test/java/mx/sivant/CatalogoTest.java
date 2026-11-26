@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataAccessException;
@@ -89,7 +90,7 @@ class CatalogoTest extends PruebaIntegracion {
             for (String campo : List.of("nombre", "descripcion", "precioVenta", "tipo", "unidadMedida")) {
                 assertThat(vacio.campo(campo)).as(campo).isNotBlank();
             }
-            for (String precio : List.of("-1", "1.234", "abc", "", "1e5", "1234567890123")) {
+            for (String precio : List.of("0", "0.00", "-1", "1.234", "abc", "", "1e5", "1234567890123")) {
                 var datos = reventa("Precio");
                 datos.put("precioVenta", precio);
                 assertThat(admin.post("/productos", datos).campo("precioVenta")).as(precio).isNotBlank();
@@ -147,6 +148,18 @@ class CatalogoTest extends PruebaIntegracion {
         private Long articulo() {
             return sql.queryForObject("INSERT INTO sivant.articulo (nombre, unidad_medida) VALUES ('X', 'PIEZA') "
                     + "RETURNING id_articulo", Long.class);
+        }
+
+        @Test
+        @DisplayName("CP-171 PostgreSQL rechaza un precio de 0 en productos y en comandas")
+        void precioPositivo() {
+            String id = alta(reventa("Agua"));
+            assertThatThrownBy(() -> sql.update("UPDATE sivant.producto SET precio_venta = 0 WHERE id_producto = ?",
+                    Long.valueOf(id))).isInstanceOf(DataIntegrityViolationException.class);
+            assertThat(admin.get("/productos/" + id).json().get("precioVenta").asString()).isNotEqualTo("0.00");
+            assertThat(sql.queryForObject("""
+                    SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'ck_detalle_precio'
+                    """, String.class)).contains("> (0)");
         }
 
         @Test
@@ -237,6 +250,8 @@ class CatalogoTest extends PruebaIntegracion {
             assertThat(admin.patch("/productos/" + id, Map.of()).estado()).isEqualTo(400);
             assertThat(admin.patch("/productos/" + id, Map.of("nombre", " ")).campo("nombre")).isNotBlank();
             assertThat(admin.patch("/productos/" + id, Map.of("precioVenta", "-5")).campo("precioVenta")).isNotBlank();
+            assertThat(admin.patch("/productos/" + id, Map.of("precioVenta", "0.00")).campo("precioVenta"))
+                    .contains("mayor que 0");
             assertThat(admin.patch("/productos/" + id, Map.of("activo", false)).estado()).isEqualTo(400);
             assertThat(admin.patch("/productos/999999", Map.of("nombre", "X")).estado()).isEqualTo(404);
         }

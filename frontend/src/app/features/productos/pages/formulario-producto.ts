@@ -7,7 +7,7 @@ import {
   NOMBRE_UNIDAD,
   PATRON_CANTIDAD,
   PATRON_CANTIDAD_POSITIVA,
-  PATRON_DINERO,
+  PATRON_DINERO_POSITIVO,
   cantidad,
   normalizarDecimal,
   unidad,
@@ -47,7 +47,7 @@ export class FormularioProducto implements OnInit {
   protected readonly formulario = this.fb.group({
     nombre: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
     descripcion: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(500)]],
-    precioVenta: ['', [Validators.required, Validators.pattern(PATRON_DINERO)]],
+    precioVenta: ['', [Validators.required, Validators.pattern(PATRON_DINERO_POSITIVO)]],
     tipo: this.fb.control<TipoProducto>('PREPARADO'),
     unidadMedida: this.fb.control<UnidadMedida>('PIEZA'),
     nivelMinimo: ['', [Validators.required, Validators.pattern(PATRON_CANTIDAD)]],
@@ -130,7 +130,7 @@ export class FormularioProducto implements OnInit {
       case 'descripcion':
         return control.hasError('maxlength') ? 'Usa 500 caracteres como máximo.' : 'Escribe la descripción.';
       case 'precioVenta':
-        return 'Escribe un precio válido, con dos decimales como máximo.';
+        return 'Escribe un precio mayor que 0, con dos decimales como máximo.';
       case 'nivelMinimo':
         return 'Escribe un nivel mínimo válido.';
     }

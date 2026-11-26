@@ -68,5 +68,7 @@ export function normalizarDecimal(texto: string): string {
 }
 
 export const PATRON_DINERO = /^\s*\d{1,12}([.,]\d{1,2})?\s*$/;
+/** Como PATRON_DINERO, mayor que 0. */
+export const PATRON_DINERO_POSITIVO = /^(?=.*[1-9])\s*\d{1,12}([.,]\d{1,2})?\s*$/;
 export const PATRON_CANTIDAD = /^\s*\d{1,12}([.,]\d{1,6})?\s*$/;
 export const PATRON_CANTIDAD_POSITIVA = /^(?=.*[1-9])\s*\d{1,12}([.,]\d{1,6})?\s*$/;

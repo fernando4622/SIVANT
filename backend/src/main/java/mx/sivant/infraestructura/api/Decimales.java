@@ -7,6 +7,8 @@ public final class Decimales {
 
     /** Hasta 12 enteros y 2 decimales: numeric(14,2). */
     public static final String DINERO = "^\\d{1,12}(\\.\\d{1,2})?$";
+    /** Como {@link #DINERO}, mayor que 0. */
+    public static final String DINERO_POSITIVO = "^(?=.*[1-9])\\d{1,12}(\\.\\d{1,2})?$";
     /** Hasta 12 enteros y 6 decimales: numeric(18,6). */
     public static final String CANTIDAD = "^\\d{1,12}(\\.\\d{1,6})?$";
 

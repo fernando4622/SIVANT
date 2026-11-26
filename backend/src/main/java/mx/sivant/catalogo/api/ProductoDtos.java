@@ -40,7 +40,7 @@ final class ProductoDtos {
             @NotBlank(message = "Escribe la descripción.")
             @Size(max = 500, message = "Usa 500 caracteres como máximo.") String descripcion,
             @NotNull(message = "Escribe el precio.")
-            @Pattern(regexp = Decimales.DINERO, message = "Escribe un precio válido.") String precioVenta,
+            @Pattern(regexp = Decimales.DINERO_POSITIVO, message = "Escribe un precio mayor que 0, con dos decimales como máximo.") String precioVenta,
             @NotNull(message = "Selecciona el tipo.") TipoProducto tipo,
             @NotNull(message = "Selecciona la unidad.") UnidadMedida unidadMedida,
             @Size(max = 100, message = "Usa 100 insumos como máximo.") List<@NotNull @Valid ComponenteAlta> receta,
@@ -59,7 +59,7 @@ final class ProductoDtos {
             @Size(max = 120, message = "Usa 120 caracteres como máximo.") String nombre,
             @Pattern(regexp = CON_CONTENIDO, message = "Escribe la descripción.")
             @Size(max = 500, message = "Usa 500 caracteres como máximo.") String descripcion,
-            @Pattern(regexp = Decimales.DINERO, message = "Escribe un precio válido.") String precioVenta) {
+            @Pattern(regexp = Decimales.DINERO_POSITIVO, message = "Escribe un precio mayor que 0, con dos decimales como máximo.") String precioVenta) {
 
         boolean sinCambios() {
             return nombre == null && descripcion == null && precioVenta == null;

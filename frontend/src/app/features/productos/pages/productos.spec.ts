@@ -188,6 +188,14 @@ describe('Gestionar productos', () => {
     expect(api.editar).toHaveBeenCalledWith('3', { precioVenta: '60' });
   });
 
+  it('CP-F84 un precio de 0 se rechaza sin llamar a la API', async () => {
+    await abrir('/productos/3');
+    await escribir('precioVenta', '0.00');
+    await enviar();
+    expect(api.editar).not.toHaveBeenCalled();
+    expect(el.querySelector('#precioVenta-error')!.textContent).toContain('mayor que 0');
+  });
+
   it('CP-F23 un error de la API conserva lo capturado y marca el campo', async () => {
     api.editar.mockReturnValue(
       throwError(

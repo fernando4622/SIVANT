@@ -178,17 +178,22 @@ class VentasTest extends PruebaServicio {
         }
 
         @Test
-        @DisplayName("CP-124 Rechaza versión anterior, total distinto y total en cero")
+        @DisplayName("CP-124 Rechaza versión anterior, total distinto y un total mayor al que admite una venta")
         void cambios() {
             String cuenta = cuentaServida(mesero, mesa1);
             assertThat(cobrar(mesero, cuenta, pago(0, "EFECTIVO", null, "55.50")).codigo()).isEqualTo("VERSION_OBSOLETA");
             assertThat(cobrar(mesero, cuenta, pago(1, "EFECTIVO", null, "55.49")).codigo()).isEqualTo("TOTAL_CAMBIADO");
             sinCobrar(cuenta);
-            admin.patch("/productos/" + agua, Map.of("precioVenta", "0.00"));
-            String cortesia = abrirEn(mesero, mesa2);
-            servida(mesero, cortesia, linea(agua, 1, null));
-            assertThat(acciones(mesero.get("/cuentas/" + cortesia).json())).doesNotContain("COBRAR");
-            assertThat(cobrar(mesero, cortesia, pago(1, "EFECTIVO", null, "0.00")).codigo()).isEqualTo("TOTAL_INVALIDO");
+            String caro = admin.post("/productos", Map.of("nombre", "Caro", "descripcion", "x", "precioVenta",
+                    "999999999999.99", "tipo", "REVENTA", "unidadMedida", "PIEZA", "nivelMinimo", "0")).json().get("id")
+                    .asString();
+            String excedida = abrirEn(mesero, mesa2);
+            servida(mesero, excedida, linea(caro, 2, null));
+            assertThat(cobrar(mesero, excedida, pago(1, "EFECTIVO", null, "1999999999999.98")).campo("totalEsperado"))
+                    .as("el total no cabe en el formato de dinero").isNotBlank();
+            assertThat(cobrar(mesero, excedida, pago(1, "EFECTIVO", null, "999999999999.99")).codigo())
+                    .isEqualTo("TOTAL_INVALIDO");
+            assertThat(contar("venta")).isZero();
         }
 
         @Test

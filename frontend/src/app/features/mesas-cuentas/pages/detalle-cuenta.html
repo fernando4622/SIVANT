@@ -90,6 +90,10 @@
             <dt>Cierre:</dt>
             <dd>{{ fechaHora(cierre) }}</dd>
           }
+          @if (c.fondo; as fondo) {
+            <dt>Fondo de cambio:</dt>
+            <dd>{{ dinero(fondo.monto) }} · {{ estadoFondo[fondo.estado] ?? fondo.estado }}</dd>
+          }
           @if (c.cobro; as cobro) {
             <dt>Cobro:</dt>
             <dd>{{ metodos[cobro.metodo] ?? cobro.metodo }}</dd>
@@ -122,6 +126,17 @@
           <app-icono nombre="mas" />
           Nueva comanda
         </a>
+      }
+      @if (c.acciones.includes('ENTREGAR_FONDO') || c.acciones.includes('ANULAR_FONDO')) {
+        <a class="boton" [routerLink]="['/cuentas', c.id, 'fondo']">
+          <app-icono nombre="cobro" />
+          {{ c.acciones.includes('ENTREGAR_FONDO') ? 'Entregar fondo de cambio' : 'Anular fondo de cambio' }}
+        </a>
+      }
+      @if (c.estado === 'ABIERTA' && c.fondo?.estado === 'PENDIENTE' && !c.acciones.includes('ANULAR_FONDO')) {
+        @if (!c.acciones.includes('COBRAR') && !porServirAun()) {
+          <p class="campo__ayuda">Para cerrar la cuenta, regresa el fondo de cambio a caja.</p>
+        }
       }
       @if (c.acciones.includes('CERRAR_SIN_COBRO')) {
         <button type="button" class="boton" (click)="pedirCierre()">Cerrar sin cobro</button>

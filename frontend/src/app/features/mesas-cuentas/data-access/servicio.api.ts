@@ -64,7 +64,9 @@ export interface Cuenta {
   comandas: Comanda[];
   /** Presente si la cuenta se cerró con un cobro. */
   cobro?: { fechaHora: string; metodo: string; total: string; referenciaExterna?: string; estado: string };
-  acciones: ('ENVIAR_COMANDA' | 'COBRAR' | 'CERRAR_SIN_COBRO')[];
+  /** Fondo de cambio vigente. Mientras está pendiente, la cuenta solo se cobra en efectivo. */
+  fondo?: { id: string; monto: string; estado: string; cajero: string; fechaHora: string };
+  acciones: ('ENVIAR_COMANDA' | 'COBRAR' | 'CERRAR_SIN_COBRO' | 'ENTREGAR_FONDO' | 'ANULAR_FONDO')[];
 }
 
 export interface Servida {

@@ -27,7 +27,7 @@ const FUNCIONES: Record<Rol, Funcion[]> = {
   CAJERO: [
     { texto: 'Cancelar comandas', ruta: '/mesas' },
     { texto: 'Consultar ventas', ruta: '/ventas' },
-    { texto: 'Recibir efectivo y entregar fondo de cambio' },
+    { texto: 'Recibir efectivo y entregar fondo de cambio', ruta: '/caja/entregas' },
   ],
   COCINERO: [{ texto: 'Consultar la cola y preparar comandas', ruta: '/cocina' }],
   ALMACENISTA: [

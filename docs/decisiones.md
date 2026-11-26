@@ -1,4 +1,4 @@
-# Decisiones y diferencias · Fases 0 a 6
+# Decisiones y diferencias · Fases 0 a 7
 
 Los documentos `ROADMAP.md`, `arquitectura-sivant.md` y `modelo-datos-logico-relacional.md` se copiaron sin cambios.
 Aquí se registra lo que la implementación precisó o resolvió de otra forma.
@@ -64,6 +64,8 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | `GET /caja/fondos` | Se agrega con filtro por estado | Permite seguir cada fondo hasta su liquidación o anulación |
 | `fondo`, `ENTREGAR_FONDO` y `ANULAR_FONDO` en la cuenta | La cuenta muestra su fondo vigente y ofrece al cajero entregarlo o anularlo | El cajero lo registra desde la cuenta y el mesero lo ve |
 | Recepción en la pantalla | No se envía si lo contado no coincide con la suma; la API lo vuelve a validar | Evita registrar una diferencia por error de captura |
+| Pruebas de rendimiento | Se ejecutan aparte (etiqueta `rendimiento`), con 50 000 ventas y 100 000 movimientos | Tardan minutos y miden el equipo, no la lógica |
+| Modelo físico | Se documenta aparte en `modelo-fisico.md`, generado desde la base | El modelo lógico recibido se conserva sin cambios |
 
 ## Diferencias con las interfaces de referencia
 
@@ -93,8 +95,10 @@ Las imágenes definen el aspecto y los documentos definen las reglas.
 | «Entregar fondo de cambio» extiende «Cobrar pedido» | Lo registra el cajero antes del cobro; al cobrar en efectivo queda aplicado |
 | Iniciar y cerrar sesión no aparecen | Se implementan como soporte de todos los actores |
 
-## Pendiente de las fases 0 a 6
+## Pendiente
 
 - `AGENTS.md` no está en el repositorio ni en los documentos recibidos, así que no se pudieron revisar sus reglas.
 - Una cuenta con comandas servidas cuyo total es 0 (productos con precio 0) no puede cobrarse ni cerrarse sin cobro.
   Hace falta decidir si se prohíbe el precio 0 o se permite cerrarla.
+- «Efectivo por entregar» no está paginado; con miles de pagos pendientes de un mesero tarda más de medio segundo.
+- Proxy de producción con HTTPS y medición de disponibilidad en un entorno observado.

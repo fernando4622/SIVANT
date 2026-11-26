@@ -57,7 +57,10 @@ public class NotificacionesJdbc {
     }
 
     public Pagina<DatosNotificacion> bandeja(Long empleado, Boolean leida, int pagina, int tamano) {
-        String filtro = "AND (CAST(:leida AS boolean) IS NULL OR (l.id_empleado IS NOT NULL) = :leida)\n";
+        String filtro = """
+                AND NOT COALESCE(l.descartada, false)
+                AND (CAST(:leida AS boolean) IS NULL OR (l.id_empleado IS NOT NULL) = :leida)
+                """;
         long total = sql.sql("SELECT count(*) " + BANDEJA + filtro).param("empleado", empleado)
                 .param("leida", leida).query(Long.class).single();
         List<DatosNotificacion> filas = sql.sql("""
@@ -80,6 +83,22 @@ public class NotificacionesJdbc {
             sql.sql("""
                     INSERT INTO sivant.notificacion_lectura (id_notificacion, id_empleado, fecha_hora)
                     VALUES (?, ?, ?) ON CONFLICT DO NOTHING
+                    """).params(notificacion, empleado, OffsetDateTime.now(reloj)).update();
+        }
+        return propia;
+    }
+
+    /** El descarte es individual y conserva tanto el aviso como su relación con el empleado. */
+    public boolean descartar(Long notificacion, Long empleado) {
+        boolean propia = sql.sql("SELECT count(*) " + BANDEJA + "AND n.id_notificacion = :id")
+                .param("empleado", empleado).param("id", notificacion).query(Long.class).single() > 0;
+        if (propia) {
+            sql.sql("""
+                    INSERT INTO sivant.notificacion_lectura
+                        (id_notificacion, id_empleado, fecha_hora, descartada)
+                    VALUES (?, ?, ?, true)
+                    ON CONFLICT (id_notificacion, id_empleado)
+                    DO UPDATE SET descartada = true
                     """).params(notificacion, empleado, OffsetDateTime.now(reloj)).update();
         }
         return propia;

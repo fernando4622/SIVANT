@@ -147,7 +147,7 @@ class SeguridadConfig {
         return (solicitud, respuesta, error) -> {
             boolean csrf = error instanceof CsrfException;
             escribir(json, respuesta, Problemas.crear(HttpStatus.FORBIDDEN, csrf ? "CSRF_INVALIDO" : "ACCESO_DENEGADO",
-                    csrf ? "La solicitud no pudo validarse. Recarga la página." : "Tu rol no permite esta operación.",
+                    csrf ? "La solicitud no pudo validarse. Recarga la página." : "Tu cargo no permite esta operación.",
                     solicitud.getRequestURI()));
         };
     }

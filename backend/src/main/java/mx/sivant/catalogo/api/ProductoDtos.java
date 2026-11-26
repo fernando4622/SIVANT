@@ -75,6 +75,11 @@ final class ProductoDtos {
             @AssertTrue(message = "Confirma la desactivación.") Boolean confirmado) {
     }
 
+    record Reactivacion(
+            @NotNull(message = "Confirma la reactivación.")
+            @AssertTrue(message = "Confirma la reactivación.") Boolean confirmado) {
+    }
+
     record Componente(String insumoId, String nombre, UnidadMedida unidadMedida, String cantidadRequerida) {
     }
 

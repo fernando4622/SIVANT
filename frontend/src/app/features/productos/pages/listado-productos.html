@@ -1,15 +1,9 @@
 <div class="pantalla__encabezado">
   <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
   <h1>{{ administra() ? 'Gestionar productos' : 'Catálogo' }}</h1>
-  @if (administra()) {
-    <a class="boton boton--principal" routerLink="/productos/nuevo">
-      <app-icono nombre="mas" />
-      Nuevo producto
-    </a>
-  }
 </div>
 
-<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+<form class="filtros filtros--con-accion" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
   <div class="buscador">
     <app-icono nombre="buscar" />
     <input
@@ -32,6 +26,10 @@
       <option value="true">Activo</option>
       <option value="false">Inactivo</option>
     </select>
+    <a class="boton boton--principal" routerLink="/productos/nuevo">
+      <app-icono nombre="mas" />
+      Nuevo producto
+    </a>
   }
 </form>
 
@@ -85,17 +83,17 @@
                 >
                   <app-icono nombre="editar" />
                 </a>
-                @if (producto.activo) {
-                  <button
-                    type="button"
-                    class="boton-icono boton-icono--peligro"
-                    [attr.aria-label]="'Desactivar ' + producto.nombre"
-                    title="Desactivar"
-                    (click)="pedirConfirmacion(producto)"
-                  >
-                    <app-icono nombre="basura" />
-                  </button>
-                }
+                <button
+                  type="button"
+                  class="boton-icono"
+                  [class.boton-icono--peligro]="producto.activo"
+                  [class.boton-icono--reactivar]="!producto.activo"
+                  [attr.aria-label]="(producto.activo ? 'Desactivar ' : 'Reactivar ') + producto.nombre"
+                  [title]="producto.activo ? 'Desactivar' : 'Reactivar'"
+                  (click)="pedirConfirmacion(producto)"
+                >
+                  <app-icono [nombre]="producto.activo ? 'basura' : 'reactivar'" />
+                </button>
               </td>
             }
           </tr>
@@ -111,12 +109,18 @@
 }
 
 <app-confirmacion
-  titulo="Desactivar producto"
-  accion="Desactivar"
-  [ocupado]="desactivando()"
-  [error]="errorDesactivacion()"
-  (confirmado)="desactivar()"
+  [titulo]="reactivacion() ? 'Reactivar producto' : 'Desactivar producto'"
+  [accion]="reactivacion() ? 'Reactivar' : 'Desactivar'"
+  [peligro]="!reactivacion()"
+  [icono]="reactivacion() ? 'reactivar' : 'basura'"
+  [ocupado]="actualizando()"
+  [error]="errorActualizacion()"
+  (confirmado)="cambiarEstado()"
 >
-  <strong>{{ porDesactivar()?.nombre }}</strong> dejará de ofrecerse en nuevas comandas. Se conservan sus datos y su
-  historial.
+  <strong>{{ seleccionado()?.nombre }}</strong>
+  @if (reactivacion()) {
+    volverá a estar disponible para nuevas comandas.
+  } @else {
+    dejará de ofrecerse en nuevas comandas. Se conservan sus datos y su historial.
+  }
 </app-confirmacion>

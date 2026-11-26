@@ -77,7 +77,7 @@
         </div>
 
         <div class="campo">
-          <label for="rol">Rol</label>
+          <label for="rol">Cargo</label>
           <select
             id="rol"
             class="control"
@@ -85,7 +85,7 @@
             [attr.aria-invalid]="!!errorDe('rol')"
             aria-describedby="rol-error"
           >
-            <option value="" disabled>Selecciona un rol</option>
+            <option value="" disabled>Selecciona un cargo</option>
             @for (rol of roles; track rol) {
               <option [value]="rol">{{ nombreRol[rol] }}</option>
             }
@@ -108,11 +108,11 @@
           <app-icono nombre="info" [tamano]="32" />
           <p>
             @if (esPropio()) {
-              Es tu cuenta: si cambias la contraseña o el rol se cerrará tu sesión.
+              Tu sesión se cerrará si cambias tu contraseña o tu cargo.
             } @else if (id()) {
-              Cambiar la contraseña o el rol cierra las sesiones abiertas de este empleado.
+              Cambiar la contraseña o el cargo cierra las sesiones abiertas de este empleado.
             } @else {
-              El empleado podrá iniciar sesión con este correo y las funciones de su rol.
+              El cargo determina qué secciones puede usar el empleado al iniciar sesión.
             }
           </p>
         </div>

@@ -161,6 +161,10 @@ textarea {
   color: var(--rojo);
 }
 
+.boton-icono--reactivar {
+  color: var(--azul);
+}
+
 /* Encabezado de pantalla */
 .pantalla__encabezado {
   display: flex;
@@ -290,9 +294,9 @@ textarea {
   content: '';
 }
 
-.estado--inactivo::before {
-  border: 2px solid var(--texto-suave);
-  background: transparent;
+.estado--inactivo::before,
+.estado--cancelado::before {
+  background: var(--rojo);
 }
 
 .etiqueta {
@@ -343,7 +347,20 @@ textarea {
 }
 
 select.control {
-  padding-right: 2rem;
+  appearance: none;
+  padding-inline-end: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%230f1a3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 1rem;
+}
+
+@media (forced-colors: active) {
+  select.control {
+    appearance: auto;
+    padding-inline-end: 1rem;
+    background-image: none;
+  }
 }
 
 textarea.control {

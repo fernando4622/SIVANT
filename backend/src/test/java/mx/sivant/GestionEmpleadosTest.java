@@ -319,6 +319,27 @@ class GestionEmpleadosTest extends PruebaIntegracion {
         }
 
         @Test
+        void reactivarRestableceElAccesoSinRecuperarSesionesAnteriores() {
+            Empleado e = crear("ADMINISTRADOR");
+            ClienteApi sesionAnterior = sesionDe(e);
+            String reactivacion = "/empleados/" + e.getId() + "/reactivacion";
+
+            assertThat(desactivar(e, Map.of("confirmado", true)).estado()).isEqualTo(200);
+            assertThat(admin.post(reactivacion, Map.of("confirmado", false)).estado()).isEqualTo(400);
+            assertThat(recargar(e).estaActivo()).isFalse();
+            assertThat(sesionDe(crear("MESERO")).post(reactivacion, Map.of("confirmado", true)).estado())
+                    .isEqualTo(403);
+
+            var respuesta = admin.post(reactivacion, Map.of("confirmado", true));
+            assertThat(respuesta.estado()).isEqualTo(200);
+            assertThat(respuesta.json().get("estado").asString()).isEqualTo("ACTIVO");
+            assertThat(respuesta.json().get("rol").asString()).isEqualTo("ADMINISTRADOR");
+            assertThat(sesionAnterior.get("/auth/me").estado()).isEqualTo(401);
+            assertThat(anonimo().login(e.getCorreo(), CONTRASENA).estado()).isEqualTo(200);
+            assertThat(admin.post(reactivacion, Map.of("confirmado", true)).codigo()).isEqualTo("EMPLEADO_ACTIVO");
+        }
+
+        @Test
         @DisplayName("CP-33 El último administrador activo no puede desactivarse")
         void ultimoAdministrador() {
             assertThat(desactivar(administrador, Map.of("confirmado", true)).codigo())

@@ -160,6 +160,22 @@ class CocinaTest extends PruebaServicio {
         }
 
         @Test
+        @DisplayName("El descarte es individual, idempotente y conserva la notificación")
+        void descarteIndividual() {
+            String id = comandaNueva(cuentaNueva()).get("id").asString();
+            cancelar(cajero, id, 0, "x");
+            ClienteApi otro = sesionDe(crear("COCINERO"));
+            String aviso = cocinero.get("/notificaciones").json().get("contenido").get(0).get("id").asString();
+            String ruta = "/notificaciones/" + aviso + "/descarte";
+            assertThat(cocinero.put(ruta, null).estado()).isEqualTo(204);
+            assertThat(cocinero.put(ruta, null).estado()).as("repetir no falla").isEqualTo(204);
+            assertThat(avisos(cocinero, "")).isZero();
+            assertThat(avisos(otro, "leida=false")).isEqualTo(1);
+            assertThat(sql.queryForObject("SELECT count(*) FROM sivant.notificacion WHERE id_notificacion = ?",
+                    Long.class, Long.valueOf(aviso))).isEqualTo(1L);
+        }
+
+        @Test
         @DisplayName("CP-100 Nadie lee un aviso que no le corresponde")
         void ajena() {
             String id = comandaNueva(cuentaNueva()).get("id").asString();
@@ -168,6 +184,7 @@ class CocinaTest extends PruebaServicio {
             String aviso = mesero.get("/notificaciones").json().get("contenido").get(0).get("id").asString();
             for (ClienteApi c : List.of(otroMesero, cocinero, admin)) {
                 assertThat(c.put("/notificaciones/" + aviso + "/lectura", null).estado()).isEqualTo(404);
+                assertThat(c.put("/notificaciones/" + aviso + "/descarte", null).estado()).isEqualTo(404);
             }
             assertThat(mesero.put("/notificaciones/999999/lectura", null).estado()).isEqualTo(404);
             assertThat(anonimo().get("/notificaciones").estado()).isEqualTo(401);

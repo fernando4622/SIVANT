@@ -10,6 +10,7 @@ import mx.sivant.catalogo.api.ProductoDtos.Alta;
 import mx.sivant.catalogo.api.ProductoDtos.Desactivacion;
 import mx.sivant.catalogo.api.ProductoDtos.Edicion;
 import mx.sivant.catalogo.api.ProductoDtos.InsumoRespuesta;
+import mx.sivant.catalogo.api.ProductoDtos.Reactivacion;
 import mx.sivant.catalogo.api.ProductoDtos.Respuesta;
 import mx.sivant.catalogo.aplicacion.GestionProductos;
 import mx.sivant.catalogo.dominio.TipoProducto;
@@ -77,6 +78,12 @@ class ProductoController {
     Respuesta desactivar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
             @Valid @RequestBody Desactivacion desactivacion) {
         return Respuesta.de(gestion.desactivar(actor.id(), id));
+    }
+
+    @PostMapping("/productos/{id}/reactivacion")
+    Respuesta reactivar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
+            @Valid @RequestBody Reactivacion reactivacion) {
+        return Respuesta.de(gestion.reactivar(actor.id(), id));
     }
 
     @GetMapping("/insumos")

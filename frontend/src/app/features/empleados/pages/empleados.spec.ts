@@ -21,6 +21,7 @@ describe('Gestionar empleados', () => {
     registrar: vi.fn(),
     editar: vi.fn(),
     desactivar: vi.fn(),
+    reactivar: vi.fn(),
   };
   let harness: RouterTestingHarness;
   let el: HTMLElement;
@@ -76,13 +77,34 @@ describe('Gestionar empleados', () => {
   const boton = (texto: string) =>
     [...el.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent)?.includes(texto));
 
-  it('CP-F10 lista activos e inactivos y solo ofrece desactivar a los activos', async () => {
+  it('CP-F10 ofrece desactivar a los activos y reactivar a los inactivos', async () => {
     await abrir('/empleados?q=a&rol=CAJERO&estado=ACTIVO&page=2');
     expect(api.listar).toHaveBeenCalledWith({ q: 'a', rol: 'CAJERO', estado: 'ACTIVO', page: 2 });
     expect(el.textContent).toContain('Ana Ruiz');
     expect(el.textContent).toContain('Inactivo');
     expect(boton('Desactivar a Ana')).toBeDefined();
     expect(boton('Desactivar a Ciro')).toBeUndefined();
+    expect(boton('Reactivar a Ciro')).toBeDefined();
+    expect(boton('Reactivar a Ana')).toBeUndefined();
+  });
+
+  it('reactiva al empleado tras confirmar y actualiza el listado', async () => {
+    await abrir('/empleados');
+    const activo = { ...CIRO, estado: 'ACTIVO' } as const;
+    api.reactivar.mockReturnValue(of(activo));
+    api.listar.mockReturnValueOnce(pagina(ANA, activo));
+
+    boton('Reactivar a Ciro')!.click();
+    await refrescar();
+    expect(el.querySelector('dialog')!.open).toBe(true);
+    expect(api.reactivar).not.toHaveBeenCalled();
+    el.querySelector<HTMLButtonElement>('dialog .boton--principal')!.click();
+    await refrescar();
+
+    expect(api.reactivar).toHaveBeenCalledWith('8');
+    expect(el.querySelector('dialog')!.open).toBe(false);
+    expect(el.textContent).toContain('Ciro Paz ya puede iniciar sesión.');
+    expect(boton('Desactivar a Ciro')).toBeDefined();
   });
 
   it('CP-F11 desactivar exige confirmar; cancelar no llama a la API', async () => {
@@ -129,7 +151,7 @@ describe('Gestionar empleados', () => {
     escribir('contrasena', 'corta');
     await enviar();
     expect(api.registrar).not.toHaveBeenCalled();
-    for (const texto of ['Escribe el nombre', 'correo válido', 'entre 8 y 72', 'Selecciona un rol.']) {
+    for (const texto of ['Escribe el nombre', 'correo válido', 'entre 8 y 72', 'Selecciona un cargo.']) {
       expect(el.textContent).toContain(texto);
     }
   });

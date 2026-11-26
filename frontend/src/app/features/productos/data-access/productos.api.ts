@@ -74,4 +74,8 @@ export class ProductosApi {
   desactivar(id: string): Observable<Producto> {
     return this.http.post<Producto>(`${API}/${encodeURIComponent(id)}/desactivacion`, { confirmado: true });
   }
+
+  reactivar(id: string): Observable<Producto> {
+    return this.http.post<Producto>(`${API}/${encodeURIComponent(id)}/reactivacion`, { confirmado: true });
+  }
 }

@@ -16,6 +16,7 @@ const TRAZOS = {
   inventario: 'M3 8l9-5 9 5v9l-9 5-9-5V8Zm0 0 9 5m0 0 9-5m-9 5v9',
   ajuste: 'M9 4h6v3H9V4ZM9 5H5v16h14V5h-4M8.500 14l2.500 2.500 4.500-5',
   palomita: 'm4 12 6 6L20 6',
+  reactivar: 'M3 4v6h6M3.5 10a9 9 0 1 1 0 4',
   ventas: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6M9 12h6M9 16h3',
   cobro: 'M3 7h18v12H3V7Zm0 4h18M7 15h3',
   tarjeta: 'M3 6h18v13H3V6Zm0 4h18M7 15h4',
@@ -33,6 +34,7 @@ const TRAZOS = {
   anterior: 'm14 6-6 6 6 6',
   siguiente: 'm10 6 6 6-6 6',
   ver: 'M2 12s3.500-7 10-7 10 7 10 7-3.500 7-10 7-10-7-10-7Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+  ocultar: 'M3 3l18 18M10.6 5.1A11 11 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.8 3.5m-2.7 2.2A9.6 9.6 0 0 1 12 19c-6.5 0-10-7-10-7a17 17 0 0 1 4.3-4.7m3.6 2.6a3 3 0 0 0 4.2 4.2',
 } as const;
 
 export type NombreIcono = keyof typeof TRAZOS;

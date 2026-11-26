@@ -130,6 +130,18 @@ public class GestionEmpleados {
         return DatosEmpleado.de(empleado);
     }
 
+    @Transactional
+    public DatosEmpleado reactivar(Long actor, Long id) {
+        Empleado empleado = empleados.bloquearPorId(id).orElseThrow(GestionEmpleados::noExiste);
+        if (empleado.estaActivo()) {
+            throw ReglaNegocioException.conflicto("EMPLEADO_ACTIVO", "El empleado ya está activo.");
+        }
+        empleado.reactivar();
+        auditoria.registrar(actor, "EMPLEADO_REACTIVADO", ENTIDAD, id, Map.of(
+                "estado", cambio(EstadoEmpleado.INACTIVO.name(), EstadoEmpleado.ACTIVO.name())));
+        return DatosEmpleado.de(empleado);
+    }
+
     private List<Empleado> bloquearAdministradores() {
         return empleados.bloquearAdministradoresActivos(resolverRol(Rol.ADMINISTRADOR).getId());
     }
@@ -170,7 +182,7 @@ public class GestionEmpleados {
 
     private Rol resolverRol(String nombre) {
         return roles.findByNombre(nombre)
-                .orElseThrow(() -> ReglaNegocioException.invalido("rol", "El rol no existe."));
+                .orElseThrow(() -> ReglaNegocioException.invalido("rol", "El cargo no existe."));
     }
 
     private String cifrar(String contrasena) {

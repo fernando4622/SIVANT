@@ -30,9 +30,10 @@ export class ListadoProductos {
     this.api.listar({ q: p.get('q') ?? '', tipo: p.get('tipo') ?? '', activo: p.get('activo') ?? '', page }),
   );
 
-  protected readonly porDesactivar = signal<Producto | null>(null);
-  protected readonly desactivando = signal(false);
-  protected readonly errorDesactivacion = signal<string | null>(null);
+  protected readonly seleccionado = signal<Producto | null>(null);
+  protected readonly reactivacion = computed(() => this.seleccionado()?.activo === false);
+  protected readonly actualizando = signal(false);
+  protected readonly errorActualizacion = signal<string | null>(null);
   protected readonly mensaje = signal('');
   private readonly confirmacion = viewChild.required(Confirmacion);
 
@@ -41,28 +42,33 @@ export class ListadoProductos {
   }
 
   protected pedirConfirmacion(producto: Producto): void {
-    this.errorDesactivacion.set(null);
+    this.errorActualizacion.set(null);
     this.mensaje.set('');
-    this.porDesactivar.set(producto);
+    this.seleccionado.set(producto);
     this.confirmacion().abrir();
   }
 
-  protected desactivar(): void {
-    const producto = this.porDesactivar();
-    if (!producto || this.desactivando()) {
+  protected cambiarEstado(): void {
+    const producto = this.seleccionado();
+    if (!producto || this.actualizando()) {
       return;
     }
-    this.desactivando.set(true);
-    this.api.desactivar(producto.id).subscribe({
+    const reactivar = !producto.activo;
+    this.actualizando.set(true);
+    this.errorActualizacion.set(null);
+    const solicitud = reactivar ? this.api.reactivar(producto.id) : this.api.desactivar(producto.id);
+    solicitud.subscribe({
       next: () => {
-        this.desactivando.set(false);
+        this.actualizando.set(false);
         this.confirmacion().cerrar();
-        this.mensaje.set(`${producto.nombre} ya no se ofrece en nuevas comandas.`);
+        this.mensaje.set(reactivar
+          ? `${producto.nombre} vuelve a estar disponible para nuevas comandas.`
+          : `${producto.nombre} ya no se ofrece en nuevas comandas.`);
         this.listado.recargar();
       },
       error: (error: unknown) => {
-        this.desactivando.set(false);
-        this.errorDesactivacion.set(leerProblema(error).detalle);
+        this.actualizando.set(false);
+        this.errorActualizacion.set(leerProblema(error).detalle);
       },
     });
   }

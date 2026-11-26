@@ -44,4 +44,8 @@ export class NotificacionesApi {
   leer(id: string): Observable<void> {
     return this.http.put<void>(`${API}/${encodeURIComponent(id)}/lectura`, null);
   }
+
+  descartar(id: string): Observable<void> {
+    return this.http.put<void>(`${API}/${encodeURIComponent(id)}/descarte`, null);
+  }
 }

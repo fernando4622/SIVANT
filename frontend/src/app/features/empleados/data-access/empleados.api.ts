@@ -59,4 +59,8 @@ export class EmpleadosApi {
   desactivar(id: string): Observable<Empleado> {
     return this.http.post<Empleado>(`${API}/${encodeURIComponent(id)}/desactivacion`, { confirmado: true });
   }
+
+  reactivar(id: string): Observable<Empleado> {
+    return this.http.post<Empleado>(`${API}/${encodeURIComponent(id)}/reactivacion`, { confirmado: true });
+  }
 }

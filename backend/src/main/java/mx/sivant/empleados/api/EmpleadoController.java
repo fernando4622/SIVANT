@@ -10,6 +10,7 @@ import mx.sivant.empleados.api.EmpleadoDtos.Desactivacion;
 import mx.sivant.empleados.api.EmpleadoDtos.EdicionEmpleado;
 import mx.sivant.empleados.api.EmpleadoDtos.EmpleadoRespuesta;
 import mx.sivant.empleados.api.EmpleadoDtos.PaginaEmpleados;
+import mx.sivant.empleados.api.EmpleadoDtos.Reactivacion;
 import mx.sivant.empleados.aplicacion.GestionEmpleados;
 import mx.sivant.empleados.dominio.EstadoEmpleado;
 import mx.sivant.identidad.aplicacion.EmpleadoPrincipal;
@@ -75,5 +76,11 @@ class EmpleadoController {
     EmpleadoRespuesta desactivar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
             @Valid @RequestBody Desactivacion desactivacion) {
         return EmpleadoRespuesta.de(gestion.desactivar(actor.id(), id));
+    }
+
+    @PostMapping("/{id}/reactivacion")
+    EmpleadoRespuesta reactivar(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
+            @Valid @RequestBody Reactivacion reactivacion) {
+        return EmpleadoRespuesta.de(gestion.reactivar(actor.id(), id));
     }
 }

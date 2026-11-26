@@ -15,12 +15,12 @@ Fecha: 25 de noviembre de 2026. Java 21.0.9, Node 22.17.0, PostgreSQL 18.
 
 | Conjunto | Comando | Casos | Ejecuciones | Aprobadas | Fallidas |
 |---|---|---|---|---|---|
-| Backend completo con V10 | `.\mvnw.cmd test` en `backend/` | 168 | 235 | 235 | 0 |
+| Backend | `.\mvnw.cmd test` en `backend/` | 170 | 240 | 240 | 0 |
 | Rendimiento | `.\mvnw.cmd test "-Dexcluir=ninguna" "-Dgroups=rendimiento"` en `backend/` | 3 | 3 | 3 | 0 |
-| Frontend | `npm test -- --watch=false` en `frontend/` | 84 | 96 | 96 | 0 |
-| Navegador | Manual | 49 | 49 | 49 | 0 |
+| Frontend | `npm test -- --watch=false` en `frontend/` | 87 | 102 | 102 | 0 |
+| Navegador | Manual | 50 | 50 | 50 | 0 |
 
-La suite completa del backend con V10 terminó en 3 min 46 s, con 0 pruebas omitidas. Algunos casos se ejecutan varias
+Fecha de la última ejecución: 26 de noviembre de 2026, con las migraciones 1 a 12 y 0 pruebas omitidas. Algunos casos se ejecutan varias
 veces, una por rol o por valor. CP-M01 a CP-M09 se recorrieron en la fase 1 con la pantalla de acceso anterior;
 CP-M16 y CP-M17 cubren la actual.
 
@@ -40,8 +40,8 @@ CP-M16 y CP-M17 cubren la actual.
 | Consultar producto | RF08 | CP-47 a CP-49, CP-F18, CP-F19, CP-M15 |
 | Modificar producto | RF09 | CP-50, CP-51, CP-F22, CP-F23, CP-F84, CP-M14 |
 | Desactivar producto | RF10 | CP-52, CP-53, CP-M14 |
-| Consultar inventario | RF16 | CP-54 a CP-56, CP-F24 a CP-F26, CP-M10 |
-| Registrar movimiento de inventario | RF17 | CP-57 a CP-63, CP-72, CP-F27, CP-F28, CP-M11 |
+| Consultar inventario | RF16 | CP-54 a CP-56, CP-173, CP-F24 a CP-F26, CP-F86, CP-M10, CP-M50 |
+| Registrar movimiento de inventario | RF17 | CP-57 a CP-63, CP-72, CP-172, CP-F27, CP-F28, CP-F85, CP-F87, CP-M11, CP-M50 |
 | Ajustar inventario | RF18 | CP-64, CP-65, CP-F29, CP-F33, CP-M11 |
 | Autorizar ajuste de inventario | RF15 | CP-66 a CP-71, CP-F30 a CP-F32, CP-M12 |
 | Registrar pedido | RF01 | CP-73 a CP-79, CP-F42 a CP-F45, CP-F47, CP-F51, CP-M18 |
@@ -76,7 +76,7 @@ Los datos son ficticios. «Estado» es el resultado de la ejecución indicada ar
 
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
-| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 9 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
+| CP-01 | Base vacía | 1. Iniciar la API. 2. Consultar el historial de Flyway. 3. Migrar otra vez | PostgreSQL 18; migraciones 1 a 12 aplicadas; ninguna pendiente; la repetición ejecuta 0 | Aprobado |
 | CP-02 | P1 | Consultar la tabla `rol` | Exactamente ADMINISTRADOR, ALMACENISTA, CAJERO, COCINERO y MESERO | Aprobado |
 | CP-03 | P1 | 1. Insertar por SQL `uno@sivant.test`. 2. Insertar el mismo, uno con mayúsculas, uno con espacio inicial y uno vacío. 3. Insertar estado `BAJA`. 4. Borrar el rol MESERO en uso | El paso 1 se acepta; PostgreSQL rechaza todos los demás | Aprobado |
 
@@ -229,6 +229,9 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 
 ## Registrar movimiento de inventario · RF17
 
+Una salida manual registra una causa conocida (merma, consumo del personal, devolución a proveedor u otra). Un faltante
+sin causa se corrige con un ajuste (RF18), que fija el saldo contado y requiere autorización.
+
 | ID | Precondición | Pasos y datos | Resultado esperado | Estado |
 |---|---|---|---|---|
 | CP-57 | Sesión de ALMACENISTA | Entrada y salida de 100.5 | 201; saldo, versión, historial y auditoría actualizados | Aprobado |
@@ -240,6 +243,16 @@ Precondición común de la fase 2: P1 y P2, con los insumos «Café en grano» y
 | CP-63 | Existencia en 0 | Salida rechazada; entrada; repetir la salida con la misma clave | 409 y después 201 | Aprobado |
 | CP-F27 | Detalle de existencia | Fallo de red, reintento y otra operación igual | El reintento usa la misma clave; la operación siguiente, otra | Aprobado |
 | CP-F28 | Detalle de existencia | La API rechaza la salida | Muestra el motivo, conserva la cantidad y actualiza el saldo | Aprobado |
+| CP-172 | Existencia con 50 | Salida sin causa; «Otro» sin nota o con espacios; causa desconocida; entrada con causa; nota de 301; después consumo del personal con « Comida del turno » y «Otro» con «Muestra»; por SQL, quitar la causa o la nota de «Otro» | 400 en cada intento y el saldo sigue en 50; 201 con causa y nota recortada; el historial y la auditoría muestran la causa; PostgreSQL rechaza ambos cambios | Aprobado |
+| CP-F85 | Detalle de existencia | Elegir salida; registrar sin causa; con «Otro» sin nota; después con « Muestra para cliente » | Aparecen causa, nota y la indicación de ajuste; pide la causa y luego la descripción sin llamar a la API; envía causa y nota recortada | Aprobado |
+| CP-F87 | Historial con una salida por merma | Abrir movimientos | Muestra «Merma (caducado o dañado): Caducó» | Aprobado |
+
+## Nivel mínimo · RF16
+
+| ID | Precondición | Pasos y datos | Resultado esperado | Estado |
+|---|---|---|---|---|
+| CP-173 | Insumo con 20 y mínimo 10, con una solicitud de ajuste pendiente | Cambiar el mínimo a 25.5; repetirlo; valores -1, «abc», vacío y 7 decimales; existencia inexistente; como administrador; volver a 0 | Nivel bajo con saldo 20 y la misma versión; aparece en «nivel bajo»; auditado una sola vez; la solicitud se autoriza; 400, 404 y 403; con 0 deja de estar bajo | Aprobado |
+| CP-F86 | Detalle de existencia | Mínimo -1; después «25,0»; abrir como administrador | Pide una cantidad desde 0 sin llamar a la API; envía «25.0» e informa nivel bajo; el administrador no ve el campo | Aprobado |
 
 ## Ajustar inventario · RF18
 
@@ -579,6 +592,7 @@ insertan la historia con las validaciones por fila suspendidas y después compru
 | CP-M47 | Inicio de sesión | Recorrer con Tab | El control enfocado muestra un contorno azul de 2.4 px (`:focus-visible` global en todas las pantallas) | Aprobado |
 | CP-M48 | Maquetas de `Interfaces` | Comparar empleados, editar producto, movimientos y ajuste con su pantalla | Misma estructura, encabezado, tarjetas, tablas, avisos y botones; las diferencias están en [decisiones.md](decisiones.md) | Aprobado |
 | CP-M49 | Clon de la rama en otra carpeta, `.env` nuevo y base vacía (proyecto de Compose aparte) | Pasos del README; `npm ci`; `scripts/recorrido-demostracion.py`; entrar con los cinco roles | 9 migraciones aplicadas; `npm ci` sin errores; 19 de 19 pasos correctos; cada rol ve su menú | Aprobado |
+| CP-M50 | Almacenista en el Agua embotellada (93 pza, mínimo 12) | Salida de 1 sin causa; con merma y «Se rompió una botella»; mínimo 100; volver a 12; a 360 px | Pide la causa e indica usar un ajuste si no se sabe; queda en 92 y el historial muestra «Merma (caducado o dañado): Se rompió una botella»; el nivel pasa a bajo y vuelve a suficiente; sin desplazamiento horizontal y con todos los campos etiquetados | Aprobado |
 
 ### Defectos encontrados
 
@@ -604,6 +618,8 @@ insertan la historia con las validaciones por fila suspendidas y después compru
 
 En CP-M46 la revisión automática del foco da falsos positivos cuando la página no tiene el foco del sistema; por eso
 el foco se comprobó con el teclado en CP-M47.
+| CP-172 | La restricción de la causa «Otro» aceptaba una nota nula: `btrim(NULL) <> ''` da nulo y PostgreSQL lo deja pasar | Se compara la nota con `coalesce` |
+| CP-01 | Con la migración V11, la prueba seguía esperando solo hasta la V10 | Espera las migraciones 1 a 12 |
 
 ## Sin cubrir
 

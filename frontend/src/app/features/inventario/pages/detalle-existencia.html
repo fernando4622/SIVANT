@@ -30,6 +30,28 @@
         <dt>Actualizado:</dt>
         <dd>{{ fechaHora(e.fechaActualizacion) }}</dd>
       </dl>
+      @if (opera()) {
+        <form class="minimo" [formGroup]="minimo" (ngSubmit)="cambiarMinimo()" novalidate>
+          <div class="campo">
+            <label for="nivelMinimo">Nuevo nivel mínimo ({{ unidad(e.unidadMedida) }})</label>
+            <input
+              id="nivelMinimo"
+              class="control"
+              inputmode="decimal"
+              autocomplete="off"
+              formControlName="nivelMinimo"
+              [attr.aria-invalid]="!!errorMinimo()"
+              aria-describedby="nivelMinimo-ayuda nivelMinimo-error"
+            />
+            <span id="nivelMinimo-ayuda" class="campo__ayuda">Con esta cantidad o menos, la existencia se marca baja.</span>
+            <span id="nivelMinimo-error" class="campo__error" aria-live="polite">{{ errorMinimo() }}</span>
+          </div>
+          <button type="submit" class="boton" [disabled]="guardandoMinimo()">
+            <app-icono nombre="guardar" />
+            {{ guardandoMinimo() ? 'Guardando…' : 'Guardar nivel mínimo' }}
+          </button>
+        </form>
+      }
     </section>
 
     @if (opera()) {
@@ -48,6 +70,40 @@
             <option value="SALIDA_MANUAL">Salida</option>
           </select>
         </div>
+        @if (esSalida()) {
+          <div class="campo">
+            <label for="causa">Causa de la salida</label>
+            <select
+              id="causa"
+              class="control"
+              formControlName="causa"
+              [attr.aria-invalid]="!!errorCausa()"
+              aria-describedby="causa-ayuda causa-error"
+            >
+              <option value="">Selecciona la causa</option>
+              @for (c of causas; track c[0]) {
+                <option [value]="c[0]">{{ c[1] }}</option>
+              }
+            </select>
+            <span id="causa-ayuda" class="campo__ayuda">
+              Si no sabes por qué falta, cuenta lo que hay y solicita un ajuste.
+            </span>
+            <span id="causa-error" class="campo__error" aria-live="polite">{{ errorCausa() }}</span>
+          </div>
+          <div class="campo">
+            <label for="nota">{{ movimiento.controls.causa.value === 'OTRO' ? 'Describe la causa' : 'Nota (opcional)' }}</label>
+            <input
+              id="nota"
+              class="control"
+              autocomplete="off"
+              maxlength="300"
+              formControlName="nota"
+              [attr.aria-invalid]="!!errorNota()"
+              aria-describedby="nota-error"
+            />
+            <span id="nota-error" class="campo__error" aria-live="polite">{{ errorNota() }}</span>
+          </div>
+        }
         <div class="campo">
           <label for="cantidad">Cantidad ({{ unidad(e.unidadMedida) }})</label>
           <input

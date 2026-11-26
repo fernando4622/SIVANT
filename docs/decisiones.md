@@ -24,7 +24,9 @@ Aquí se registra lo que la implementación precisó o resolvió de otra forma.
 | Filtro por días | Incluye completo el día `hasta` | Es lo que espera quien elige una fecha final |
 | Solicitudes simultáneas | Puede haber varias pendientes de la misma existencia. Autorizar una impide autorizar las demás | Arquitectura valida la versión de la existencia |
 | Insumos | Se cargan con `database/cargas/insumos.sql` e inician en 0 | Su pantalla se definirá después |
-| Receta y nivel mínimo | No se editan desde la aplicación | El contrato de RF09 solo cambia nombre, descripción y precio |
+| Receta | No se edita desde la aplicación | El contrato de RF09 solo cambia nombre, descripción y precio |
+| **Nivel mínimo** | Lo cambia el almacenista desde el detalle de la existencia. No cambia el saldo ni la versión, así que no invalida ajustes pendientes | Decisión del responsable del proyecto, 26 de noviembre de 2026. Sin poder ajustarlo, la alerta de nivel bajo pierde utilidad |
+| **Causa de la salida** | Obligatoria en toda salida manual: merma, consumo del personal, devolución a proveedor u otra, esta con descripción. Las salidas anteriores quedaron como «Otro» | Decisión del responsable del proyecto, 26 de noviembre de 2026. Distingue una salida conocida de un ajuste, que corrige un faltante sin causa y requiere autorización |
 | Nombre de producto | Puede repetirse | Ningún RF ni el modelo exigen unicidad |
 | **Precio de productos y comandas** | El precio de venta del producto y el precio unitario aplicado al detalle de comanda deben ser mayores que cero. El alta y la edición admiten hasta dos decimales. V10 sustituye la regla de precios no negativos de los documentos de referencia | Decisión del responsable del proyecto, 25 de noviembre de 2026. Una cuenta con comandas vigentes tiene un importe positivo para cobrar |
 | **Cierre sin cobro** | Lo hace el mesero responsable si no hay comandas vigentes. Libera la mesa y queda en auditoría | Decisión del responsable del proyecto, 25 de noviembre de 2026 |

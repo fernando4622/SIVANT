@@ -15,6 +15,7 @@ import mx.sivant.inventario.aplicacion.DatosInventario.Historial;
 import mx.sivant.inventario.aplicacion.DatosInventario.MovimientoRegistrado;
 import mx.sivant.inventario.aplicacion.DatosInventario.Solicitud;
 import mx.sivant.inventario.aplicacion.DatosInventario.TipoArticulo;
+import mx.sivant.inventario.dominio.CausaSalida;
 import mx.sivant.inventario.dominio.EstadoSolicitud;
 import mx.sivant.inventario.dominio.TipoHistorial;
 import mx.sivant.inventario.dominio.TipoMovimientoManual;
@@ -76,15 +77,42 @@ public class GestionInventario {
     @Transactional
     @PreAuthorize("hasAuthority('ALMACENISTA')")
     public MovimientoRegistrado registrarMovimiento(Long actor, String clave, Long idExistencia,
-            TipoMovimientoManual tipo, BigDecimal cantidad) {
+            TipoMovimientoManual tipo, BigDecimal cantidad, CausaSalida causa, String nota) {
+        String motivo = nota == null || nota.isBlank() ? null : nota.strip();
+        if (tipo == TipoMovimientoManual.ENTRADA_MANUAL && causa != null) {
+            throw ReglaNegocioException.invalido("causa", "Las entradas no llevan causa de salida.");
+        }
+        if (tipo == TipoMovimientoManual.SALIDA_MANUAL && causa == null) {
+            throw ReglaNegocioException.invalido("causa", "Selecciona por qué sale.");
+        }
+        if (causa == CausaSalida.OTRO && motivo == null) {
+            throw ReglaNegocioException.invalido("nota", "Describe por qué sale.");
+        }
         Map<String, String> cuerpo = new TreeMap<>(
                 Map.of("tipo", tipo.name(), "cantidad", cantidad.stripTrailingZeros().toPlainString()));
+        cuerpo.put("causa", causa == null ? "" : causa.name());
+        cuerpo.put("nota", motivo == null ? "" : motivo);
         return idempotencia.ejecutar(actor, "REGISTRAR_MOVIMIENTO", idExistencia.toString(), clave, cuerpo,
-                MovimientoRegistrado.class, () -> aplicarMovimiento(actor, idExistencia, tipo, cantidad));
+                MovimientoRegistrado.class, () -> aplicarMovimiento(actor, idExistencia, tipo, cantidad, causa, motivo));
+    }
+
+    /** RF16. El nivel mínimo define cuándo la existencia es baja. No cambia el saldo ni su versión. */
+    @Transactional
+    @PreAuthorize("hasAuthority('ALMACENISTA')")
+    public Existencia cambiarNivelMinimo(Long actor, Long id, BigDecimal minimo) {
+        Existencia existencia = inventario.bloquearExistencia(id).orElseThrow(GestionInventario::sinExistencia);
+        if (existencia.nivelMinimo().compareTo(minimo) != 0) {
+            inventario.cambiarNivelMinimo(id, minimo);
+            auditoria.registrar(actor, "NIVEL_MINIMO_EDITADO", "EXISTENCIA", id, Map.of(
+                    "anterior", existencia.nivelMinimo().stripTrailingZeros().toPlainString(),
+                    "nuevo", minimo.stripTrailingZeros().toPlainString()));
+            avisos.publicarEnTema(Avisos.TEMA_INVENTARIO, "EXISTENCIA_ACTUALIZADA", id, existencia.version());
+        }
+        return existencia(id);
     }
 
     private MovimientoRegistrado aplicarMovimiento(Long actor, Long id, TipoMovimientoManual tipo,
-            BigDecimal cantidad) {
+            BigDecimal cantidad, CausaSalida causa, String motivo) {
         Existencia existencia = inventario.bloquearExistencia(id).orElseThrow(GestionInventario::sinExistencia);
         BigDecimal anterior = existencia.cantidadActual();
         BigDecimal posterior;
@@ -105,10 +133,16 @@ public class GestionInventario {
         }
         inventario.cambiarSaldo(id, posterior);
         publicarCambio(existencia);
-        Long movimiento = inventario.insertarMovimiento(id, actor, null, registro, anterior, posterior, null);
-        auditoria.registrar(actor, "MOVIMIENTO_REGISTRADO", "EXISTENCIA", id, Map.of("movimiento", movimiento,
-                "tipo", registro.name(), "saldoAnterior", anterior.toPlainString(),
-                "saldoPosterior", posterior.toPlainString()));
+        Long movimiento = inventario.insertarMovimiento(id, actor, null, registro, anterior, posterior, motivo, causa);
+        Map<String, Object> detalle = new TreeMap<>(Map.of("movimiento", movimiento, "tipo", registro.name(),
+                "saldoAnterior", anterior.toPlainString(), "saldoPosterior", posterior.toPlainString()));
+        if (causa != null) {
+            detalle.put("causa", causa.name());
+        }
+        if (motivo != null) {
+            detalle.put("nota", motivo);
+        }
+        auditoria.registrar(actor, "MOVIMIENTO_REGISTRADO", "EXISTENCIA", id, detalle);
         return new MovimientoRegistrado(inventario.movimiento(movimiento), existencia(id));
     }
 

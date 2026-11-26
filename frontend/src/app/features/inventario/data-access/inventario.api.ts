@@ -19,6 +19,22 @@ export interface Existencia {
 
 export type TipoHistorial = 'ENTRADA_MANUAL' | 'SALIDA_MANUAL' | 'CONSUMO_VENTA' | 'AJUSTE' | 'AJUSTE_RECHAZADO';
 export type TipoMovimiento = 'ENTRADA_MANUAL' | 'SALIDA_MANUAL';
+export type CausaSalida = 'MERMA' | 'CONSUMO_PERSONAL' | 'DEVOLUCION_PROVEEDOR' | 'OTRO';
+
+/** Por qué sale inventario fuera de una venta. Un faltante sin causa conocida se corrige con un ajuste. */
+export const NOMBRE_CAUSA: Record<CausaSalida, string> = {
+  MERMA: 'Merma (caducado o dañado)',
+  CONSUMO_PERSONAL: 'Consumo del personal',
+  DEVOLUCION_PROVEEDOR: 'Devolución a proveedor',
+  OTRO: 'Otro',
+};
+
+export interface DatosMovimiento {
+  tipo: TipoMovimiento;
+  cantidad: string;
+  causa?: CausaSalida;
+  nota?: string;
+}
 
 export const NOMBRE_HISTORIAL: Record<TipoHistorial, string> = {
   ENTRADA_MANUAL: 'Entrada',
@@ -42,6 +58,7 @@ export interface Historial {
   solicitudId?: string;
   comandaId?: string;
   motivo?: string;
+  causa?: CausaSalida;
 }
 
 export type EstadoSolicitud = 'PENDIENTE' | 'AUTORIZADA' | 'RECHAZADA';
@@ -126,7 +143,7 @@ export class InventarioApi {
 
   registrarMovimiento(
     id: string,
-    datos: { tipo: TipoMovimiento; cantidad: string },
+    datos: DatosMovimiento,
     clave: string,
   ): Observable<{ movimiento: Historial; existencia: Existencia }> {
     return this.http.post<{ movimiento: Historial; existencia: Existencia }>(
@@ -134,6 +151,11 @@ export class InventarioApi {
       datos,
       { headers: { 'Idempotency-Key': clave } },
     );
+  }
+
+  /** RF16: cambia el nivel que marca la existencia como baja. No cambia el saldo. */
+  cambiarNivelMinimo(id: string, nivelMinimo: string): Observable<Existencia> {
+    return this.http.patch<Existencia>(`${API}/existencias/${encodeURIComponent(id)}`, { nivelMinimo });
   }
 
   solicitarAjuste(

@@ -74,32 +74,22 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
         </div>
       </section>
     } @else if (cuenta(); as c) {
-      <div class="columnas">
-        <section class="tarjeta" aria-labelledby="titulo-resumen">
-          <h2 id="titulo-resumen">Cuenta {{ c.id }}</h2>
-          <p class="dato"><app-icono nombre="calendario" />{{ fechaHora(c.fechaHoraApertura) }}</p>
-          <p class="dato"><app-icono nombre="persona" />Mesero: {{ c.mesero }}</p>
-          <ul class="lineas">
-            @for (comanda of c.comandas; track comanda.id) {
-              @if (comanda.estado !== 'CANCELADA') {
-                @for (d of comanda.detalles; track d.id) {
-                  <li>
-                    <span>{{ d.cantidad }} ×</span>
-                    <span class="articulo">{{ d.producto }}</span>
-                    <strong>{{ dinero(d.subtotal) }}</strong>
-                  </li>
-                }
-              }
-            }
-          </ul>
-          @if (canceladas()) {
-            <p class="campo__ayuda">No incluye {{ canceladas() }} comanda(s) cancelada(s).</p>
-          }
-          <p class="total"><span>Total</span><strong>{{ dinero(c.total) }}</strong></p>
-        </section>
+      <div class="cobro-layout">
+        <div class="cobro-principal">
+          <section class="resumen-cuenta" aria-labelledby="titulo-resumen">
+            <span class="resumen-cuenta__icono"><app-icono nombre="cobro" [tamano]="30" /></span>
+            <div class="resumen-cuenta__datos">
+              <h2 id="titulo-resumen">Cuenta #{{ c.id }}</h2>
+              <p>Mesa {{ c.mesa }} · {{ c.mesero }}</p>
+            </div>
+            <strong class="resumen-cuenta__total">{{ dinero(c.total) }}</strong>
+          </section>
 
-        @if (revertir(); as r) {
-          <div class="pila">
+          @if (canceladas()) {
+            <p class="campo__ayuda">El total no incluye {{ canceladas() }} comanda(s) cancelada(s).</p>
+          }
+
+          @if (revertir(); as r) {
             <div class="aviso aviso--error" role="alert">
               <app-icono nombre="info" [tamano]="32" />
               <div>
@@ -111,101 +101,132 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                 <button type="button" class="boton" (click)="terminarReversion()">Ya lo revertí</button>
               </div>
             </div>
-          </div>
-        } @else if (c.acciones.includes('COBRAR')) {
-          <form class="pila" [formGroup]="formulario" (ngSubmit)="cobrar()" novalidate>
-            <fieldset class="metodos">
-              <legend>Método de pago</legend>
-              @for (m of opciones; track m) {
-                <label
-                  class="metodo"
-                  [class.metodo--activo]="metodo() === m"
-                  [class.metodo--bloqueado]="soloEfectivo() && m !== 'EFECTIVO'"
-                >
-                  <input
-                    type="radio"
-                    formControlName="metodo"
-                    [value]="m"
-                    [attr.value]="m"
-                    [attr.disabled]="soloEfectivo() && m !== 'EFECTIVO' ? '' : null"
-                  />
-                  <app-icono [nombre]="m === 'EFECTIVO' ? 'cobro' : m === 'TARJETA' ? 'tarjeta' : 'enviar'" />
-                  {{ metodos[m] }}
-                </label>
-              }
-            </fieldset>
+          } @else if (c.acciones.includes('COBRAR')) {
+            <form class="formulario-cobro" [formGroup]="formulario" (ngSubmit)="cobrar()" novalidate>
+              <fieldset class="metodos">
+                <legend>Método de pago</legend>
+                @for (m of opciones; track m) {
+                  <label
+                    class="metodo"
+                    [class.metodo--activo]="metodo() === m"
+                    [class.metodo--bloqueado]="soloEfectivo() && m !== 'EFECTIVO'"
+                  >
+                    <input
+                      type="radio"
+                      formControlName="metodo"
+                      [value]="m"
+                      [attr.value]="m"
+                      [attr.disabled]="soloEfectivo() && m !== 'EFECTIVO' ? '' : null"
+                    />
+                    <app-icono
+                      [nombre]="m === 'EFECTIVO' ? 'cobro' : m === 'TARJETA' ? 'tarjeta' : 'enviar'"
+                      [tamano]="27"
+                    />
+                    <span>{{ metodos[m] }}</span>
+                  </label>
+                }
+              </fieldset>
 
-            @if (soloEfectivo()) {
-              <div class="aviso">
-                <app-icono nombre="info" [tamano]="32" />
+              @if (soloEfectivo()) {
+                <div class="aviso">
+                  <app-icono nombre="info" [tamano]="32" />
+                  <p>
+                    La cuenta tiene un fondo de cambio de {{ dinero(c.fondo!.monto) }}: cóbrala en efectivo. El fondo
+                    se regresa a caja junto con el efectivo de la venta.
+                  </p>
+                </div>
+              }
+
+              @if (metodo() !== 'EFECTIVO') {
+                <div class="campo">
+                  <label for="referencia">
+                    {{ metodo() === 'TARJETA' ? 'Referencia de autorización' : 'Referencia de transferencia (opcional)' }}
+                  </label>
+                  <input
+                    id="referencia"
+                    class="control"
+                    formControlName="referencia"
+                    autocomplete="off"
+                    maxlength="40"
+                    [attr.aria-invalid]="!!errorReferencia()"
+                    aria-describedby="referencia-error"
+                  />
+                  <span id="referencia-error" class="campo__error" aria-live="polite">{{ errorReferencia() }}</span>
+                </div>
+              }
+
+              <div class="estado-pago" role="status">
+                <app-icono [nombre]="guardando() ? 'reactivar' : 'info'" [tamano]="22" />
                 <p>
-                  La cuenta tiene un fondo de cambio de {{ dinero(c.fondo!.monto) }}: cóbrala en efectivo. El fondo
-                  se regresa a caja junto con el efectivo de la venta.
+                  @switch (metodo()) {
+                    @case ('TARJETA') {
+                      Cobra {{ dinero(c.total) }} en la terminal y captura la referencia de autorización del
+                      comprobante. No captures el número de la tarjeta.
+                    }
+                    @case ('TRANSFERENCIA') {
+                      Comprueba que se recibió la transferencia por {{ dinero(c.total) }}. La referencia es opcional.
+                    }
+                    @default {
+                      Recibe {{ dinero(c.total) }} en efectivo.
+                    }
+                  }
                 </p>
               </div>
-            }
-            <div class="aviso">
+
+              @if (pendiente()) {
+                <div class="aviso" role="status">
+                  <app-icono nombre="info" [tamano]="32" />
+                  <p>No se confirmó el último intento. Envíalo de nuevo con los mismos datos: no se registrará dos veces.</p>
+                </div>
+              }
+              @if (error(); as mensaje) {
+                <p class="campo__error" role="alert">{{ mensaje }}</p>
+              }
+              <div class="acciones acciones-cobro">
+                <a class="boton" [routerLink]="['/cuentas', id()]">Volver</a>
+                <button type="submit" class="boton boton--principal" [disabled]="guardando()">
+                  <app-icono nombre="palomita" />
+                  {{ guardando() ? 'Registrando…' : 'Registrar cobro de ' + dinero(c.total) }}
+                </button>
+              </div>
+            </form>
+          } @else {
+            <div class="aviso aviso--error" role="alert">
               <app-icono nombre="info" [tamano]="32" />
-              <p>
-                @switch (metodo()) {
-                  @case ('TARJETA') {
-                    Cobra {{ dinero(c.total) }} en la terminal y captura la referencia de autorización del
-                    comprobante. No captures el número de la tarjeta.
-                  }
-                  @case ('TRANSFERENCIA') {
-                    Comprueba que se recibió la transferencia por {{ dinero(c.total) }}. La referencia es opcional.
-                  }
-                  @default {
-                    Recibe {{ dinero(c.total) }} en efectivo.
-                  }
-                }
-                Al registrar el cobro se cierra la cuenta y la mesa queda libre.
-              </p>
-            </div>
-
-            @if (metodo() !== 'EFECTIVO') {
-              <div class="campo">
-                <label for="referencia">
-                  {{ metodo() === 'TARJETA' ? 'Referencia de autorización' : 'Referencia (opcional)' }}
-                </label>
-                <input
-                  id="referencia"
-                  class="control"
-                  formControlName="referencia"
-                  autocomplete="off"
-                  maxlength="40"
-                  [attr.aria-invalid]="!!errorReferencia()"
-                  aria-describedby="referencia-error"
-                />
-                <span id="referencia-error" class="campo__error" aria-live="polite">{{ errorReferencia() }}</span>
+              <div>
+                <p>{{ motivo(c) }}</p>
+                <a class="boton" [routerLink]="['/cuentas', id()]">Ver cuenta</a>
               </div>
-            }
+            </div>
+          }
+        </div>
 
-            @if (pendiente()) {
-              <div class="aviso" role="status">
-                <app-icono nombre="info" [tamano]="32" />
-                <p>No se confirmó el último intento. Envíalo de nuevo con los mismos datos: no se registrará dos veces.</p>
-              </div>
+        @if (!revertir() && c.acciones.includes('COBRAR')) {
+          <aside class="panel-metodo" aria-live="polite">
+            @switch (metodo()) {
+              @case ('TARJETA') {
+                <div class="terminal" aria-hidden="true">
+                  <div class="terminal__pantalla"><app-icono nombre="tarjeta" [tamano]="42" /></div>
+                  <div class="terminal__teclado">
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                    <i class="tecla-roja"></i><i class="tecla-amarilla"></i><i class="tecla-verde"></i>
+                  </div>
+                </div>
+                <h2>Acerca o inserta la tarjeta</h2>
+                <p>Procesa {{ dinero(c.total) }} en la terminal.</p>
+              }
+              @case ('TRANSFERENCIA') {
+                <span class="panel-metodo__icono"><app-icono nombre="enviar" [tamano]="58" /></span>
+                <h2>Confirma la transferencia</h2>
+                <p>Verifica que se recibieron {{ dinero(c.total) }} antes de registrar el cobro.</p>
+              }
+              @default {
+                <span class="panel-metodo__icono"><app-icono nombre="cobro" [tamano]="58" /></span>
+                <h2>Recibe el efectivo</h2>
+                <p>Confirma que recibiste {{ dinero(c.total) }}.</p>
+              }
             }
-            @if (error(); as mensaje) {
-              <p class="campo__error" role="alert">{{ mensaje }}</p>
-            }
-            <div class="acciones">
-              <a class="boton" [routerLink]="['/cuentas', id()]">Volver</a>
-              <button type="submit" class="boton boton--principal" [disabled]="guardando()">
-                <app-icono nombre="palomita" />
-                {{ guardando() ? 'Registrando…' : 'Registrar cobro de ' + dinero(c.total) }}
-              </button>
-            </div>
-          </form>
-        } @else {
-          <div class="aviso aviso--error" role="alert">
-            <app-icono nombre="info" [tamano]="32" />
-            <div>
-              <p>{{ motivo(c) }}</p>
-              <a class="boton" [routerLink]="['/cuentas', id()]">Ver cuenta</a>
-            </div>
-          </div>
+          </aside>
         }
       </div>
     } @else {
@@ -214,34 +235,61 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
   `,
   styleUrl: '../../comandas/pages/comandas.css',
   styles: `
-    .dato {
-      display: flex;
+    .cobro-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+      gap: 1.25rem;
       align-items: center;
-      gap: 0.75rem;
-      margin-top: 0.75rem;
     }
 
-    .lineas li {
+    .cobro-principal,
+    .formulario-cobro {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .resumen-cuenta {
+      display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
-    }
-
-    .articulo {
-      overflow-wrap: anywhere;
-    }
-
-    .total {
-      display: flex;
-      justify-content: space-between;
       gap: 1rem;
-      margin-top: 1rem;
-      font-size: 1.4rem;
-      font-weight: 650;
+      min-height: 8.25rem;
+      padding: 1.25rem;
+      border: 2px solid var(--borde);
+      border-radius: var(--radio);
+      background: linear-gradient(135deg, var(--superficie), var(--azul-aviso));
+    }
+
+    .resumen-cuenta__icono,
+    .panel-metodo__icono {
+      display: grid;
+      place-items: center;
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 50%;
+      background: var(--azul-aviso);
+      color: var(--azul);
+    }
+
+    .resumen-cuenta__datos {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .resumen-cuenta__datos p {
+      color: var(--texto-suave);
+    }
+
+    .resumen-cuenta__total {
+      font-size: clamp(1.8rem, 1.3rem + 1.8vw, 2.6rem);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .metodos {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(12.5rem, 100%), 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0.75rem;
       margin: 0;
       padding: 0;
@@ -255,15 +303,27 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     }
 
     .metodo {
-      display: flex;
+      position: relative;
+      display: grid;
+      justify-items: center;
       align-items: center;
-      gap: 0.75rem;
-      min-height: 3.5rem;
-      padding: 0.75rem 1rem;
+      align-content: center;
+      gap: 0.55rem;
+      min-height: 6rem;
+      padding: 0.8rem 0.5rem;
       border: 2px solid var(--borde-control);
-      border-radius: var(--radio-chico);
+      border-radius: var(--radio);
       background: var(--superficie);
+      text-align: center;
       cursor: pointer;
+      transition:
+        border-color 150ms ease,
+        background 150ms ease,
+        color 150ms ease;
+    }
+
+    .metodo:hover:not(.metodo--bloqueado) {
+      border-color: var(--azul);
     }
 
     .metodo--bloqueado {
@@ -274,15 +334,108 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     .metodo--activo {
       border-color: var(--azul);
       background: var(--azul-aviso);
+      color: var(--azul-fuerte);
     }
 
     .metodo input {
-      accent-color: var(--azul);
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
     }
 
     .metodo:has(input:focus-visible) {
-      outline: 3px solid var(--azul);
-      outline-offset: 2px;
+      border-color: var(--azul);
+      box-shadow: 0 0 0 1px var(--azul);
+    }
+
+    .estado-pago {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-radius: var(--radio);
+      background: var(--azul-aviso);
+      color: var(--azul-fuerte);
+    }
+
+    .estado-pago app-icono {
+      flex: none;
+    }
+
+    .acciones-cobro .boton--principal {
+      flex: 1 1 15rem;
+    }
+
+    .panel-metodo {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 0.85rem;
+      min-height: 30rem;
+      padding: 2rem;
+      border: 2px solid var(--borde);
+      border-radius: var(--radio);
+      background: linear-gradient(145deg, var(--superficie), var(--cabecera));
+      text-align: center;
+    }
+
+    .panel-metodo > p {
+      max-width: 24rem;
+      color: var(--texto-suave);
+    }
+
+    .panel-metodo__icono {
+      width: 7rem;
+      height: 7rem;
+      background: var(--superficie);
+      box-shadow: var(--sombra);
+    }
+
+    .terminal {
+      width: 10.5rem;
+      padding: 0.8rem;
+      border: 0.45rem solid #242b3a;
+      border-radius: 1.4rem;
+      background: #343d50;
+      box-shadow: 0.8rem 1rem 1.25rem rgb(15 26 58 / 22%);
+      rotate: 5deg;
+    }
+
+    .terminal__pantalla {
+      display: grid;
+      place-items: center;
+      height: 6.5rem;
+      border: 0.55rem solid #1d2431;
+      border-radius: 0.65rem;
+      background: #73809a;
+      color: #fff;
+    }
+
+    .terminal__teclado {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+      padding: 0.8rem 0.2rem 0.25rem;
+    }
+
+    .terminal__teclado i {
+      height: 0.85rem;
+      border-radius: 0.22rem;
+      background: #8d98ad;
+    }
+
+    .terminal__teclado .tecla-roja {
+      background: #ef5350;
+    }
+
+    .terminal__teclado .tecla-amarilla {
+      background: #fbc83d;
+    }
+
+    .terminal__teclado .tecla-verde {
+      background: #50c878;
     }
 
     .recibo {
@@ -296,8 +449,42 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       color: var(--verde);
     }
 
+    .recibo .total {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      font-size: 1.4rem;
+      font-weight: 650;
+    }
+
     .recibo > p:not(.total) {
       margin: 1rem 0;
+    }
+
+    @media (max-width: 60rem) {
+      .cobro-layout {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+      }
+
+      .panel-metodo {
+        min-height: 22rem;
+      }
+    }
+
+    @media (max-width: 36rem) {
+      .resumen-cuenta {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .resumen-cuenta__total {
+        grid-column: 1 / -1;
+      }
+
+      .metodos {
+        grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+      }
     }
   `,
 })
@@ -308,7 +495,7 @@ export class CobrarCuenta implements OnInit {
   private readonly ventas = inject(VentasApi);
   private readonly clave = new ClaveIdempotencia();
 
-  protected readonly opciones: MetodoPago[] = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'];
+  protected readonly opciones: MetodoPago[] = ['TARJETA', 'EFECTIVO', 'TRANSFERENCIA'];
   protected readonly metodos = NOMBRE_METODO;
   protected readonly cuenta = signal<Cuenta | null>(null);
   protected readonly errorCarga = signal<string | null>(null);

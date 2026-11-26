@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { cambio, cantidad, fechaHora, unidad } from '../../../shared/formato';
-import { Historial, NOMBRE_HISTORIAL } from '../data-access/inventario.api';
+import { Historial, NOMBRE_CAUSA, NOMBRE_HISTORIAL } from '../data-access/inventario.api';
 
 @Component({
   selector: 'app-tabla-historial',
@@ -55,6 +55,8 @@ import { Historial, NOMBRE_HISTORIAL } from '../data-access/inventario.api';
                 <a [routerLink]="['/inventario/ajustes', m.solicitudId]">Ajuste {{ m.solicitudId }}</a>
               } @else if (m.comandaId) {
                 Comanda {{ m.comandaId }}
+              } @else if (m.causa) {
+                {{ causa[m.causa] }}{{ m.motivo ? ': ' + m.motivo : '' }}
               } @else {
                 —
               }
@@ -81,6 +83,7 @@ export class TablaHistorial {
   readonly cargando = input(false);
 
   protected readonly nombre = NOMBRE_HISTORIAL;
+  protected readonly causa = NOMBRE_CAUSA;
   protected readonly cambio = cambio;
   protected readonly cantidad = cantidad;
   protected readonly fechaHora = fechaHora;

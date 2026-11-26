@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { filter } from 'rxjs';
+import { filter, startWith } from 'rxjs';
 import { Sesion } from '../../../core/auth/sesion';
 import { ClaveIdempotencia } from '../../../core/http/clave-idempotencia';
 import { leerProblema } from '../../../core/http/problema';
@@ -19,7 +19,15 @@ import { Pagina } from '../../../shared/listado';
 import { Icono } from '../../../shared/ui/icono';
 import { Paginacion } from '../../../shared/ui/paginacion';
 import { TablaHistorial } from '../components/tabla-historial';
-import { Existencia, Historial, InventarioApi, TipoMovimiento } from '../data-access/inventario.api';
+import {
+  CausaSalida,
+  DatosMovimiento,
+  Existencia,
+  Historial,
+  InventarioApi,
+  NOMBRE_CAUSA,
+  TipoMovimiento,
+} from '../data-access/inventario.api';
 
 /** Detalle de RF16. El almacenista registra movimientos (RF17) y solicita ajustes (RF18). */
 @Component({
@@ -52,6 +60,42 @@ export class DetalleExistencia implements OnInit {
   protected readonly movimiento = this.fb.group({
     tipo: this.fb.control<TipoMovimiento>('ENTRADA_MANUAL'),
     cantidad: ['', [Validators.required, Validators.pattern(PATRON_CANTIDAD_POSITIVA)]],
+    causa: this.fb.control<CausaSalida | ''>(''),
+    nota: ['', [Validators.maxLength(300)]],
+  });
+  protected readonly causas = Object.entries(NOMBRE_CAUSA);
+  private readonly valoresMovimiento = toSignal(
+    this.movimiento.valueChanges.pipe(startWith(this.movimiento.getRawValue())),
+    { initialValue: this.movimiento.getRawValue() },
+  );
+  protected readonly esSalida = computed(() => this.valoresMovimiento().tipo === 'SALIDA_MANUAL');
+  protected readonly errorCausa = computed(() =>
+    this.enviadoMovimiento() && this.esSalida() && !this.valoresMovimiento().causa ? 'Selecciona por qué sale.' : '',
+  );
+  protected readonly errorNota = computed(() => {
+    const { causa, nota = '' } = this.valoresMovimiento();
+    if (!this.enviadoMovimiento() || !this.esSalida()) {
+      return '';
+    }
+    if (nota.length > 300) {
+      return 'Usa 300 caracteres como máximo.';
+    }
+    return causa === 'OTRO' && !nota.trim() ? 'Describe por qué sale.' : '';
+  });
+
+  protected readonly minimo = this.fb.group({
+    nivelMinimo: ['', [Validators.required, Validators.pattern(PATRON_CANTIDAD)]],
+  });
+  protected readonly enviadoMinimo = signal(false);
+  protected readonly guardandoMinimo = signal(false);
+  protected readonly errorServidorMinimo = signal<string | null>(null);
+  private readonly valorMinimo = toSignal(this.minimo.valueChanges, { initialValue: this.minimo.getRawValue() });
+  protected readonly errorMinimo = computed(() => {
+    this.valorMinimo();
+    if (this.enviadoMinimo() && this.minimo.invalid) {
+      return 'Escribe una cantidad desde 0, con hasta 6 decimales.';
+    }
+    return this.errorServidorMinimo() ?? '';
   });
   protected readonly enviadoMovimiento = signal(false);
   protected readonly guardandoMovimiento = signal(false);
@@ -102,11 +146,17 @@ export class DetalleExistencia implements OnInit {
     this.enviadoMovimiento.set(true);
     this.errorMovimiento.set(null);
     this.mensaje.set('');
-    if (this.movimiento.invalid || this.guardandoMovimiento()) {
+    if (this.movimiento.invalid || this.errorCausa() || this.errorNota() || this.guardandoMovimiento()) {
       return;
     }
     const valor = this.movimiento.getRawValue();
-    const datos = { tipo: valor.tipo, cantidad: normalizarDecimal(valor.cantidad) };
+    const datos: DatosMovimiento = { tipo: valor.tipo, cantidad: normalizarDecimal(valor.cantidad) };
+    if (valor.tipo === 'SALIDA_MANUAL') {
+      datos.causa = valor.causa as CausaSalida;
+      if (valor.nota.trim()) {
+        datos.nota = valor.nota.trim();
+      }
+    }
     this.guardandoMovimiento.set(true);
     this.api.registrarMovimiento(this.id(), datos, this.claveMovimiento.para(datos)).subscribe({
       next: ({ existencia }) => {
@@ -114,6 +164,8 @@ export class DetalleExistencia implements OnInit {
         this.guardandoMovimiento.set(false);
         this.enviadoMovimiento.set(false);
         this.movimiento.controls.cantidad.reset();
+        this.movimiento.controls.causa.reset();
+        this.movimiento.controls.nota.reset();
         this.existencia.set(existencia);
         this.mensaje.set(
           `${datos.tipo === 'ENTRADA_MANUAL' ? 'Entrada' : 'Salida'} registrada. ` +
@@ -124,10 +176,38 @@ export class DetalleExistencia implements OnInit {
       error: (error: unknown) => {
         const problema = leerProblema(error);
         this.guardandoMovimiento.set(false);
-        this.errorMovimiento.set(problema.erroresCampo['cantidad'] ?? problema.detalle);
+        const campos = problema.erroresCampo;
+        this.errorMovimiento.set(campos['cantidad'] ?? campos['causa'] ?? campos['nota'] ?? problema.detalle);
         if (problema.estado === 409) {
           this.actualizarSaldo();
         }
+      },
+    });
+  }
+
+  protected cambiarMinimo(): void {
+    this.enviadoMinimo.set(true);
+    this.errorServidorMinimo.set(null);
+    this.mensaje.set('');
+    if (this.minimo.invalid || this.guardandoMinimo()) {
+      return;
+    }
+    this.guardandoMinimo.set(true);
+    this.api.cambiarNivelMinimo(this.id(), normalizarDecimal(this.minimo.controls.nivelMinimo.value)).subscribe({
+      next: (existencia) => {
+        this.guardandoMinimo.set(false);
+        this.enviadoMinimo.set(false);
+        this.minimo.reset();
+        this.existencia.set(existencia);
+        this.mensaje.set(
+          `Nivel mínimo: ${cantidad(existencia.nivelMinimo)} ${unidad(existencia.unidadMedida)}. ` +
+            `Nivel ${existencia.nivelBajo ? 'bajo' : 'suficiente'}.`,
+        );
+      },
+      error: (error: unknown) => {
+        const problema = leerProblema(error);
+        this.guardandoMinimo.set(false);
+        this.errorServidorMinimo.set(problema.erroresCampo['nivelMinimo'] ?? problema.detalle);
       },
     });
   }

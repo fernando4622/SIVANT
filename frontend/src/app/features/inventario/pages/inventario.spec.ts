@@ -62,6 +62,7 @@ describe('Inventario', () => {
     movimientos: vi.fn(),
     movimientosDe: vi.fn(),
     registrarMovimiento: vi.fn(),
+    cambiarNivelMinimo: vi.fn(),
     solicitarAjuste: vi.fn(),
     ajustes: vi.fn(),
     ajuste: vi.fn(),
@@ -284,5 +285,64 @@ describe('Inventario', () => {
     expect(fila).toContain('-55.5 g');
     expect(fila).toContain('-35.5');
     expect(fila).toContain('Comanda 7');
+  });
+
+  async function elegir(id: string, valor: string) {
+    const campo = el.querySelector<HTMLSelectElement>(`#${id}`)!;
+    campo.value = valor;
+    campo.dispatchEvent(new Event('change'));
+    await refrescar();
+  }
+
+  it('CP-F85 una salida exige su causa y, con «Otro», describirla; la entrada no la envía', async () => {
+    api.registrarMovimiento.mockReturnValue(of({ movimiento: RECHAZADO, existencia: CAFE }));
+    await abrir('/inventario/existencias/5');
+    expect(el.querySelector('#causa')).toBeNull();
+    await elegir('tipo', 'SALIDA_MANUAL');
+    expect(el.textContent).toContain('solicita un ajuste');
+    await escribir('cantidad', '2');
+    await enviar('titulo-movimiento');
+    expect(el.textContent).toContain('Selecciona por qué sale.');
+    await elegir('causa', 'OTRO');
+    await enviar('titulo-movimiento');
+    expect(el.textContent).toContain('Describe por qué sale.');
+    expect(api.registrarMovimiento).not.toHaveBeenCalled();
+    await escribir('nota', ' Muestra para cliente ');
+    await enviar('titulo-movimiento');
+    expect(api.registrarMovimiento.mock.lastCall![1]).toEqual({
+      tipo: 'SALIDA_MANUAL',
+      cantidad: '2',
+      causa: 'OTRO',
+      nota: 'Muestra para cliente',
+    });
+  });
+
+  it('CP-F86 el almacenista cambia el nivel mínimo; el administrador solo lo consulta', async () => {
+    api.cambiarNivelMinimo.mockReturnValue(of({ ...CAFE, nivelMinimo: '25', nivelBajo: true }));
+    await abrir('/inventario/existencias/5');
+    await escribir('nivelMinimo', '-1');
+    el.querySelector<HTMLFormElement>('form.minimo')!.dispatchEvent(new Event('submit'));
+    await refrescar();
+    expect(el.textContent).toContain('desde 0');
+    expect(api.cambiarNivelMinimo).not.toHaveBeenCalled();
+    await escribir('nivelMinimo', '25,0');
+    el.querySelector<HTMLFormElement>('form.minimo')!.dispatchEvent(new Event('submit'));
+    await refrescar();
+    expect(api.cambiarNivelMinimo).toHaveBeenCalledWith('5', '25.0');
+    expect(el.textContent).toContain('Nivel bajo.');
+    perfil.set({ id: '9', nombre: 'A', rol: 'ADMINISTRADOR' });
+    await abrir('/inventario');
+    await abrir('/inventario/existencias/5');
+    expect(el.querySelector('#nivelMinimo')).toBeNull();
+  });
+
+  it('CP-F87 el historial muestra la causa y la nota de una salida', async () => {
+    api.movimientos.mockReturnValue(
+      pagina({ ...RECHAZADO, tipo: 'SALIDA_MANUAL', solicitudId: undefined, causa: 'MERMA', motivo: 'Caducó', saldoPosterior: '5' }),
+    );
+    await abrir('/inventario/movimientos');
+    const fila = el.querySelector('tbody tr')!.textContent!;
+    expect(fila).toContain('Salida');
+    expect(fila).toContain('Merma (caducado o dañado): Caducó');
   });
 });

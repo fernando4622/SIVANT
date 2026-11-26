@@ -281,7 +281,7 @@ class EntregaTest extends PruebaServicio {
                         () -> servir(mesero, a, 2).estado(),
                         () -> servir(otroMesero, b, 2).estado(),
                         () -> almacen.postConClave("/inventario/existencias/" + cafe + "/movimientos", clave(),
-                                Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1")).estado());
+                                Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1", "causa", "MERMA")).estado());
                 assertThat(GestionEmpleadosTest.simultaneas(tareas)).containsExactlyInAnyOrder(200, 200, 201);
             }
             assertThat(saldo(cafe)).as("1000 - 4×(18.5 + 10 + 1)").isEqualTo("882");

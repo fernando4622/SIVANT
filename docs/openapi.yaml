@@ -566,6 +566,31 @@ paths:
         '401': { $ref: '#/components/responses/SinSesion' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
+    patch:
+      tags: [Inventario]
+      operationId: cambiarNivelMinimo
+      summary: Cambiar el nivel mínimo (RF16)
+      description: |
+        Solo ALMACENISTA. Con la cantidad actual igual o menor al nivel mínimo, la existencia se marca baja. No cambia el
+        saldo ni la versión, así que las solicitudes de ajuste pendientes siguen vigentes. Se audita si cambia.
+      security:
+        - sesion: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CambioNivelMinimo' }
+      responses:
+        '200':
+          description: Existencia con el nivel mínimo nuevo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Existencia' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
 
   /inventario/existencias/{id}/movimientos:
     parameters:
@@ -1790,7 +1815,17 @@ components:
         comandaId:
           description: Presente en CONSUMO_VENTA
           $ref: '#/components/schemas/Id'
-        motivo: { type: string }
+        motivo:
+          description: Justificación del ajuste o nota de la salida
+          type: string
+        causa:
+          description: Presente en SALIDA_MANUAL
+          $ref: '#/components/schemas/CausaSalida'
+    CausaSalida:
+      type: string
+      description: >-
+        Por qué sale inventario fuera de una venta. Un faltante sin causa conocida se corrige con una solicitud de ajuste
+      enum: [MERMA, CONSUMO_PERSONAL, DEVOLUCION_PROVEEDOR, OTRO]
     AltaMovimiento:
       type: object
       additionalProperties: false
@@ -1799,6 +1834,21 @@ components:
         tipo: { type: string, enum: [ENTRADA_MANUAL, SALIDA_MANUAL] }
         cantidad:
           description: Mayor que cero
+          $ref: '#/components/schemas/Cantidad'
+        causa:
+          description: Obligatoria en SALIDA_MANUAL; no se admite en ENTRADA_MANUAL
+          $ref: '#/components/schemas/CausaSalida'
+        nota:
+          description: Obligatoria con la causa OTRO. Se guarda sin espacios alrededor
+          type: string
+          maxLength: 300
+    CambioNivelMinimo:
+      type: object
+      additionalProperties: false
+      required: [nivelMinimo]
+      properties:
+        nivelMinimo:
+          description: Desde 0
           $ref: '#/components/schemas/Cantidad'
     MovimientoRegistrado:
       type: object

@@ -16,6 +16,7 @@ import mx.sivant.inventario.aplicacion.DatosInventario.Existencia;
 import mx.sivant.inventario.aplicacion.DatosInventario.Historial;
 import mx.sivant.inventario.aplicacion.DatosInventario.Solicitud;
 import mx.sivant.inventario.aplicacion.DatosInventario.TipoArticulo;
+import mx.sivant.inventario.dominio.CausaSalida;
 import mx.sivant.inventario.dominio.EstadoSolicitud;
 import mx.sivant.inventario.dominio.TipoHistorial;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -47,13 +48,13 @@ public class InventarioJdbc {
             FROM (
                 SELECT m.id_movimiento AS id, m.tipo, m.id_existencia, m.saldo_posterior - m.saldo_anterior AS cambio,
                        m.saldo_anterior, m.saldo_posterior, m.fecha_hora, m.id_empleado,
-                       m.id_solicitud_ajuste AS id_solicitud, d.id_comanda, m.motivo
+                       m.id_solicitud_ajuste AS id_solicitud, d.id_comanda, m.motivo, m.causa
                 FROM sivant.movimiento_inventario m
                 LEFT JOIN sivant.detalle_comanda d ON d.id_detalle = m.id_detalle_comanda
                 UNION ALL
                 SELECT s.id_solicitud, 'AJUSTE_RECHAZADO', s.id_existencia, s.cantidad_solicitada - s.cantidad_anterior,
                        s.cantidad_anterior, NULL, s.fecha_hora_resolucion, s.id_administrador,
-                       s.id_solicitud, NULL, s.justificacion
+                       s.id_solicitud, NULL, s.justificacion, NULL
                 FROM sivant.solicitud_ajuste s WHERE s.estado = 'RECHAZADA'
             ) h
             JOIN sivant.empleado p ON p.id_empleado = h.id_empleado
@@ -120,15 +121,28 @@ public class InventarioJdbc {
 
     public Long insertarMovimiento(Long existencia, Long empleado, Long solicitud, TipoHistorial tipo,
             BigDecimal anterior, BigDecimal posterior, String motivo) {
+        return insertarMovimiento(existencia, empleado, solicitud, tipo, anterior, posterior, motivo, null);
+    }
+
+    /** `causa` es obligatoria en las salidas manuales y nula en los demás tipos. */
+    public Long insertarMovimiento(Long existencia, Long empleado, Long solicitud, TipoHistorial tipo,
+            BigDecimal anterior, BigDecimal posterior, String motivo, CausaSalida causa) {
         return sql.sql("""
                 INSERT INTO sivant.movimiento_inventario (id_existencia, id_empleado, id_solicitud_ajuste, tipo, cantidad,
-                    saldo_anterior, saldo_posterior, fecha_hora, motivo)
+                    saldo_anterior, saldo_posterior, fecha_hora, motivo, causa)
                 VALUES (:existencia, :empleado, CAST(:solicitud AS bigint), :tipo, :cantidad, :anterior, :posterior,
-                    :fecha, CAST(:motivo AS text)) RETURNING id_movimiento
+                    :fecha, CAST(:motivo AS text), CAST(:causa AS text)) RETURNING id_movimiento
                 """).param("existencia", existencia).param("empleado", empleado).param("solicitud", solicitud)
                 .param("tipo", tipo.name()).param("cantidad", posterior.subtract(anterior).abs())
                 .param("anterior", anterior).param("posterior", posterior)
-                .param("fecha", OffsetDateTime.now(reloj)).param("motivo", motivo).query(Long.class).single();
+                .param("fecha", OffsetDateTime.now(reloj)).param("motivo", motivo)
+                .param("causa", causa == null ? null : causa.name()).query(Long.class).single();
+    }
+
+    /** No cambia la versión: el mínimo no afecta el saldo ni las solicitudes de ajuste. */
+    public void cambiarNivelMinimo(Long id, BigDecimal minimo) {
+        sql.sql("UPDATE sivant.existencia_inventario SET nivel_minimo = ? WHERE id_existencia = ?").params(minimo, id)
+                .update();
     }
 
     public void insertarConsumo(Long existencia, Long empleado, Long detalle, BigDecimal anterior,
@@ -174,7 +188,7 @@ public class InventarioJdbc {
 
     private static final String SELECT_HISTORIAL = """
             SELECT h.id, h.tipo, h.id_existencia, a.nombre, a.unidad_medida, h.cambio, h.saldo_anterior, h.saldo_posterior,
-                   h.fecha_hora, p.nombre_completo, h.id_solicitud, h.id_comanda, h.motivo
+                   h.fecha_hora, p.nombre_completo, h.id_solicitud, h.id_comanda, h.motivo, h.causa
             """;
 
     public Historial movimiento(Long id) {
@@ -241,7 +255,7 @@ public class InventarioJdbc {
         return new Historial(f.getLong(1), TipoHistorial.valueOf(f.getString(2)), f.getLong(3), f.getString(4),
                 f.getString(5), f.getBigDecimal(6), f.getBigDecimal(7), f.getBigDecimal(8),
                 f.getObject(9, OffsetDateTime.class), f.getString(10), f.getObject(11, Long.class), f.getObject(12, Long.class),
-                f.getString(13));
+                f.getString(13), f.getString(14));
     }
 
     private static Solicitud solicitud(ResultSet f, int n) throws SQLException {

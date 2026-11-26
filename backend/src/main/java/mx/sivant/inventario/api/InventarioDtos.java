@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 import mx.sivant.infraestructura.api.Decimales;
 import mx.sivant.inventario.aplicacion.DatosInventario;
 import mx.sivant.inventario.aplicacion.DatosInventario.TipoArticulo;
+import mx.sivant.inventario.dominio.CausaSalida;
 import mx.sivant.inventario.dominio.EstadoSolicitud;
 import mx.sivant.inventario.dominio.TipoHistorial;
 import mx.sivant.inventario.dominio.TipoMovimientoManual;
@@ -27,7 +28,14 @@ final class InventarioDtos {
             @NotNull(message = "Selecciona entrada o salida.") TipoMovimientoManual tipo,
             @NotNull(message = "Escribe la cantidad.")
             @Pattern(regexp = "^(?=.*[1-9])\\d{1,12}(\\.\\d{1,6})?$", message = "Escribe una cantidad mayor que cero.")
-            String cantidad) {
+            String cantidad,
+            CausaSalida causa,
+            @Size(max = 300, message = "Usa 300 caracteres como máximo.") String nota) {
+    }
+
+    record NivelMinimo(
+            @NotNull(message = "Escribe el nivel mínimo.")
+            @Pattern(regexp = Decimales.CANTIDAD, message = "Escribe una cantidad válida, desde 0.") String nivelMinimo) {
     }
 
     record Ajuste(
@@ -56,14 +64,14 @@ final class InventarioDtos {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     record Historial(String id, TipoHistorial tipo, String existenciaId, String articulo, String unidadMedida,
             String cambio, String saldoAnterior, String saldoPosterior, OffsetDateTime fechaHora, String empleado,
-            String solicitudId, String comandaId, String motivo) {
+            String solicitudId, String comandaId, String motivo, String causa) {
 
         static Historial de(DatosInventario.Historial h) {
             return new Historial(h.id().toString(), h.tipo(), h.existenciaId().toString(), h.articulo(),
                     h.unidadMedida(), Decimales.cantidad(h.cambio()), Decimales.cantidad(h.saldoAnterior()),
                     opcional(h.saldoPosterior()), h.fechaHora(), h.empleado(),
                     h.solicitudId() == null ? null : h.solicitudId().toString(),
-                    h.comandaId() == null ? null : h.comandaId().toString(), h.motivo());
+                    h.comandaId() == null ? null : h.comandaId().toString(), h.motivo(), h.causa());
         }
     }
 

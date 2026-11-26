@@ -11,6 +11,7 @@ import mx.sivant.infraestructura.idempotencia.Idempotencia;
 import mx.sivant.inventario.api.InventarioDtos.Ajuste;
 import mx.sivant.inventario.api.InventarioDtos.Existencia;
 import mx.sivant.inventario.api.InventarioDtos.Historial;
+import mx.sivant.inventario.api.InventarioDtos.NivelMinimo;
 import mx.sivant.inventario.api.InventarioDtos.Movimiento;
 import mx.sivant.inventario.api.InventarioDtos.MovimientoRegistrado;
 import mx.sivant.inventario.api.InventarioDtos.Resolucion;
@@ -22,6 +23,7 @@ import mx.sivant.inventario.dominio.TipoHistorial;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -87,7 +89,13 @@ class InventarioController {
             @RequestHeader(name = Idempotencia.ENCABEZADO, required = false) String clave,
             @Valid @RequestBody Movimiento movimiento) {
         return MovimientoRegistrado.de(gestion.registrarMovimiento(actor.id(), clave, id, movimiento.tipo(),
-                new BigDecimal(movimiento.cantidad())));
+                new BigDecimal(movimiento.cantidad()), movimiento.causa(), movimiento.nota()));
+    }
+
+    @PatchMapping("/existencias/{id}")
+    Existencia cambiarNivelMinimo(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
+            @Valid @RequestBody NivelMinimo cambio) {
+        return Existencia.de(gestion.cambiarNivelMinimo(actor.id(), id, new BigDecimal(cambio.nivelMinimo())));
     }
 
     @PostMapping("/ajustes")

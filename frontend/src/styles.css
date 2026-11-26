@@ -346,6 +346,11 @@ textarea {
   background-color: var(--superficie);
 }
 
+.control:focus {
+  border-color: var(--azul);
+  outline: none;
+}
+
 select.control {
   appearance: none;
   padding-inline-end: 2.5rem;
@@ -356,6 +361,10 @@ select.control {
 }
 
 @media (forced-colors: active) {
+  .control:focus {
+    border-color: Highlight;
+  }
+
   select.control {
     appearance: auto;
     padding-inline-end: 1rem;

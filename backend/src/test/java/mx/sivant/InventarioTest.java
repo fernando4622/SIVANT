@@ -1,5 +1,11 @@
 package mx.sivant;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.springframework.dao.DataIntegrityViolationException;
+
+import tools.jackson.databind.JsonNode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -47,8 +53,11 @@ class InventarioTest extends PruebaIntegracion {
     }
 
     private ClienteApi.Respuesta mover(String clave, String existencia, String tipo, String cantidad) {
-        return almacen.postConClave("/inventario/existencias/" + existencia + "/movimientos", clave,
-                Map.of("tipo", tipo, "cantidad", cantidad));
+        Map<String, Object> cuerpo = new java.util.HashMap<>(Map.of("tipo", tipo, "cantidad", cantidad));
+        if (tipo.equals("SALIDA_MANUAL")) {
+            cuerpo.put("causa", "MERMA");
+        }
+        return almacen.postConClave("/inventario/existencias/" + existencia + "/movimientos", clave, cuerpo);
     }
 
     private ClienteApi.Respuesta solicitar(String existencia, String cantidad, String justificacion) {
@@ -378,5 +387,86 @@ class InventarioTest extends PruebaIntegracion {
         assertThat(c.postConClave("/inventario/existencias/" + cafe + "/movimientos", clave(),
                 Map.of("tipo", "ENTRADA_MANUAL", "cantidad", "1")).estado()).isEqualTo(401);
         assertThat(saldo(cafe)).isEqualTo("0");
+    }
+
+    @Nested
+    @DisplayName("RF16 y RF17 · Causa de salida y nivel mínimo")
+    class CausaYMinimo {
+
+        private ClienteApi.Respuesta salida(Map<String, Object> cuerpo) {
+            return almacen.postConClave("/inventario/existencias/" + cafe + "/movimientos", clave(), cuerpo);
+        }
+
+        @Test
+        @DisplayName("CP-172 Toda salida declara su causa; «Otro» exige describirla; las entradas no llevan causa")
+        void causa() {
+            mover(cafe, "ENTRADA_MANUAL", "50");
+            assertThat(salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1")).campo("causa")).isNotBlank();
+            assertThat(salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1", "causa", "OTRO")).campo("nota"))
+                    .isNotBlank();
+            assertThat(salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1", "causa", "OTRO", "nota", "   "))
+                    .campo("nota")).isNotBlank();
+            assertThat(salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1", "causa", "ROBO")).estado()).isEqualTo(400);
+            assertThat(salida(Map.of("tipo", "ENTRADA_MANUAL", "cantidad", "1", "causa", "MERMA")).campo("causa"))
+                    .isNotBlank();
+            assertThat(salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1", "causa", "OTRO", "nota", "x".repeat(301)))
+                    .campo("nota")).isNotBlank();
+            assertThat(saldo(cafe)).as("ningún intento cambió el saldo").isEqualTo("50");
+
+            var r = salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "2", "causa", "CONSUMO_PERSONAL",
+                    "nota", " Comida del turno "));
+            assertThat(r.estado()).as(r.texto()).isEqualTo(201);
+            assertThat(r.json().get("movimiento").get("causa").asString()).isEqualTo("CONSUMO_PERSONAL");
+            assertThat(r.json().get("movimiento").get("motivo").asString()).isEqualTo("Comida del turno");
+            assertThat(salida(Map.of("tipo", "SALIDA_MANUAL", "cantidad", "1", "causa", "OTRO", "nota", "Muestra"))
+                    .estado()).isEqualTo(201);
+            var historial = almacen.get("/inventario/existencias/" + cafe + "/movimientos?tipo=SALIDA_MANUAL").json()
+                    .get("contenido");
+            assertThat(historial.get(0).get("causa").asString()).isEqualTo("OTRO");
+            assertThat(historial.get(1).get("causa").asString()).isEqualTo("CONSUMO_PERSONAL");
+            assertThat(sql.queryForObject("SELECT detalle ->> 'causa' FROM sivant.auditoria WHERE accion = "
+                    + "'MOVIMIENTO_REGISTRADO' ORDER BY id_auditoria DESC LIMIT 1", String.class)).isEqualTo("OTRO");
+            assertThatThrownBy(() -> sql.update("UPDATE sivant.movimiento_inventario SET causa = NULL WHERE tipo = "
+                    + "'SALIDA_MANUAL'")).isInstanceOf(DataIntegrityViolationException.class);
+            assertThatThrownBy(() -> sql.update("UPDATE sivant.movimiento_inventario SET motivo = NULL WHERE causa = "
+                    + "'OTRO'")).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("CP-173 El almacenista cambia el nivel mínimo: recalcula el nivel bajo sin cambiar saldo ni versión")
+        void nivelMinimo() {
+            // El insumo de prueba inicia con mínimo 10: con 20 no está bajo.
+            mover(cafe, "ENTRADA_MANUAL", "20");
+            JsonNode antes = almacen.get("/inventario/existencias/" + cafe).json();
+            String solicitud = solicitar(cafe, "8", "Conteo").json().get("id").asString();
+            assertThat(antes.get("nivelBajo").asBoolean()).isFalse();
+
+            var r = almacen.patch("/inventario/existencias/" + cafe, Map.of("nivelMinimo", "25.5"));
+
+            assertThat(r.estado()).as(r.texto()).isEqualTo(200);
+            assertThat(r.json().get("nivelMinimo").asString()).isEqualTo("25.5");
+            assertThat(r.json().get("nivelBajo").asBoolean()).isTrue();
+            assertThat(r.json().get("cantidadActual").asString()).isEqualTo("20");
+            assertThat(r.json().get("version").asInt()).isEqualTo(antes.get("version").asInt());
+            assertThat(almacen.get("/inventario/existencias?nivelBajo=true").texto()).contains("Café en grano");
+            assertThat(sql.queryForObject("SELECT detalle ->> 'nuevo' FROM sivant.auditoria WHERE accion = "
+                    + "'NIVEL_MINIMO_EDITADO'", String.class)).isEqualTo("25.5");
+            assertThat(admin.postConClave("/inventario/ajustes/" + solicitud + "/resolucion", clave(),
+                    Map.of("decision", "AUTORIZADA")).estado()).as("la solicitud pendiente sigue vigente").isEqualTo(200);
+
+            almacen.patch("/inventario/existencias/" + cafe, Map.of("nivelMinimo", "25.5"));
+            assertThat(sql.queryForObject("SELECT count(*) FROM sivant.auditoria WHERE accion = 'NIVEL_MINIMO_EDITADO'",
+                    Integer.class)).as("sin cambio no se audita").isEqualTo(1);
+            for (String valor : List.of("-1", "abc", "", "1.0000001")) {
+                assertThat(almacen.patch("/inventario/existencias/" + cafe, Map.of("nivelMinimo", valor))
+                        .campo("nivelMinimo")).as(valor).isNotBlank();
+            }
+            assertThat(almacen.patch("/inventario/existencias/999999", Map.of("nivelMinimo", "1")).estado())
+                    .isEqualTo(404);
+            assertThat(admin.patch("/inventario/existencias/" + cafe, Map.of("nivelMinimo", "1")).estado())
+                    .isEqualTo(403);
+            assertThat(almacen.patch("/inventario/existencias/" + cafe, Map.of("nivelMinimo", "0")).json()
+                    .get("nivelBajo").asBoolean()).isFalse();
+        }
     }
 }

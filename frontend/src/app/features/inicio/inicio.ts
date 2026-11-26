@@ -120,7 +120,13 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
         @for (funcion of funciones(); track funcion.ruta) {
           <li>
             <a class="acceso" [routerLink]="funcion.ruta">
-              <span class="acceso__icono"><app-icono [nombre]="funcion.icono" /></span>
+              <span class="acceso__icono" [class.acceso__icono--mesa]="funcion.icono === 'mesas'">
+                @if (funcion.icono === 'mesas') {
+                  <span class="mesa-redonda" aria-hidden="true"><i></i></span>
+                } @else {
+                  <app-icono [nombre]="funcion.icono" />
+                }
+              </span>
               <span class="acceso__texto">
                 <strong>{{ funcion.texto }}</strong>
                 <span>{{ funcion.descripcion }}</span>
@@ -179,6 +185,51 @@ const FUNCIONES: Record<Rol, readonly Funcion[]> = {
       border-radius: var(--radio-chico);
       background: var(--cabecera);
       color: var(--texto-suave);
+    }
+
+    .mesa-redonda {
+      position: relative;
+      display: block;
+      width: 2.45rem;
+      height: 2.1rem;
+    }
+
+    .mesa-redonda::before {
+      position: absolute;
+      left: 0.08rem;
+      top: 0.2rem;
+      width: 2.25rem;
+      height: 0.68rem;
+      border: 0.13rem solid #6d452b;
+      border-radius: 50%;
+      background: #9a6843;
+      box-shadow:
+        inset 0 -0.12rem 0 rgb(109 69 43 / 35%),
+        0 0.14rem 0.25rem rgb(15 26 58 / 14%);
+      content: '';
+    }
+
+    .mesa-redonda::after {
+      position: absolute;
+      left: 50%;
+      top: 0.78rem;
+      width: 0.26rem;
+      height: 0.95rem;
+      border-radius: 0 0 0.14rem 0.14rem;
+      background: #6d452b;
+      content: '';
+      translate: -50% 0;
+    }
+
+    .mesa-redonda i {
+      position: absolute;
+      left: 50%;
+      bottom: 0.16rem;
+      width: 1.15rem;
+      height: 0.2rem;
+      border-radius: 999px;
+      background: #6d452b;
+      translate: -50% 0;
     }
 
     .acceso__flecha {

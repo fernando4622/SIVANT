@@ -103,7 +103,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                 }
               </ul>
             </div>
-            <strong class="resumen-cuenta__total">{{ dinero(c.total) }}</strong>
+            <p class="resumen-cuenta__total"><span>Total</span><strong>{{ dinero(c.total) }}</strong></p>
           </section>
 
           @if (canceladas()) {
@@ -301,10 +301,23 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     }
 
     .resumen-cuenta__total {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.65rem;
       grid-column: 2;
-      justify-self: end;
+      width: 100%;
       padding-top: 0.15rem;
-      text-align: right;
+      text-align: left;
+      font-weight: 650;
+    }
+
+    .resumen-cuenta__total span {
+      color: var(--texto);
+      font-size: 1.35rem;
+    }
+
+    .resumen-cuenta__total strong {
       font-size: clamp(1.8rem, 1.3rem + 1.8vw, 2.6rem);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;

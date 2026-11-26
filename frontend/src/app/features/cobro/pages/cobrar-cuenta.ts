@@ -77,10 +77,10 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       <div class="cobro-layout">
         <div class="cobro-principal">
           <section class="resumen-cuenta" aria-labelledby="titulo-resumen">
-            <span class="resumen-cuenta__icono"><app-icono nombre="cobro" [tamano]="30" /></span>
+            <span class="resumen-cuenta__icono"><app-icono nombre="ventas" [tamano]="30" /></span>
             <div class="resumen-cuenta__datos">
-              <h2 id="titulo-resumen">Cuenta #{{ c.id }}</h2>
-              <p>Mesa {{ c.mesa }} · {{ c.mesero }}</p>
+              <h2 id="titulo-resumen">Cuenta {{ c.id }}</h2>
+              <p>Mesa {{ c.mesa }}</p>
             </div>
             <strong class="resumen-cuenta__total">{{ dinero(c.total) }}</strong>
           </section>
@@ -119,7 +119,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                       [attr.disabled]="soloEfectivo() && m !== 'EFECTIVO' ? '' : null"
                     />
                     <app-icono
-                      [nombre]="m === 'EFECTIVO' ? 'cobro' : m === 'TARJETA' ? 'tarjeta' : 'enviar'"
+                      [nombre]="m === 'EFECTIVO' ? 'billete' : m === 'TARJETA' ? 'tarjeta' : 'movil'"
                       [tamano]="27"
                     />
                     <span>{{ metodos[m] }}</span>
@@ -186,7 +186,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                 <a class="boton" [routerLink]="['/cuentas', id()]">Volver</a>
                 <button type="submit" class="boton boton--principal" [disabled]="guardando()">
                   <app-icono nombre="palomita" />
-                  {{ guardando() ? 'Registrando…' : 'Registrar cobro de ' + dinero(c.total) }}
+                  {{ guardando() ? 'Cobrando…' : 'Cobrar ' + dinero(c.total) }}
                 </button>
               </div>
             </form>
@@ -216,12 +216,27 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
                 <p>Procesa {{ dinero(c.total) }} en la terminal.</p>
               }
               @case ('TRANSFERENCIA') {
-                <span class="panel-metodo__icono"><app-icono nombre="enviar" [tamano]="58" /></span>
+                <div class="telefono" aria-hidden="true">
+                  <span class="telefono__altavoz"></span>
+                  <div class="telefono__pantalla">
+                    <span class="telefono__estado"><app-icono nombre="palomita" [tamano]="22" /></span>
+                    <strong>{{ dinero(c.total) }}</strong>
+                    <span>Transferencia recibida</span>
+                  </div>
+                </div>
                 <h2>Confirma la transferencia</h2>
                 <p>Verifica que se recibieron {{ dinero(c.total) }} antes de registrar el cobro.</p>
               }
               @default {
-                <span class="panel-metodo__icono"><app-icono nombre="cobro" [tamano]="58" /></span>
+                <div class="efectivo" aria-hidden="true">
+                  <span class="efectivo__billete efectivo__billete--fondo"></span>
+                  <span class="efectivo__billete efectivo__billete--medio"></span>
+                  <span class="efectivo__billete efectivo__billete--frente">
+                    <i>$</i>
+                    <b></b>
+                  </span>
+                  <span class="efectivo__moneda">$</span>
+                </div>
                 <h2>Recibe el efectivo</h2>
                 <p>Confirma que recibiste {{ dinero(c.total) }}.</p>
               }
@@ -239,25 +254,25 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       display: grid;
       grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
       gap: 1.25rem;
-      align-items: center;
+      align-items: start;
     }
 
     .cobro-principal,
     .formulario-cobro {
       display: grid;
-      gap: 1rem;
+      gap: 0.7rem;
     }
 
     .resumen-cuenta {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
       gap: 1rem;
-      min-height: 8.25rem;
-      padding: 1.25rem;
+      min-height: 6.5rem;
+      padding: 1rem 1.25rem;
       border: 2px solid var(--borde);
       border-radius: var(--radio);
-      background: linear-gradient(135deg, var(--superficie), var(--azul-aviso));
+      background: var(--superficie);
     }
 
     .resumen-cuenta__icono,
@@ -282,6 +297,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     }
 
     .resumen-cuenta__total {
+      grid-column: 2;
       font-size: clamp(1.8rem, 1.3rem + 1.8vw, 2.6rem);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
@@ -297,8 +313,8 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     }
 
     legend {
-      margin-bottom: 0.75rem;
-      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
       font-weight: 650;
     }
 
@@ -309,8 +325,8 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       align-items: center;
       align-content: center;
       gap: 0.55rem;
-      min-height: 6rem;
-      padding: 0.8rem 0.5rem;
+      min-height: 4.75rem;
+      padding: 0.55rem 0.5rem;
       border: 2px solid var(--borde-control);
       border-radius: var(--radio);
       background: var(--superficie);
@@ -354,7 +370,7 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       display: flex;
       align-items: flex-start;
       gap: 0.75rem;
-      padding: 1rem;
+      padding: 0.75rem 1rem;
       border-radius: var(--radio);
       background: var(--azul-aviso);
       color: var(--azul-fuerte);
@@ -373,11 +389,14 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       place-items: center;
       align-content: center;
       gap: 0.85rem;
-      min-height: 30rem;
-      padding: 2rem;
+      width: 100%;
+      height: clamp(18rem, calc(100dvh - 11rem), 24rem);
+      min-height: 0;
+      overflow: hidden;
+      padding: clamp(1rem, 2.5vh, 2rem);
       border: 2px solid var(--borde);
       border-radius: var(--radio);
-      background: linear-gradient(145deg, var(--superficie), var(--cabecera));
+      background: var(--cabecera);
       text-align: center;
     }
 
@@ -394,10 +413,10 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     }
 
     .terminal {
-      width: 10.5rem;
-      padding: 0.8rem;
-      border: 0.45rem solid #242b3a;
-      border-radius: 1.4rem;
+      width: 8.5rem;
+      padding: 0.65rem;
+      border: 0.35rem solid #242b3a;
+      border-radius: 1.1rem;
       background: #343d50;
       box-shadow: 0.8rem 1rem 1.25rem rgb(15 26 58 / 22%);
       rotate: 5deg;
@@ -406,8 +425,8 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     .terminal__pantalla {
       display: grid;
       place-items: center;
-      height: 6.5rem;
-      border: 0.55rem solid #1d2431;
+      height: 4.75rem;
+      border: 0.4rem solid #1d2431;
       border-radius: 0.65rem;
       background: #73809a;
       color: #fff;
@@ -416,12 +435,12 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
     .terminal__teclado {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.4rem;
-      padding: 0.8rem 0.2rem 0.25rem;
+      gap: 0.3rem;
+      padding: 0.6rem 0.15rem 0.2rem;
     }
 
     .terminal__teclado i {
-      height: 0.85rem;
+      height: 0.65rem;
       border-radius: 0.22rem;
       background: #8d98ad;
     }
@@ -436,6 +455,164 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
 
     .terminal__teclado .tecla-verde {
       background: #50c878;
+    }
+
+    .telefono {
+      position: relative;
+      display: grid;
+      place-items: stretch;
+      width: 7.25rem;
+      height: 10.75rem;
+      padding: 0.22rem;
+      border: 0.12rem solid #171c27;
+      border-radius: 1.45rem;
+      background: #171c27;
+      box-shadow: 0.7rem 0.85rem 1.2rem rgb(15 26 58 / 20%);
+      rotate: -3deg;
+    }
+
+    .telefono__altavoz {
+      position: absolute;
+      left: 50%;
+      top: 0.55rem;
+      z-index: 1;
+      width: 2.5rem;
+      height: 0.5rem;
+      border-radius: 999px;
+      background: #171c27;
+      translate: -50% 0;
+    }
+
+    .telefono__pantalla {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 0.35rem;
+      width: 100%;
+      height: 100%;
+      padding: 1.25rem 0.5rem 0.65rem;
+      border-radius: 1.22rem;
+      background: var(--superficie);
+      color: var(--texto);
+      text-align: center;
+    }
+
+    .telefono__pantalla strong {
+      color: var(--azul-fuerte);
+      font-size: 1.1rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .telefono__pantalla > span:last-child {
+      color: var(--texto-suave);
+      font-size: 0.68rem;
+      line-height: 1.2;
+    }
+
+    .telefono__estado {
+      display: grid;
+      place-items: center;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 50%;
+      background: var(--verde-fondo);
+      color: var(--verde);
+    }
+
+    .efectivo {
+      position: relative;
+      width: 10rem;
+      height: 10.75rem;
+    }
+
+    .efectivo__billete {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      display: grid;
+      place-items: center;
+      width: 8.75rem;
+      height: 5rem;
+      border: 0.25rem solid #286746;
+      border-radius: 0.75rem;
+      background: #8fd3aa;
+      box-shadow: 0.55rem 0.7rem 1rem rgb(15 26 58 / 16%);
+    }
+
+    .efectivo__billete::before,
+    .efectivo__billete::after {
+      position: absolute;
+      width: 0.7rem;
+      height: 0.7rem;
+      border: 0.14rem solid #286746;
+      border-radius: 50%;
+      content: '';
+    }
+
+    .efectivo__billete::before {
+      left: 0.5rem;
+      top: 0.5rem;
+    }
+
+    .efectivo__billete::after {
+      right: 0.5rem;
+      bottom: 0.5rem;
+    }
+
+    .efectivo__billete--fondo {
+      translate: -56% -74%;
+      rotate: -10deg;
+      background: #b9e3c8;
+    }
+
+    .efectivo__billete--medio {
+      translate: -44% -57%;
+      rotate: 8deg;
+      background: #a3dab7;
+    }
+
+    .efectivo__billete--frente {
+      translate: -50% -45%;
+    }
+
+    .efectivo__billete--frente i {
+      display: grid;
+      place-items: center;
+      width: 2.6rem;
+      height: 2.6rem;
+      border: 0.18rem solid #286746;
+      border-radius: 50%;
+      color: #20553a;
+      font-size: 1.45rem;
+      font-style: normal;
+      font-weight: 700;
+    }
+
+    .efectivo__billete--frente b {
+      position: absolute;
+      left: 0.65rem;
+      bottom: 0.55rem;
+      width: 1.4rem;
+      height: 0.22rem;
+      border-radius: 999px;
+      background: #286746;
+    }
+
+    .efectivo__moneda {
+      position: absolute;
+      right: -0.15rem;
+      bottom: 0.2rem;
+      display: grid;
+      place-items: center;
+      width: 2.8rem;
+      height: 2.8rem;
+      border: 0.25rem solid #bd7a12;
+      border-radius: 50%;
+      background: #fbc83d;
+      color: #83540c;
+      font-size: 1.15rem;
+      font-weight: 700;
+      box-shadow: 0.35rem 0.45rem 0.75rem rgb(15 26 58 / 18%);
     }
 
     .recibo {
@@ -469,19 +646,36 @@ const CAMBIOS = ['VERSION_OBSOLETA', 'TOTAL_CAMBIADO'];
       }
 
       .panel-metodo {
-        min-height: 22rem;
+        height: auto;
+        min-height: 18rem;
+      }
+    }
+
+    @media (min-width: 60.01rem) and (max-height: 45rem) {
+      .pantalla__encabezado {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+      }
+
+      .resumen-cuenta__icono {
+        width: 3rem;
+        height: 3rem;
+      }
+
+      .campo {
+        gap: 0.2rem;
+      }
+
+      .control {
+        min-height: 2.65rem;
+      }
+
+      .acciones-cobro .boton {
+        min-height: 2.65rem;
       }
     }
 
     @media (max-width: 36rem) {
-      .resumen-cuenta {
-        grid-template-columns: auto minmax(0, 1fr);
-      }
-
-      .resumen-cuenta__total {
-        grid-column: 1 / -1;
-      }
-
       .metodos {
         grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
       }

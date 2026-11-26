@@ -39,6 +39,7 @@ export class NuevaComanda implements OnInit {
   protected readonly filtro = signal<{ q: string; tipo: TipoProducto | ''; page: number }>({ q: '', tipo: '', page: 0 });
   protected readonly catalogo = signal<Pagina<Producto> | null>(null);
   protected readonly errorCatalogo = signal<string | null>(null);
+  protected readonly sinImagen = signal(new Set<string>());
   protected readonly lineas = signal<Linea[]>([]);
   protected readonly total = computed(() => {
     const importes = this.lineas().flatMap((l) => Array<string>(l.cantidad).fill(l.producto.precioVenta));
@@ -92,6 +93,10 @@ export class NuevaComanda implements OnInit {
 
   protected irA(page: number): void {
     this.filtro.update((f) => ({ ...f, page }));
+  }
+
+  protected ocultarImagen(id: string): void {
+    this.sinImagen.update((ids) => new Set(ids).add(id));
   }
 
   protected agregar(producto: Producto): void {

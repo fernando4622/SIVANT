@@ -45,7 +45,11 @@
       @for (e of datos.contenido; track e.id) {
         <li class="tarjeta existencia">
           <div class="existencia__imagen" aria-hidden="true">
-            <app-icono [nombre]="e.tipo === 'INSUMO' ? 'inventario' : 'productos'" [tamano]="38" />
+            @if (e.imagen && !sinImagen().has(e.id)) {
+              <img [src]="e.imagen" alt="" loading="lazy" (error)="ocultarImagen(e.id)" />
+            } @else {
+              <app-icono [nombre]="e.tipo === 'INSUMO' ? 'inventario' : 'productos'" [tamano]="38" />
+            }
           </div>
 
           <div class="existencia__contenido">

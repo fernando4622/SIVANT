@@ -14,6 +14,12 @@ export const rutasProductos: Routes = [
     loadComponent: () => import('./pages/formulario-producto').then((m) => m.FormularioProducto),
   },
   {
+    path: 'insumos/nuevo',
+    title: 'Nuevo insumo · SIVANT',
+    canActivate: [conRol('ADMINISTRADOR')],
+    loadComponent: () => import('./pages/formulario-insumo').then((m) => m.FormularioInsumo),
+  },
+  {
     path: ':id',
     title: 'Editar producto · SIVANT',
     canActivate: [conRol('ADMINISTRADOR')],

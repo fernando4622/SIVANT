@@ -15,6 +15,11 @@ export interface Insumo {
   unidadMedida: UnidadMedida;
 }
 
+export interface InsumoCreado extends Insumo {
+  existenciaId: string;
+  imagen?: string;
+}
+
 export interface Producto {
   id: string;
   nombre: string;
@@ -39,7 +44,7 @@ export interface AltaProducto {
   nivelMinimo?: string;
 }
 
-export type CambiosProducto = Partial<Pick<AltaProducto, 'nombre' | 'descripcion' | 'precioVenta'>>;
+export type CambiosProducto = Partial<Pick<AltaProducto, 'nombre' | 'descripcion' | 'precioVenta' | 'receta'>>;
 
 const API = '/api/v1/productos';
 
@@ -67,6 +72,16 @@ export class ProductosApi {
 
   insumos(): Observable<Insumo[]> {
     return this.http.get<Insumo[]>('/api/v1/insumos');
+  }
+
+  registrarInsumo(alta: { nombre: string; unidadMedida: UnidadMedida; nivelMinimo: string }): Observable<InsumoCreado> {
+    return this.http.post<InsumoCreado>('/api/v1/insumos', alta);
+  }
+
+  subirImagenInsumo(id: string, archivo: File): Observable<InsumoCreado> {
+    const datos = new FormData();
+    datos.append('archivo', archivo);
+    return this.http.put<InsumoCreado>(`/api/v1/insumos/${encodeURIComponent(id)}/imagen`, datos);
   }
 
   registrar(alta: AltaProducto): Observable<Producto> {

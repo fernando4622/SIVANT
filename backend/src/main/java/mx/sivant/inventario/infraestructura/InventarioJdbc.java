@@ -35,7 +35,8 @@ public class InventarioJdbc {
 
     private static final String EXISTENCIA = """
             SELECT e.id_existencia, a.id_articulo, a.nombre, CASE WHEN ei.id_insumo IS NULL THEN 'PRODUCTO' ELSE 'INSUMO' END,
-                   a.unidad_medida, a.activo, e.cantidad_actual, e.nivel_minimo, e.fecha_actualizacion, e.version
+                   a.unidad_medida, a.activo, e.cantidad_actual, e.nivel_minimo, e.fecha_actualizacion, e.version,
+                   a.imagen
             """ + ARTICULO;
 
     private static final String FILTRO_EXISTENCIA = """
@@ -248,7 +249,7 @@ public class InventarioJdbc {
     private static Existencia existencia(ResultSet f, int n) throws SQLException {
         return new Existencia(f.getLong(1), f.getLong(2), f.getString(3), TipoArticulo.valueOf(f.getString(4)),
                 f.getString(5), f.getBoolean(6), f.getBigDecimal(7), f.getBigDecimal(8),
-                f.getObject(9, OffsetDateTime.class), f.getInt(10));
+                f.getObject(9, OffsetDateTime.class), f.getInt(10), f.getString(11));
     }
 
     private static Historial historial(ResultSet f, int n) throws SQLException {

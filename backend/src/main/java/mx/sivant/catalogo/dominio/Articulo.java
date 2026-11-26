@@ -32,6 +32,10 @@ public abstract class Articulo {
     @Column(nullable = false)
     private boolean activo = true;
 
+    /** Ruta relativa en el almacén de imágenes; nula si el artículo no tiene imagen. */
+    @Column(length = 120)
+    private String imagen;
+
     protected Articulo() {
     }
 
@@ -52,6 +56,10 @@ public abstract class Articulo {
         activo = true;
     }
 
+    public void cambiarImagen(String ruta) {
+        imagen = ruta;
+    }
+
     public Long getId() {
         return id;
     }
@@ -66,5 +74,9 @@ public abstract class Articulo {
 
     public boolean isActivo() {
         return activo;
+    }
+
+    public String getImagen() {
+        return imagen;
     }
 }

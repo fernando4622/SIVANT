@@ -170,6 +170,16 @@
   border-bottom: 2px solid var(--borde);
 }
 
+.receta__encabezado {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.receta__encabezado span {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
 .insumo__cantidad {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

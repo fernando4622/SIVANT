@@ -136,29 +136,13 @@
               }
             </dl>
           </section>
-          @if (producto.receta; as receta) {
-            <section id="insumos-producto" class="tarjeta" aria-labelledby="titulo-receta-actual">
-              <h2 id="titulo-receta-actual">Receta</h2>
-              <dl class="datos-lista">
-                @for (c of receta; track c.insumoId) {
-                  <dt>{{ c.nombre }}</dt>
-                  <dd>{{ cantidad(c.cantidadRequerida) }} {{ unidad(c.unidadMedida) }}</dd>
-                }
-              </dl>
-            </section>
-          }
-          <div class="aviso">
-            <app-icono nombre="info" [tamano]="32" />
-            <div>
-              <p>Este producto utiliza {{ producto.receta?.length ?? 0 }} insumo(s).</p>
-              @if (producto.receta?.length) {
-                <a href="#insumos-producto">Ver insumos</a>
-              }
-            </div>
-          </div>
-        } @else if (formulario.controls.tipo.value === 'PREPARADO') {
+        }
+        @if (formulario.controls.tipo.value === 'PREPARADO') {
           <section class="tarjeta pila" aria-labelledby="titulo-receta" formArrayName="receta">
-            <h2 id="titulo-receta">Receta</h2>
+            <div class="receta__encabezado">
+              <h2 id="titulo-receta">Receta</h2>
+              @if (edicion()) { <span>Edita los insumos y cantidades del producto.</span> }
+            </div>
             @for (fila of formulario.controls.receta.controls; track fila; let i = $index) {
               <div class="insumo" [formGroupName]="i">
                 <div class="campo">
@@ -212,7 +196,7 @@
               Agregar insumo
             </button>
           </section>
-        } @else {
+        } @else if (!edicion()) {
           <section class="tarjeta" aria-label="Existencia">
             <div class="campo">
               <label for="nivelMinimo">Nivel mínimo</label>

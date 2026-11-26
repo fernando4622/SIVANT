@@ -16,7 +16,7 @@ public final class DatosInventario {
 
     public record Existencia(Long id, Long articuloId, String nombre, TipoArticulo tipo, String unidadMedida,
             boolean activo, BigDecimal cantidadActual, BigDecimal nivelMinimo, OffsetDateTime fechaActualizacion,
-            int version) {
+            int version, String imagen) {
 
         public boolean nivelBajo() {
             return cantidadActual.compareTo(nivelMinimo) <= 0;

@@ -162,7 +162,7 @@ describe('Cocina y avisos', () => {
     fixture = harness.fixture;
     el = fixture.nativeElement;
     await refrescar();
-    expect(notificaciones.listar).toHaveBeenCalledWith('false', 0, 10, false);
+    expect(notificaciones.listar).toHaveBeenCalledWith('false', 0, 12, false);
     expect(el.querySelector('a[href="/cuentas/3"]')).not.toBeNull();
     const marcar = el.querySelectorAll<HTMLButtonElement>('[aria-label^="Marcar como leído"]');
     expect(marcar).toHaveLength(1);

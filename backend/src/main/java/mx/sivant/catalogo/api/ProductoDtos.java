@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import mx.sivant.catalogo.aplicacion.AltaProducto;
 import mx.sivant.catalogo.aplicacion.DatosProducto;
+import mx.sivant.catalogo.aplicacion.GestionProductos.InsumoRegistrado;
 import mx.sivant.catalogo.dominio.Insumo;
 import mx.sivant.catalogo.dominio.TipoProducto;
 import mx.sivant.catalogo.dominio.UnidadMedida;
@@ -32,6 +33,27 @@ final class ProductoDtos {
             @NotNull(message = "Escribe la cantidad.")
             @Pattern(regexp = CANTIDAD_POSITIVA, message = "Escribe una cantidad mayor que cero.")
             String cantidadRequerida) {
+    }
+
+    record AltaInsumo(
+            @NotBlank(message = "Escribe el nombre.")
+            @Size(max = 120, message = "Usa 120 caracteres como máximo.") String nombre,
+            @NotNull(message = "Selecciona la unidad.") UnidadMedida unidadMedida,
+            @NotNull(message = "Escribe el nivel mínimo.")
+            @Pattern(regexp = Decimales.CANTIDAD, message = "Escribe un nivel mínimo válido.") String nivelMinimo) {
+
+        BigDecimal minimo() {
+            return new BigDecimal(nivelMinimo);
+        }
+    }
+
+    record InsumoCreado(String id, String nombre, UnidadMedida unidadMedida, String existenciaId) {
+
+        static InsumoCreado de(InsumoRegistrado creado) {
+            Insumo insumo = creado.insumo();
+            return new InsumoCreado(insumo.getId().toString(), insumo.getNombre(), insumo.getUnidadMedida(),
+                    creado.existenciaId().toString());
+        }
     }
 
     record Alta(
@@ -59,14 +81,21 @@ final class ProductoDtos {
             @Size(max = 120, message = "Usa 120 caracteres como máximo.") String nombre,
             @Pattern(regexp = CON_CONTENIDO, message = "Escribe la descripción.")
             @Size(max = 500, message = "Usa 500 caracteres como máximo.") String descripcion,
-            @Pattern(regexp = Decimales.DINERO_POSITIVO, message = "Escribe un precio mayor que 0, con dos decimales como máximo.") String precioVenta) {
+            @Pattern(regexp = Decimales.DINERO_POSITIVO, message = "Escribe un precio mayor que 0, con dos decimales como máximo.") String precioVenta,
+            @Size(min = 1, max = 100, message = "Agrega al menos un insumo y usa 100 como máximo.")
+            List<@NotNull @Valid ComponenteAlta> receta) {
 
         boolean sinCambios() {
-            return nombre == null && descripcion == null && precioVenta == null;
+            return nombre == null && descripcion == null && precioVenta == null && receta == null;
         }
 
         BigDecimal precio() {
             return precioVenta == null ? null : new BigDecimal(precioVenta);
+        }
+
+        List<AltaProducto.Componente> componentes() {
+            return receta == null ? null : receta.stream().map(c -> new AltaProducto.Componente(
+                    Long.valueOf(c.insumoId()), new BigDecimal(c.cantidadRequerida()))).toList();
         }
     }
 

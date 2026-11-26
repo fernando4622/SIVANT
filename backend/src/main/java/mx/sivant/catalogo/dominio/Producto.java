@@ -17,10 +17,6 @@ public abstract class Producto extends Articulo {
     @Column(name = "precio_venta", nullable = false, precision = 14, scale = 2)
     private BigDecimal precioVenta;
 
-    /** Ruta relativa en el almacén de imágenes; nula si el producto no tiene imagen. */
-    @Column(length = 120)
-    private String imagen;
-
     protected Producto() {
     }
 
@@ -38,14 +34,6 @@ public abstract class Producto extends Articulo {
 
     public void cambiarPrecio(BigDecimal nuevo) {
         precioVenta = nuevo;
-    }
-
-    public void cambiarImagen(String ruta) {
-        imagen = ruta;
-    }
-
-    public String getImagen() {
-        return imagen;
     }
 
     public String getDescripcion() {

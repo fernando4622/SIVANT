@@ -28,7 +28,15 @@ public class AlmacenImagenes {
 
     /** Escribe el archivo con un nombre nuevo y devuelve su ruta relativa. */
     public String guardar(byte[] contenido, String extension) {
-        String ruta = "productos/" + UUID.randomUUID() + "." + extension;
+        return guardarEn("productos", contenido, extension);
+    }
+
+    /** Guarda una imagen dentro de una colección conocida del almacén. */
+    public String guardarEn(String coleccion, byte[] contenido, String extension) {
+        if (!("productos".equals(coleccion) || "insumos".equals(coleccion))) {
+            throw new IllegalArgumentException("Colección de imágenes inválida");
+        }
+        String ruta = coleccion + "/" + UUID.randomUUID() + "." + extension;
         Path destino = archivo(ruta);
         try {
             Files.createDirectories(destino.getParent());

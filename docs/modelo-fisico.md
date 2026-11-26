@@ -271,7 +271,7 @@ erDiagram
 | `EMPLEADO.sesion_version` | Invalidar las sesiones al desactivar, cambiar contraseña o cambiar rol |
 | `version` en cuenta, comanda y existencia | Arquitectura: control de cambios concurrentes |
 | `MOVIMIENTO_INVENTARIO.saldo_anterior`, `saldo_posterior`, `id_detalle_comanda`, `id_solicitud_ajuste` | Arquitectura: saldos auditables y origen del movimiento |
-| `PRODUCTO.imagen` (migración V14) | Ruta de la imagen en el almacén de archivos; `CHECK` con el formato que genera el sistema (`productos/<UUID>.jpg`, `.png` o `.webp`) |
+| `ARTICULO.imagen` (migración V15) | Ruta opcional de la imagen de producto o insumo; `CHECK` con el formato que genera el sistema (`productos/<UUID>` o `insumos/<UUID>`, con `.jpg`, `.png` o `.webp`). V15 migra las rutas creadas por V14 |
 | `MOVIMIENTO_INVENTARIO.causa` (migración V12) | Causa obligatoria de toda salida manual; con «Otro», `motivo` guarda la descripción |
 | `SOLICITUD_AJUSTE.version_existencia_solicitada` | Arquitectura: autorizar solo si la existencia no cambió |
 | `NOTIFICACION.id_rol_destinatario`, `contexto` y `NOTIFICACION_LECTURA` | Arquitectura: avisos por rol con lectura individual |

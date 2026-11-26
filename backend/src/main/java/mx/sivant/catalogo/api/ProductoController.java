@@ -10,9 +10,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import mx.sivant.catalogo.api.ProductoDtos.Alta;
+import mx.sivant.catalogo.api.ProductoDtos.AltaInsumo;
 import mx.sivant.catalogo.api.ProductoDtos.Desactivacion;
 import mx.sivant.catalogo.api.ProductoDtos.Edicion;
 import mx.sivant.catalogo.api.ProductoDtos.InsumoRespuesta;
+import mx.sivant.catalogo.api.ProductoDtos.InsumoCreado;
 import mx.sivant.catalogo.api.ProductoDtos.Reactivacion;
 import mx.sivant.catalogo.api.ProductoDtos.Respuesta;
 import mx.sivant.catalogo.aplicacion.GestionProductos;
@@ -43,6 +45,20 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1")
 class ProductoController {
+
+    record InsumoImagen(String id, String nombre, String imagen) {
+
+        static InsumoImagen de(mx.sivant.catalogo.dominio.Insumo insumo) {
+            String ruta = insumo.getImagen();
+            String url = null;
+            if (ruta != null) {
+                String archivo = ruta.substring(ruta.lastIndexOf('/') + 1);
+                url = "/api/v1/insumos/" + insumo.getId() + "/imagen?v="
+                        + archivo.substring(0, archivo.indexOf('.'));
+            }
+            return new InsumoImagen(insumo.getId().toString(), insumo.getNombre(), url);
+        }
+    }
 
     private final GestionProductos gestion;
 
@@ -82,7 +98,7 @@ class ProductoController {
                     "Indica al menos un dato para modificar.", Map.of());
         }
         return Respuesta.de(gestion.editar(actor.id(), id, edicion.nombre(), edicion.descripcion(),
-                edicion.precio()));
+                edicion.precio(), edicion.componentes()));
     }
 
     @PostMapping("/productos/{id}/desactivacion")
@@ -124,6 +140,37 @@ class ProductoController {
     @GetMapping("/insumos")
     List<InsumoRespuesta> insumos() {
         return gestion.insumosDisponibles().stream().map(InsumoRespuesta::de).toList();
+    }
+
+    @PostMapping("/insumos")
+    ResponseEntity<InsumoCreado> registrarInsumo(@AuthenticationPrincipal EmpleadoPrincipal actor,
+            @Valid @RequestBody AltaInsumo alta) {
+        InsumoCreado creado = InsumoCreado.de(
+                gestion.registrarInsumo(actor.id(), alta.nombre(), alta.unidadMedida(), alta.minimo()));
+        return ResponseEntity.created(URI.create("/api/v1/insumos/" + creado.id())).body(creado);
+    }
+
+    @PutMapping(path = "/insumos/{id}/imagen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    InsumoImagen cambiarImagenInsumo(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id,
+            @RequestPart("archivo") MultipartFile archivo) {
+        try {
+            return InsumoImagen.de(gestion.cambiarImagenInsumo(actor.id(), id, archivo.getBytes()));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @DeleteMapping("/insumos/{id}/imagen")
+    InsumoImagen quitarImagenInsumo(@AuthenticationPrincipal EmpleadoPrincipal actor, @PathVariable Long id) {
+        return InsumoImagen.de(gestion.quitarImagenInsumo(actor.id(), id));
+    }
+
+    @GetMapping("/insumos/{id}/imagen")
+    ResponseEntity<Resource> imagenInsumo(@PathVariable Long id) {
+        var imagen = gestion.imagenInsumo(id);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(imagen.tipoContenido()))
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePrivate())
+                .body(new FileSystemResource(imagen.archivo()));
     }
 
     private static boolean soloOperativo(EmpleadoPrincipal actor) {

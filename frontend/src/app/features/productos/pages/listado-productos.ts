@@ -18,16 +18,25 @@ import { NOMBRE_TIPO, Producto, ProductosApi } from '../data-access/productos.ap
   styles: `
     .productos {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(24rem, 100%), 1fr));
       gap: 1rem;
       margin: 1.5rem 0 0;
       padding: 0;
       list-style: none;
     }
 
+    .acciones-catalogo {
+      display: flex;
+      gap: 0.65rem;
+    }
+
+    .acciones-catalogo .boton {
+      white-space: nowrap;
+    }
+
     .producto {
       display: grid;
-      grid-template-columns: 7.5rem minmax(0, 1fr);
+      grid-template-columns: 9rem minmax(0, 1fr);
       gap: 1rem;
       min-height: 10rem;
       padding: 0.85rem;
@@ -104,7 +113,7 @@ import { NOMBRE_TIPO, Producto, ProductosApi } from '../data-access/productos.ap
 
     @media (max-width: 28rem) {
       .producto {
-        grid-template-columns: 5.5rem minmax(0, 1fr);
+        grid-template-columns: 6.5rem minmax(0, 1fr);
       }
 
       .producto__imagen {

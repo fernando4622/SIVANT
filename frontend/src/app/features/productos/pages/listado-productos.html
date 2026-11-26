@@ -26,10 +26,16 @@
       <option value="true">Activo</option>
       <option value="false">Inactivo</option>
     </select>
-    <a class="boton boton--principal" routerLink="/productos/nuevo">
-      <app-icono nombre="mas" />
-      Nuevo producto
-    </a>
+    <div class="acciones-catalogo">
+      <a class="boton" routerLink="/productos/insumos/nuevo">
+        <app-icono nombre="mas" />
+        Nuevo insumo
+      </a>
+      <a class="boton boton--principal" routerLink="/productos/nuevo">
+        <app-icono nombre="mas" />
+        Nuevo producto
+      </a>
+    </div>
   }
 </form>
 

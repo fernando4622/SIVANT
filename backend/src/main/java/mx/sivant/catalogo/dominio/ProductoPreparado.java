@@ -15,7 +15,7 @@ import java.util.List;
 @PrimaryKeyJoinColumn(name = "id_producto")
 public class ProductoPreparado extends Producto {
 
-    @OneToMany(mappedBy = "producto", cascade = CascadeType.PERSIST)
+    @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<RecetaProducto> receta = new ArrayList<>();
 
@@ -28,6 +28,14 @@ public class ProductoPreparado extends Producto {
 
     public void agregarInsumo(Insumo insumo, BigDecimal cantidad) {
         receta.add(new RecetaProducto(this, insumo, cantidad));
+    }
+
+    public void reemplazarReceta(List<ComponenteReceta> componentes) {
+        receta.clear();
+        componentes.forEach(c -> agregarInsumo(c.insumo(), c.cantidad()));
+    }
+
+    public record ComponenteReceta(Insumo insumo, BigDecimal cantidad) {
     }
 
     public List<RecetaProducto> getReceta() {

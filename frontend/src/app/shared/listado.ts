@@ -13,7 +13,7 @@ export interface Pagina<T> {
   totalPaginas: number;
 }
 
-export const TAMANO_PAGINA = 10;
+export const TAMANO_PAGINA = 12;
 
 interface Vista<T> {
   cargando: boolean;

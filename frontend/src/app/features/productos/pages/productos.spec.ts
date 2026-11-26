@@ -26,6 +26,8 @@ describe('Gestionar productos', () => {
     listar: vi.fn(),
     obtener: vi.fn(),
     insumos: vi.fn(),
+    registrarInsumo: vi.fn(),
+    subirImagenInsumo: vi.fn(),
     registrar: vi.fn(),
     editar: vi.fn(),
     desactivar: vi.fn(),
@@ -67,6 +69,7 @@ describe('Gestionar productos', () => {
           [
             { path: 'productos', children: rutasProductos },
             { path: 'inicio', children: [] },
+            { path: 'inventario', children: [] },
           ],
           withComponentInputBinding(),
         ),
@@ -208,15 +211,34 @@ describe('Gestionar productos', () => {
     expect(TestBed.inject(Router).url).toBe('/productos');
   });
 
-  it('CP-F22 la edición muestra la receta y envía solo lo modificado', async () => {
+  it('CP-F22 la edición permite cambiar la receta y envía solo lo modificado', async () => {
     api.editar.mockReturnValue(of(CAFE));
     await abrir('/productos/3');
-    expect(el.textContent).toContain('18 g');
+    expect(el.querySelector<HTMLInputElement>('#cantidad-0')!.value).toBe('18');
     await enviar();
     expect(api.editar).not.toHaveBeenCalled();
-    await escribir('precioVenta', '60');
+    await escribir('cantidad-0', '20');
     await enviar();
-    expect(api.editar).toHaveBeenCalledWith('3', { precioVenta: '60' });
+    expect(api.editar).toHaveBeenCalledWith('3', {
+      receta: [{ insumoId: '1', cantidadRequerida: '20' }],
+    });
+  });
+
+  it('registra un insumo nuevo con su nivel mínimo', async () => {
+    api.registrarInsumo.mockReturnValue(
+      of({ id: '8', nombre: 'Harina', unidadMedida: 'GRAMO', existenciaId: '20' }),
+    );
+    await abrir('/productos/insumos/nuevo');
+    await escribir('nombre-insumo', 'Harina');
+    await escribir('unidad-insumo', 'GRAMO');
+    await escribir('minimo-insumo', '500,5');
+    await enviar();
+    expect(api.registrarInsumo).toHaveBeenCalledWith({
+      nombre: 'Harina',
+      unidadMedida: 'GRAMO',
+      nivelMinimo: '500.5',
+    });
+    expect(TestBed.inject(Router).url).toBe('/inventario');
   });
 
   it('CP-F84 un precio de 0 se rechaza sin llamar a la API', async () => {

@@ -10,6 +10,7 @@ export interface Existencia {
   tipo: 'INSUMO' | 'PRODUCTO';
   unidadMedida: string;
   activo: boolean;
+  imagen?: string;
   cantidadActual: string;
   nivelMinimo: string;
   nivelBajo: boolean;

@@ -57,6 +57,21 @@ public class GestionProductos {
     public record ArchivoImagen(Path archivo, String tipoContenido) {
     }
 
+    public record InsumoRegistrado(Insumo insumo, Long existenciaId) {
+    }
+
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public InsumoRegistrado registrarInsumo(Long actor, String nombre, mx.sivant.catalogo.dominio.UnidadMedida unidad,
+            BigDecimal nivelMinimo) {
+        Insumo insumo = insumos.saveAndFlush(new Insumo(nombre, unidad));
+        Long existencia = existencias.crearParaInsumo(insumo.getId(), nivelMinimo);
+        auditoria.registrar(actor, "INSUMO_REGISTRADO", "INSUMO", insumo.getId(),
+                Map.of("nombre", insumo.getNombre(), "unidadMedida", unidad.name(),
+                        "nivelMinimo", nivelMinimo.toPlainString()));
+        return new InsumoRegistrado(insumo, existencia);
+    }
+
     /**
      * Sustituye la imagen. El archivo nuevo se escribe antes de guardar su ruta: si la transacción falla se borra, y
      * el anterior se borra solo después de confirmar.
@@ -89,9 +104,38 @@ public class GestionProductos {
         return detalle(producto);
     }
 
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public Insumo cambiarImagenInsumo(Long actor, Long id, byte[] contenido) {
+        String extension = FormatoImagen.extension(contenido);
+        Insumo insumo = insumos.bloquearPorId(id).orElseThrow(GestionProductos::noExisteInsumo);
+        String anterior = insumo.getImagen();
+        String nueva = almacen.guardarEn("insumos", contenido, extension);
+        alTerminar(nueva, anterior);
+        insumo.cambiarImagen(nueva);
+        auditoria.registrar(actor, "INSUMO_IMAGEN_CAMBIADA", "INSUMO", id,
+                Map.of("imagen", cambio(anterior == null ? "" : anterior, nueva)));
+        return insumo;
+    }
+
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public Insumo quitarImagenInsumo(Long actor, Long id) {
+        Insumo insumo = insumos.bloquearPorId(id).orElseThrow(GestionProductos::noExisteInsumo);
+        String anterior = insumo.getImagen();
+        if (anterior == null) {
+            throw ReglaNegocioException.conflicto("SIN_IMAGEN", "El insumo no tiene imagen.");
+        }
+        alTerminar(null, anterior);
+        insumo.cambiarImagen(null);
+        auditoria.registrar(actor, "INSUMO_IMAGEN_QUITADA", "INSUMO", id,
+                Map.of("imagen", cambio(anterior, "")));
+        return insumo;
+    }
+
     /** El mesero solo ve imágenes de productos activos. */
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAnyAuthority('ADMINISTRADOR', 'MESERO')")
+    @PreAuthorize("hasAnyAuthority('ADMINISTRADOR', 'MESERO', 'ALMACENISTA')")
     public ArchivoImagen imagen(Long id, boolean soloOperativo) {
         Producto producto = productos.findById(id).filter(p -> !soloOperativo || p.isActivo())
                 .filter(p -> p.getImagen() != null).orElseThrow(GestionProductos::sinImagen);
@@ -100,6 +144,18 @@ public class GestionProductos {
             throw sinImagen();
         }
         return new ArchivoImagen(archivo, FormatoImagen.tipoContenido(producto.getImagen()));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyAuthority('ADMINISTRADOR', 'ALMACENISTA')")
+    public ArchivoImagen imagenInsumo(Long id) {
+        Insumo insumo = insumos.findById(id).filter(i -> i.getImagen() != null)
+                .orElseThrow(GestionProductos::sinImagenInsumo);
+        Path archivo = almacen.archivo(insumo.getImagen());
+        if (!Files.isRegularFile(archivo)) {
+            throw sinImagenInsumo();
+        }
+        return new ArchivoImagen(archivo, FormatoImagen.tipoContenido(insumo.getImagen()));
     }
 
     private void alTerminar(String nueva, String anterior) {
@@ -169,6 +225,13 @@ public class GestionProductos {
     @Transactional
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     public DatosProducto editar(Long actor, Long id, String nombre, String descripcion, BigDecimal precio) {
+        return editar(actor, id, nombre, descripcion, precio, null);
+    }
+
+    @Transactional
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public DatosProducto editar(Long actor, Long id, String nombre, String descripcion, BigDecimal precio,
+            List<AltaProducto.Componente> receta) {
         Producto producto = productos.bloquearPorId(id).orElseThrow(GestionProductos::noExiste);
         Map<String, Object> cambios = new LinkedHashMap<>();
         if (nombre != null && !nombre.strip().equals(producto.getNombre())) {
@@ -183,10 +246,32 @@ public class GestionProductos {
             cambios.put("precioVenta", cambio(producto.getPrecioVenta().toPlainString(), precio.toPlainString()));
             producto.cambiarPrecio(precio);
         }
+        if (receta != null) {
+            if (!(producto instanceof ProductoPreparado preparado)) {
+                throw ReglaNegocioException.invalido("receta", "Un producto de reventa no lleva receta.");
+            }
+            List<ProductoPreparado.ComponenteReceta> componentes = componentes(receta);
+            preparado.reemplazarReceta(List.of());
+            productos.flush();
+            preparado.reemplazarReceta(componentes);
+            cambios.put("receta", Map.of("anterior", "receta anterior", "nuevo", receta.size() + " insumo(s)"));
+        }
         if (!cambios.isEmpty()) {
             auditoria.registrar(actor, "PRODUCTO_EDITADO", ENTIDAD, id, cambios);
         }
         return detalle(producto);
+    }
+
+    private List<ProductoPreparado.ComponenteReceta> componentes(List<AltaProducto.Componente> receta) {
+        Set<Long> usados = new HashSet<>();
+        return receta.stream().map(componente -> {
+            if (!usados.add(componente.insumoId())) {
+                throw ReglaNegocioException.invalido("receta", "No repitas insumos en la receta.");
+            }
+            Insumo insumo = insumos.findById(componente.insumoId()).filter(Insumo::isActivo)
+                    .orElseThrow(() -> ReglaNegocioException.invalido("receta", "Un insumo no está disponible."));
+            return new ProductoPreparado.ComponenteReceta(insumo, componente.cantidadRequerida());
+        }).toList();
     }
 
     @Transactional
@@ -269,6 +354,14 @@ public class GestionProductos {
 
     private static ReglaNegocioException sinImagen() {
         return ReglaNegocioException.noEncontrado("El producto no tiene imagen.");
+    }
+
+    private static ReglaNegocioException noExisteInsumo() {
+        return ReglaNegocioException.noEncontrado("El insumo no existe.");
+    }
+
+    private static ReglaNegocioException sinImagenInsumo() {
+        return ReglaNegocioException.noEncontrado("El insumo no tiene imagen.");
     }
 
     private static ReglaNegocioException noExiste() {

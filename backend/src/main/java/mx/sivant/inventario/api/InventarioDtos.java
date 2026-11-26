@@ -51,13 +51,23 @@ final class InventarioDtos {
     }
 
     record Existencia(String id, String articuloId, String nombre, TipoArticulo tipo, String unidadMedida,
-            boolean activo, String cantidadActual, String nivelMinimo, boolean nivelBajo,
+            boolean activo, String imagen, String cantidadActual, String nivelMinimo, boolean nivelBajo,
             OffsetDateTime fechaActualizacion, int version) {
 
         static Existencia de(DatosInventario.Existencia e) {
             return new Existencia(e.id().toString(), e.articuloId().toString(), e.nombre(), e.tipo(), e.unidadMedida(),
-                    e.activo(), Decimales.cantidad(e.cantidadActual()), Decimales.cantidad(e.nivelMinimo()),
+                    e.activo(), urlImagen(e), Decimales.cantidad(e.cantidadActual()), Decimales.cantidad(e.nivelMinimo()),
                     e.nivelBajo(), e.fechaActualizacion(), e.version());
+        }
+
+        private static String urlImagen(DatosInventario.Existencia e) {
+            if (e.imagen() == null) {
+                return null;
+            }
+            String archivo = e.imagen().substring(e.imagen().lastIndexOf('/') + 1);
+            String recurso = e.tipo() == TipoArticulo.INSUMO ? "insumos" : "productos";
+            return "/api/v1/" + recurso + "/" + e.articuloId() + "/imagen?v="
+                    + archivo.substring(0, archivo.indexOf('.'));
         }
     }
 

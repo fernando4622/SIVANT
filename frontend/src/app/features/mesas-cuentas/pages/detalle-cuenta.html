@@ -141,7 +141,7 @@
         <p class="campo__ayuda">Para cobrar, todas las comandas no canceladas deben estar servidas.</p>
       }
       @if (c.acciones.includes('ENVIAR_COMANDA')) {
-        <a class="boton accion-cuenta" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
+        <a class="boton boton--principal accion-cuenta" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
           <app-icono nombre="mas" />
           Nueva comanda
         </a>

@@ -143,13 +143,13 @@ erDiagram
         string nombre
         string unidad_medida
         boolean activo
+        string imagen
     }
 
     PRODUCTO {
         int id_producto PK,FK
         string descripcion
         decimal precio_venta
-        string imagen
     }
 
     PRODUCTO_PREPARADO {
@@ -345,8 +345,8 @@ Sí se almacena `VENTA.total`, porque representa el importe histórico al moment
 - Un producto de reventa no necesita receta y tiene exactamente una existencia.
 - No puede repetirse el mismo insumo en la receta de un producto.
 - `cantidad_requerida` debe ser mayor que cero.
-- `PRODUCTO.imagen` es opcional y guarda solo la ruta del archivo en el almacén de imágenes (por ejemplo, `productos/<identificador>.webp`), no el archivo. No interviene en ventas, recetas ni inventario.
-- El sistema genera el nombre del archivo al subirlo: un identificador único con extensión `.jpg`, `.png` o `.webp`, dentro de `productos/`.
+- `ARTICULO.imagen` es opcional y guarda solo la ruta del archivo en el almacén de imágenes, no el archivo. Productos e insumos comparten esta propiedad; no interviene en ventas, recetas ni saldos de inventario.
+- El sistema genera el nombre al subirlo: un identificador único con extensión `.jpg`, `.png` o `.webp`, dentro de `productos/` o `insumos/` según el subtipo.
 - Reemplazar la imagen sustituye la ruta y borra el archivo anterior; quitarla deja la ruta nula.
 
 ### Inventario

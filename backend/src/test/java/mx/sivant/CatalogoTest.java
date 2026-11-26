@@ -244,6 +244,18 @@ class CatalogoTest extends PruebaIntegracion {
         }
 
         @Test
+        @DisplayName("Actualiza la receta completa de un producto preparado")
+        void receta() {
+            String id = alta(preparado("Latte"));
+            var r = admin.patch("/productos/" + id, Map.of("receta",
+                    List.of(Map.of("insumoId", leche, "cantidadRequerida", "250"))));
+            assertThat(r.estado()).isEqualTo(200);
+            assertThat(r.json().get("receta").size()).isEqualTo(1);
+            assertThat(r.json().get("receta").get(0).get("insumoId").asString()).isEqualTo(leche);
+            assertThat(r.json().get("receta").get(0).get("cantidadRequerida").asString()).isEqualTo("250");
+        }
+
+        @Test
         @DisplayName("CP-51 Valores inválidos, vacíos o no permitidos se rechazan")
         void invalido() {
             String id = alta(preparado("Latte"));

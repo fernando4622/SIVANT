@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -21,7 +21,7 @@ import { InventarioApi } from '../data-access/inventario.api';
   styles: `
     .existencias {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(23rem, 100%), 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(24rem, 100%), 1fr));
       gap: 1rem;
       margin: 1.5rem 0 0;
       padding: 0;
@@ -30,7 +30,7 @@ import { InventarioApi } from '../data-access/inventario.api';
 
     .existencia {
       display: grid;
-      grid-template-columns: 7.5rem minmax(0, 1fr);
+      grid-template-columns: 9rem minmax(0, 1fr);
       gap: 1rem;
       min-height: 10rem;
       padding: 0.85rem;
@@ -40,10 +40,17 @@ import { InventarioApi } from '../data-access/inventario.api';
     .existencia__imagen {
       display: grid;
       place-items: center;
+      overflow: hidden;
       min-height: 8.25rem;
       border-radius: var(--radio-chico);
       background: var(--cabecera);
       color: var(--texto-suave);
+    }
+
+    .existencia__imagen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .existencia__contenido {
@@ -127,7 +134,7 @@ import { InventarioApi } from '../data-access/inventario.api';
 
     @media (max-width: 28rem) {
       .existencia {
-        grid-template-columns: 5.5rem minmax(0, 1fr);
+        grid-template-columns: 6.5rem minmax(0, 1fr);
       }
 
       .existencia__imagen {
@@ -152,6 +159,7 @@ export class Existencias {
 
   protected readonly cantidad = cantidad;
   protected readonly unidad = unidad;
+  protected readonly sinImagen = signal(new Set<string>());
   protected readonly filtros = inject(NonNullableFormBuilder).group({
     q: '',
     tipo: '',
@@ -175,5 +183,9 @@ export class Existencias {
       .cambios('EXISTENCIA_ACTUALIZADA')
       .pipe(debounceTime(300), takeUntilDestroyed())
       .subscribe(() => this.listado.recargar(true));
+  }
+
+  protected ocultarImagen(id: string): void {
+    this.sinImagen.update((ids) => new Set(ids).add(id));
   }
 }

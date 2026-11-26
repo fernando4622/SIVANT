@@ -11,7 +11,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, of, switchMap, tap } from 'rxjs';
+import { forkJoin, Observable, of, switchMap, tap } from 'rxjs';
 import { leerProblema } from '../../../core/http/problema';
 import {
   NOMBRE_UNIDAD,
@@ -36,7 +36,7 @@ import {
   UnidadMedida,
 } from '../data-access/productos.api';
 
-/** Alta (RF07) y edición (RF09). La edición cambia nombre, descripción, precio e imagen. */
+/** Alta (RF07) y edición (RF09), incluida la receta de productos preparados. */
 @Component({
   selector: 'app-formulario-producto',
   imports: [ReactiveFormsModule, RouterLink, Icono],
@@ -111,13 +111,17 @@ export class FormularioProducto implements OnInit {
       });
       return;
     }
-    const { tipo, unidadMedida, nivelMinimo, receta } = this.formulario.controls;
-    [tipo, unidadMedida, nivelMinimo, receta].forEach((control) => control.disable({ emitEvent: false }));
-    this.api.obtener(id).subscribe({
-      next: (producto) => {
+    const { tipo, unidadMedida, nivelMinimo } = this.formulario.controls;
+    [tipo, unidadMedida, nivelMinimo].forEach((control) => control.disable({ emitEvent: false }));
+    forkJoin({ producto: this.api.obtener(id), insumos: this.api.insumos() }).subscribe({
+      next: ({ producto, insumos }) => {
+        this.insumos.set(insumos);
         this.original.set(producto);
-        const { nombre, descripcion, precioVenta, activo } = producto;
-        this.formulario.patchValue({ nombre, descripcion, precioVenta, activo });
+        const { nombre, descripcion, precioVenta, activo, tipo: tipoProducto, unidadMedida: unidad } = producto;
+        this.formulario.patchValue({ nombre, descripcion, precioVenta, activo, tipo: tipoProducto, unidadMedida: unidad });
+        this.cargarReceta(producto);
+        this.segunTipo(tipoProducto);
+        nivelMinimo.disable({ emitEvent: false });
         this.cargando.set(false);
       },
       error: (error: unknown) => this.falloCarga(error),
@@ -270,6 +274,16 @@ export class FormularioProducto implements OnInit {
     });
   }
 
+  private cargarReceta(producto: Producto): void {
+    const receta = this.formulario.controls.receta;
+    receta.clear();
+    for (const componente of producto.receta ?? []) {
+      const fila = this.componente();
+      fila.setValue({ insumoId: componente.insumoId, cantidadRequerida: componente.cantidadRequerida });
+      receta.push(fila);
+    }
+  }
+
   private segunTipo(tipo: TipoProducto): void {
     const { nivelMinimo, receta } = this.formulario.controls;
     const [activo, inactivo] = tipo === 'PREPARADO' ? [receta, nivelMinimo] : [nivelMinimo, receta];
@@ -312,6 +326,19 @@ export class FormularioProducto implements OnInit {
     }
     if (normalizarDecimal(v.precioVenta) !== original?.precioVenta) {
       cambios.precioVenta = normalizarDecimal(v.precioVenta);
+    }
+    if (original?.tipo === 'PREPARADO') {
+      const receta = v.receta.map((c) => ({
+        insumoId: c.insumoId,
+        cantidadRequerida: normalizarDecimal(c.cantidadRequerida),
+      }));
+      const anterior = (original.receta ?? []).map((c) => ({
+        insumoId: c.insumoId,
+        cantidadRequerida: normalizarDecimal(c.cantidadRequerida),
+      }));
+      if (JSON.stringify(receta) !== JSON.stringify(anterior)) {
+        cambios.receta = receta;
+      }
     }
     return cambios;
   }

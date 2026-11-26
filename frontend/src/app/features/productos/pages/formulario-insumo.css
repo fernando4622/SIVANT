@@ -1,0 +1,38 @@
+.insumo-columnas {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(22rem, 1.5fr);
+  gap: 1rem;
+  max-width: 58rem;
+}
+
+.imagen-insumo {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 0.75rem;
+}
+
+.imagen-insumo img,
+.imagen-insumo__reserva {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radio-chico);
+  background: var(--cabecera);
+}
+
+.imagen-insumo img { object-fit: cover; }
+.imagen-insumo__reserva { display: grid; place-items: center; align-content: center; gap: 0.75rem; color: var(--texto-suave); }
+.imagen-insumo .boton { width: 100%; }
+.datos-insumo { align-content: start; }
+
+.acciones-insumo {
+  display: grid;
+  grid-template-columns: 10rem minmax(14rem, 20rem);
+  justify-content: end;
+  max-width: 58rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 42rem) {
+  .insumo-columnas, .acciones-insumo { grid-template-columns: 1fr; }
+}

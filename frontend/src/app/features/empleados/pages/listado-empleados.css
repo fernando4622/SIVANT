@@ -22,9 +22,10 @@
   align-self: center;
   width: 4.75rem;
   height: 4.75rem;
+  border: 3px solid var(--marino);
   border-radius: 50%;
-  background: var(--azul-avatar);
-  color: var(--azul-fuerte);
+  background: var(--azul);
+  color: #fff;
   font-size: 1.2rem;
   font-weight: 700;
 }

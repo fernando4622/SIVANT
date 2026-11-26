@@ -9,7 +9,7 @@
 </div>
 
 <div class="columnas">
-  <section class="tarjeta" aria-labelledby="titulo-comanda">
+  <section class="tarjeta comanda-panel" aria-labelledby="titulo-comanda">
     <h2 id="titulo-comanda">Comanda</h2>
     <ul class="lineas">
       @for (l of lineas(); track l.clave) {
@@ -68,7 +68,7 @@
     </div>
   </section>
 
-  <section aria-labelledby="titulo-catalogo">
+  <section class="catalogo-panel" aria-labelledby="titulo-catalogo">
     <h2 id="titulo-catalogo">Agregar productos</h2>
     <div class="buscador">
       <app-icono nombre="buscar" />
@@ -103,7 +103,14 @@
       <div class="catalogo">
         @for (p of c.contenido; track p.id) {
           <button type="button" class="producto" [attr.aria-label]="'Agregar ' + p.nombre" (click)="agregar(p)">
-            <span>{{ p.nombre }}</span>
+            <span class="producto__imagen" aria-hidden="true">
+              @if (p.imagen && !sinImagen().has(p.id)) {
+                <img [src]="p.imagen" alt="" loading="lazy" (error)="ocultarImagen(p.id)" />
+              } @else {
+                <app-icono nombre="productos" [tamano]="34" />
+              }
+            </span>
+            <span class="producto__nombre">{{ p.nombre }}</span>
             <strong>{{ dinero(p.precioVenta) }}</strong>
           </button>
         } @empty {

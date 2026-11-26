@@ -1,0 +1,101 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>{{ administra() ? 'Gestionar productos' : 'Catálogo' }}</h1>
+</div>
+
+<form class="filtros filtros--con-accion" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+  <div class="buscador">
+    <app-icono nombre="buscar" />
+    <input
+      class="control"
+      type="search"
+      formControlName="q"
+      placeholder="Buscar producto…"
+      aria-label="Buscar por nombre"
+      maxlength="120"
+    />
+  </div>
+  <select class="control" formControlName="tipo" aria-label="Filtrar por tipo">
+    <option value="">Todos los tipos</option>
+    <option value="PREPARADO">Preparado</option>
+    <option value="REVENTA">Reventa</option>
+  </select>
+  @if (administra()) {
+    <select class="control" formControlName="activo" aria-label="Filtrar por estado">
+      <option value="">Todos los estados</option>
+      <option value="true">Activo</option>
+      <option value="false">Inactivo</option>
+    </select>
+    <div class="acciones-catalogo">
+      <a class="boton" routerLink="/productos/insumos/nuevo">
+        <app-icono nombre="mas" />
+        Nuevo insumo
+      </a>
+      <a class="boton boton--principal" routerLink="/productos/nuevo">
+        <app-icono nombre="mas" />
+        Nuevo producto
+      </a>
+    </div>
+  }
+</form>
+
+<p class="mensaje"></p>
+
+@if (listado.vista().error; as error) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ error }}</p>
+      <button type="button" class="boton" (click)="listado.recargar()">Reintentar</button>
+    </div>
+  </div>
+} @else if (listado.pagina(); as datos) {
+  @if (datos.contenido.length) {
+    <ul class="productos" [attr.aria-busy]="listado.vista().cargando">
+      @for (producto of datos.contenido; track producto.id) {
+        <li class="tarjeta producto">
+          <div class="producto__imagen" aria-hidden="true">
+            @if (producto.imagen && !sinImagen().has(producto.id)) {
+              <img [src]="producto.imagen" alt="" loading="lazy" (error)="ocultarImagen(producto.id)" />
+            } @else {
+              <app-icono nombre="productos" [tamano]="38" />
+            }
+          </div>
+
+          <div class="producto__contenido">
+            <div class="producto__encabezado">
+              <span class="estado" [class.estado--inactivo]="!producto.activo">
+                {{ producto.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+              @if (administra()) {
+                <a
+                  class="boton-icono"
+                  [routerLink]="['/productos', producto.id]"
+                  [attr.aria-label]="'Editar ' + producto.nombre"
+                  title="Editar"
+                >
+                  <app-icono nombre="editar" />
+                </a>
+              }
+            </div>
+
+            <div class="producto__texto">
+              <h2>{{ producto.nombre }}</h2>
+              <p>{{ producto.descripcion }}</p>
+            </div>
+
+            <div class="producto__pie">
+              <span>{{ nombreTipo[producto.tipo] }}</span>
+              <strong>{{ dinero(producto.precioVenta) }}</strong>
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+    <app-paginacion [datos]="datos" elementos="productos" (ir)="listado.irA($event)" />
+  } @else {
+    <p class="tarjeta">No hay productos que coincidan con la búsqueda.</p>
+  }
+} @else {
+  <p role="status">Cargando productos…</p>
+}

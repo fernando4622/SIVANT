@@ -1,0 +1,10 @@
+# Solo desarrollo local: HTTP sin TLS y cuentas ficticias.
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+sivant:
+  desarrollo:
+    contrasena: ${SIVANT_DEV_CONTRASENA:}

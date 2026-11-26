@@ -1,0 +1,225 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inventario" aria-label="Volver a inventario">
+    <app-icono nombre="atras" [tamano]="30" />
+  </a>
+  <h1>{{ existencia()?.nombre ?? 'Existencia' }}</h1>
+</div>
+
+@if (errorCarga(); as mensajeError) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <p>{{ mensajeError }}</p>
+  </div>
+} @else if (existencia(); as e) {
+  @if (nivelActualizado()) {
+    <div class="mensaje-nivel" [class.mensaje-nivel--bajo]="e.nivelBajo" role="status">
+      <span class="mensaje-nivel__icono">
+        <app-icono [nombre]="e.nivelBajo ? 'info' : 'palomita'" [tamano]="26" />
+      </span>
+      <div>
+        <strong>Nivel {{ e.nivelBajo ? 'bajo' : 'suficiente' }}</strong>
+        <p>
+          La existencia ({{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}) está
+          {{ e.nivelBajo ? 'en o por debajo' : 'por encima' }} del nivel mínimo ({{ cantidad(e.nivelMinimo) }}
+          {{ unidad(e.unidadMedida) }}).
+        </p>
+      </div>
+    </div>
+  } @else if (movimientoRegistrado(); as tipoMovimiento) {
+    <div class="mensaje-nivel" role="status">
+      <span class="mensaje-nivel__icono">
+        <app-icono nombre="palomita" [tamano]="26" />
+      </span>
+      <div>
+        <strong>{{ tipoMovimiento === 'ENTRADA_MANUAL' ? 'Entrada registrada' : 'Salida registrada' }}</strong>
+        <p>La existencia actual es {{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}.</p>
+      </div>
+    </div>
+  } @else {
+    <p class="mensaje" role="status">{{ mensaje() }}</p>
+  }
+
+  <div class="paneles">
+    <section class="tarjeta" aria-labelledby="titulo-info">
+      <h2 id="titulo-info">Información del artículo</h2>
+      <dl class="datos-lista">
+        <dt>Tipo:</dt>
+        <dd>{{ e.tipo === 'INSUMO' ? 'Insumo' : 'Producto' }}</dd>
+        <dt>Existencia:</dt>
+        <dd>
+          <strong>{{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}</strong>
+        </dd>
+        <dt>Nivel mínimo:</dt>
+        <dd>{{ cantidad(e.nivelMinimo) }} {{ unidad(e.unidadMedida) }}</dd>
+        <dt>Nivel:</dt>
+        <dd>{{ e.nivelBajo ? 'Bajo' : 'Suficiente' }}</dd>
+        <dt>Actualizado:</dt>
+        <dd>{{ fechaHora(e.fechaActualizacion) }}</dd>
+      </dl>
+      @if (opera()) {
+        <form class="minimo" [formGroup]="minimo" (ngSubmit)="cambiarMinimo()" novalidate>
+          <div class="campo">
+            <label for="nivelMinimo">Nuevo nivel mínimo ({{ unidad(e.unidadMedida) }})</label>
+            <input
+              id="nivelMinimo"
+              class="control"
+              inputmode="decimal"
+              autocomplete="off"
+              formControlName="nivelMinimo"
+              [attr.aria-invalid]="!!errorMinimo()"
+              aria-describedby="nivelMinimo-ayuda nivelMinimo-error"
+            />
+            <span id="nivelMinimo-ayuda" class="campo__ayuda">Con esta cantidad o menos, la existencia se marca baja.</span>
+            <span id="nivelMinimo-error" class="campo__error" aria-live="polite">{{ errorMinimo() }}</span>
+          </div>
+          <button type="submit" class="boton boton--principal" [disabled]="guardandoMinimo()">
+            <app-icono nombre="guardar" />
+            {{ guardandoMinimo() ? 'Guardando…' : 'Guardar nivel mínimo' }}
+          </button>
+        </form>
+      }
+    </section>
+
+    @if (opera()) {
+      <form
+        class="tarjeta pila"
+        aria-labelledby="titulo-movimiento"
+        [formGroup]="movimiento"
+        (ngSubmit)="registrarMovimiento()"
+        novalidate
+      >
+        <h2 id="titulo-movimiento">Registrar movimiento</h2>
+        <div class="campo">
+          <label for="tipo">Tipo</label>
+          <select id="tipo" class="control" formControlName="tipo">
+            <option value="ENTRADA_MANUAL">Entrada</option>
+            <option value="SALIDA_MANUAL">Salida</option>
+          </select>
+        </div>
+        @if (esSalida()) {
+          <div class="campo">
+            <label for="causa">Causa de la salida</label>
+            <select
+              id="causa"
+              class="control"
+              formControlName="causa"
+              [attr.aria-invalid]="!!errorCausa()"
+              aria-describedby="causa-ayuda causa-error"
+            >
+              <option value="">Selecciona la causa</option>
+              @for (c of causas; track c[0]) {
+                <option [value]="c[0]">{{ c[1] }}</option>
+              }
+            </select>
+            <span id="causa-ayuda" class="campo__ayuda">
+              Si no sabes por qué falta, cuenta lo que hay y solicita un ajuste.
+            </span>
+            <span id="causa-error" class="campo__error" aria-live="polite">{{ errorCausa() }}</span>
+          </div>
+          <div class="campo">
+            <label for="nota">{{ movimiento.controls.causa.value === 'OTRO' ? 'Describe la causa' : 'Nota (opcional)' }}</label>
+            <input
+              id="nota"
+              class="control"
+              autocomplete="off"
+              maxlength="300"
+              formControlName="nota"
+              [attr.aria-invalid]="!!errorNota()"
+              aria-describedby="nota-error"
+            />
+            <span id="nota-error" class="campo__error" aria-live="polite">{{ errorNota() }}</span>
+          </div>
+        }
+        <div class="campo">
+          <label for="cantidad">Cantidad ({{ unidad(e.unidadMedida) }})</label>
+          <input
+            id="cantidad"
+            class="control"
+            inputmode="decimal"
+            autocomplete="off"
+            formControlName="cantidad"
+            [attr.aria-invalid]="!!errorMovimiento() || (enviadoMovimiento() && movimiento.controls.cantidad.invalid)"
+            aria-describedby="cantidad-error"
+          />
+          <span id="cantidad-error" class="campo__error" aria-live="polite">
+            @if (enviadoMovimiento() && movimiento.controls.cantidad.invalid) {
+              Escribe una cantidad mayor que cero.
+            } @else {
+              {{ errorMovimiento() }}
+            }
+          </span>
+        </div>
+        <button type="submit" class="boton boton--principal" [disabled]="guardandoMovimiento()">
+          <app-icono nombre="guardar" />
+          {{ guardandoMovimiento() ? 'Guardando…' : 'Registrar' }}
+        </button>
+      </form>
+
+      <form
+        class="tarjeta pila"
+        aria-labelledby="titulo-ajuste"
+        [formGroup]="ajuste"
+        (ngSubmit)="solicitarAjuste()"
+        novalidate
+      >
+        <h2 id="titulo-ajuste">Solicitar ajuste</h2>
+        <div class="campo">
+          <label for="cantidadSolicitada">Cantidad física real ({{ unidad(e.unidadMedida) }})</label>
+          <input
+            id="cantidadSolicitada"
+            class="control"
+            inputmode="decimal"
+            autocomplete="off"
+            formControlName="cantidadSolicitada"
+            [attr.aria-invalid]="enviadoAjuste() && ajuste.controls.cantidadSolicitada.invalid"
+            aria-describedby="cantidadSolicitada-error"
+          />
+          <span id="cantidadSolicitada-error" class="campo__error">
+            @if (enviadoAjuste() && ajuste.controls.cantidadSolicitada.invalid) {
+              Escribe una cantidad válida.
+            }
+          </span>
+        </div>
+        <div class="campo">
+          <label for="justificacion">Justificación</label>
+          <textarea
+            id="justificacion"
+            class="control"
+            formControlName="justificacion"
+            placeholder="Describe el motivo del ajuste…"
+            [attr.aria-invalid]="enviadoAjuste() && ajuste.controls.justificacion.invalid"
+            aria-describedby="justificacion-error"
+          ></textarea>
+          <span id="justificacion-error" class="campo__error">
+            @if (enviadoAjuste() && ajuste.controls.justificacion.invalid) {
+              Escribe la justificación, con 500 caracteres como máximo.
+            }
+          </span>
+        </div>
+        @if (errorAjuste(); as mensajeError) {
+          <p class="campo__error" role="alert">{{ mensajeError }}</p>
+        }
+        <div class="aviso">
+          <app-icono nombre="info" />
+          <p>La existencia solo cambia cuando administración autoriza.</p>
+        </div>
+        <button type="submit" class="boton boton--principal" [disabled]="guardandoAjuste()">
+          <app-icono nombre="ajuste" />
+          {{ guardandoAjuste() ? 'Enviando…' : 'Solicitar ajuste' }}
+        </button>
+      </form>
+    }
+  </div>
+
+  <h2 class="titulo-historial">Historial</h2>
+  @if (historial(); as h) {
+    @if (h.contenido.length) {
+      <app-tabla-historial [movimientos]="h.contenido" [conArticulo]="false" />
+      <app-paginacion [datos]="h" elementos="movimientos" (ir)="cargarHistorial($event)" />
+    } @else {
+      <p class="tarjeta">Aún no hay movimientos.</p>
+    }
+  }
+} @else {
+  <p role="status">Cargando existencia…</p>
+}

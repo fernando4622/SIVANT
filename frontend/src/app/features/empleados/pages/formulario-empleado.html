@@ -1,0 +1,136 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/empleados" aria-label="Volver a empleados">
+    <app-icono nombre="atras" [tamano]="30" />
+  </a>
+  <h1>{{ id() ? 'Editar empleado' : 'Nuevo empleado' }}</h1>
+</div>
+
+@if (errorCarga(); as mensaje) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <p>{{ mensaje }}</p>
+  </div>
+} @else if (cargando()) {
+  <p role="status">Cargando empleado…</p>
+} @else {
+  <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+    <div class="columnas">
+      <section class="tarjeta datos" aria-labelledby="titulo-datos">
+        <h2 id="titulo-datos">Datos del empleado</h2>
+
+        <div class="campo">
+          <label for="nombreCompleto">Nombre completo</label>
+          <input
+            id="nombreCompleto"
+            class="control"
+            formControlName="nombreCompleto"
+            autocomplete="off"
+            [attr.aria-invalid]="!!errorDe('nombreCompleto')"
+            aria-describedby="nombreCompleto-error"
+          />
+          <span id="nombreCompleto-error" class="campo__error">{{ errorDe('nombreCompleto') }}</span>
+        </div>
+
+        <div class="campo">
+          <label for="correo">Correo electrónico</label>
+          <input
+            id="correo"
+            class="control"
+            type="email"
+            formControlName="correo"
+            autocomplete="off"
+            [attr.aria-invalid]="!!errorDe('correo')"
+            aria-describedby="correo-error"
+          />
+          <span id="correo-error" class="campo__error">{{ errorDe('correo') }}</span>
+        </div>
+
+        <div class="campo">
+          <label for="contrasena">{{ id() ? 'Nueva contraseña (opcional)' : 'Contraseña inicial' }}</label>
+          <div class="contrasena">
+            <input
+              id="contrasena"
+              class="control"
+              [type]="verContrasena() ? 'text' : 'password'"
+              formControlName="contrasena"
+              autocomplete="new-password"
+              [attr.aria-invalid]="!!errorDe('contrasena')"
+              aria-describedby="contrasena-ayuda contrasena-error"
+            />
+            <button
+              type="button"
+              class="boton-icono"
+              aria-label="Mostrar contraseña"
+              [attr.aria-pressed]="verContrasena()"
+              (click)="verContrasena.set(!verContrasena())"
+            >
+              <app-icono nombre="ver" />
+            </button>
+          </div>
+          @if (errorDe('contrasena'); as mensaje) {
+            <span id="contrasena-error" class="campo__error">{{ mensaje }}</span>
+          } @else {
+            <span id="contrasena-ayuda" class="campo__ayuda">
+              {{ id() ? 'Déjala vacía para conservar la actual.' : 'Entre 8 y 72 caracteres.' }}
+            </span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="rol">Cargo</label>
+          <select
+            id="rol"
+            class="control"
+            formControlName="rol"
+            [attr.aria-invalid]="!!errorDe('rol')"
+            aria-describedby="rol-error"
+          >
+            <option value="" disabled>Selecciona un cargo</option>
+            @for (rol of roles; track rol) {
+              <option [value]="rol">{{ nombreRol[rol] }}</option>
+            }
+          </select>
+          <span id="rol-error" class="campo__error">{{ errorDe('rol') }}</span>
+        </div>
+
+        @if (id()) {
+          <div class="campo estado-empleado">
+            <span class="campo__etiqueta">Estado</span>
+            <label class="interruptor">
+              <input type="checkbox" formControlName="activo" />
+              <span class="interruptor__control" aria-hidden="true"></span>
+              <span>{{ formulario.controls.activo.value ? 'Activo' : 'Inactivo' }}</span>
+            </label>
+          </div>
+        }
+      </section>
+
+      <div class="informacion">
+        <div class="aviso">
+          <app-icono nombre="info" [tamano]="32" />
+          <p>
+            @if (esPropio()) {
+              Tu sesión se cerrará si cambias tu contraseña o tu cargo.
+            } @else if (id()) {
+              Cambiar la contraseña o el cargo cierra las sesiones abiertas de este empleado.
+            } @else {
+              El cargo determina qué secciones puede usar el empleado al iniciar sesión.
+            }
+          </p>
+        </div>
+      </div>
+    </div>
+
+    @if (error(); as mensaje) {
+      <p class="campo__error" role="alert">{{ mensaje }}</p>
+    }
+
+    <div class="acciones">
+      <a class="boton" routerLink="/empleados">Cancelar</a>
+      <button type="submit" class="boton boton--principal" [disabled]="guardando()">
+        <app-icono nombre="guardar" />
+        {{ guardando() ? 'Guardando…' : id() ? 'Guardar cambios' : 'Registrar empleado' }}
+      </button>
+    </div>
+  </form>
+}

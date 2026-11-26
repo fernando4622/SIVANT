@@ -1,0 +1,106 @@
+<main>
+  <div class="panel">
+    <div class="marca"><app-logo /></div>
+
+    <form [formGroup]="formulario" (ngSubmit)="entrar()" novalidate>
+      <div>
+        <h1>Iniciar sesión</h1>
+        <p class="subtitulo">Accede para continuar</p>
+      </div>
+
+      @if (error(); as mensaje) {
+        <div class="aviso aviso--error" role="alert">
+          <app-icono nombre="info" />
+          <p>{{ mensaje }}</p>
+        </div>
+      } @else if (aviso(); as mensaje) {
+        <div class="aviso" role="status">
+          <app-icono nombre="info" />
+          <p>{{ mensaje }}</p>
+        </div>
+      }
+
+      <div class="campo">
+        <label for="correo">Correo electrónico</label>
+        <div class="con-icono">
+          <app-icono nombre="correo" />
+          <input
+            id="correo"
+            class="control"
+            type="email"
+            formControlName="correo"
+            placeholder="correo@ejemplo.com"
+            autocomplete="username"
+            [attr.aria-invalid]="enviado() && formulario.controls.correo.invalid"
+            aria-describedby="correo-error"
+          />
+        </div>
+        <span id="correo-error" class="campo__error" aria-live="polite">
+          @if (enviado() && formulario.controls.correo.invalid) {
+            Escribe tu correo.
+          }
+        </span>
+      </div>
+
+      <div class="campo">
+        <label for="contrasena">Contraseña</label>
+        <div class="con-icono">
+          <app-icono nombre="candado" />
+          <input
+            id="contrasena"
+            class="control control--con-boton"
+            [type]="verContrasena() ? 'text' : 'password'"
+            formControlName="contrasena"
+            placeholder="Ingresa tu contraseña"
+            autocomplete="current-password"
+            [attr.aria-invalid]="enviado() && formulario.controls.contrasena.invalid"
+            aria-describedby="contrasena-error"
+          />
+          <button
+            type="button"
+            class="boton-icono"
+            aria-label="Mostrar contraseña"
+            [attr.aria-pressed]="verContrasena()"
+            (click)="verContrasena.set(!verContrasena())"
+          >
+            <app-icono [nombre]="verContrasena() ? 'ver' : 'ocultar'" />
+          </button>
+        </div>
+        <span id="contrasena-error" class="campo__error" aria-live="polite">
+          @if (enviado() && formulario.controls.contrasena.invalid) {
+            Escribe tu contraseña.
+          }
+        </span>
+      </div>
+
+      <div class="opciones">
+        <label class="recordar">
+          <input type="checkbox" formControlName="recordar" />
+          Recordarme
+        </label>
+        <button
+          type="button"
+          class="enlace"
+          aria-controls="ayuda-contrasena"
+          [attr.aria-expanded]="ayuda()"
+          (click)="ayuda.set(!ayuda())"
+        >
+          ¿Olvidaste tu contraseña?
+        </button>
+      </div>
+
+      <div id="ayuda-contrasena" role="status" [hidden]="!ayuda()">
+        @if (ayuda()) {
+          <div class="aviso">
+            <app-icono nombre="info" />
+            <p>Pide a un administrador que te asigne una contraseña nueva.</p>
+          </div>
+        }
+      </div>
+
+      <button type="submit" class="boton boton--principal" [disabled]="enviando()">
+        {{ enviando() ? 'Iniciando sesión…' : 'Iniciar sesión' }}
+      </button>
+    </form>
+  </div>
+</main>

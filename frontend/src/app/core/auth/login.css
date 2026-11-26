@@ -1,0 +1,201 @@
+main {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  background: var(--fondo-acceso);
+}
+
+.panel {
+  display: grid;
+  grid-template-columns: 9fr 16fr;
+  width: min(68rem, 100%);
+  min-height: min(38rem, calc(100dvh - 3rem));
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--fondo);
+  box-shadow: 0 6px 24px rgb(15 26 58 / 10%);
+}
+
+.marca {
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--marino);
+  color: var(--marino-texto);
+}
+
+.marca app-logo {
+  zoom: 1.35;
+}
+
+form {
+  display: grid;
+  align-content: center;
+  gap: 1.1rem;
+  padding: 2.5rem clamp(1.25rem, 5vw, 4.25rem);
+}
+
+h1 {
+  font-size: clamp(1.75rem, 1.3rem + 1.8vw, 2.6rem);
+}
+
+.subtitulo {
+  margin-top: 0.35rem;
+  color: var(--texto-suave);
+  font-size: 1.2rem;
+}
+
+.campo label {
+  font-size: 1.05rem;
+}
+
+.con-icono {
+  position: relative;
+}
+
+.con-icono > app-icono {
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+}
+
+.con-icono .control {
+  min-height: 3.35rem;
+  padding-left: 4rem;
+}
+
+.con-icono .control:focus {
+  border-color: var(--azul);
+  outline: none;
+}
+
+.con-icono:has(> .control:focus) > app-icono {
+  color: var(--azul);
+}
+
+.con-icono .control--con-boton {
+  padding-right: 4rem;
+}
+
+.con-icono .boton-icono {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.opciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+}
+
+.recordar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+.recordar input {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin: 0;
+  border: 2px solid var(--borde-control);
+  border-radius: 0.35rem;
+  background: var(--superficie);
+  color: #fff;
+  cursor: inherit;
+}
+
+.recordar input:checked {
+  border-color: var(--azul);
+  background: var(--azul);
+}
+
+.recordar input:checked::before {
+  width: 0.4rem;
+  height: 0.65rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-1px) rotate(45deg);
+  content: '';
+}
+
+@media (forced-colors: active) {
+  .con-icono .control:focus {
+    border-color: Highlight;
+  }
+
+  .recordar input {
+    appearance: auto;
+  }
+
+  .recordar input:checked::before {
+    content: none;
+  }
+}
+
+.enlace {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--azul);
+  cursor: pointer;
+}
+
+.enlace:hover {
+  text-decoration: underline;
+}
+
+.boton--principal {
+  min-height: 3.5rem;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 48rem) {
+  main {
+    place-items: start center;
+    padding: 1rem;
+  }
+
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .marca app-logo {
+    zoom: 1;
+  }
+
+  form {
+    padding-block: 1.75rem;
+  }
+
+  .con-icono > app-icono {
+    left: 0.9rem;
+  }
+
+  .con-icono .control {
+    padding-left: 3.1rem;
+  }
+
+  .con-icono .control--con-boton {
+    padding-right: 3rem;
+  }
+
+  .con-icono .boton-icono {
+    right: 0.2rem;
+  }
+}

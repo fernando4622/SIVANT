@@ -1,0 +1,93 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>Consultar inventario</h1>
+</div>
+
+<app-pestanas-inventario />
+
+<form class="filtros" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+  <div class="buscador">
+    <app-icono nombre="buscar" />
+    <input
+      class="control"
+      type="search"
+      formControlName="q"
+      placeholder="Buscar artículo…"
+      aria-label="Buscar por nombre"
+      maxlength="120"
+    />
+  </div>
+  <select class="control" formControlName="tipo" aria-label="Filtrar por tipo">
+    <option value="">Todos los tipos</option>
+    <option value="INSUMO">Insumo</option>
+    <option value="PRODUCTO">Producto</option>
+  </select>
+  <select class="control" formControlName="nivelBajo" aria-label="Filtrar por nivel">
+    <option value="">Todos los niveles</option>
+    <option value="true">Nivel bajo</option>
+    <option value="false">Nivel suficiente</option>
+  </select>
+</form>
+
+<p class="mensaje"></p>
+
+@if (listado.vista().error; as error) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ error }}</p>
+      <button type="button" class="boton" (click)="listado.recargar()">Reintentar</button>
+    </div>
+  </div>
+} @else if (listado.pagina(); as datos) {
+  @if (datos.contenido.length) {
+    <ul class="existencias" [attr.aria-busy]="listado.vista().cargando">
+      @for (e of datos.contenido; track e.id) {
+        <li class="tarjeta existencia">
+          <div class="existencia__imagen" aria-hidden="true">
+            @if (e.imagen && !sinImagen().has(e.id)) {
+              <img [src]="e.imagen" alt="" loading="lazy" (error)="ocultarImagen(e.id)" />
+            } @else {
+              <app-icono [nombre]="e.tipo === 'INSUMO' ? 'inventario' : 'productos'" [tamano]="38" />
+            }
+          </div>
+
+          <div class="existencia__contenido">
+            <div class="existencia__encabezado">
+              <span class="nivel" [class.nivel--bajo]="e.nivelBajo">{{ e.nivelBajo ? 'Bajo' : 'Suficiente' }}</span>
+              <a
+                class="boton-icono"
+                [routerLink]="['/inventario/existencias', e.id]"
+                [attr.aria-label]="'Ver detalle de ' + e.nombre"
+                title="Ver detalle"
+              >
+                <app-icono nombre="ver" />
+              </a>
+            </div>
+
+            <div class="existencia__texto">
+              <h2>{{ e.nombre }}</h2>
+              <p>{{ e.tipo === 'INSUMO' ? 'Insumo' : 'Producto' }}{{ e.activo ? '' : ' · Inactivo' }}</p>
+            </div>
+
+            <dl class="existencia__cantidades">
+              <div>
+                <dt>Existencia</dt>
+                <dd>{{ cantidad(e.cantidadActual) }} {{ unidad(e.unidadMedida) }}</dd>
+              </div>
+              <div>
+                <dt>Nivel mínimo</dt>
+                <dd>{{ cantidad(e.nivelMinimo) }} {{ unidad(e.unidadMedida) }}</dd>
+              </div>
+            </dl>
+          </div>
+        </li>
+      }
+    </ul>
+    <app-paginacion [datos]="datos" elementos="artículos" (ir)="listado.irA($event)" />
+  } @else {
+    <p class="tarjeta">No hay artículos que coincidan con la búsqueda.</p>
+  }
+} @else {
+  <p role="status">Cargando existencias…</p>
+}

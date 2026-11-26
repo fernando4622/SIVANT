@@ -1,0 +1,223 @@
+.columnas {
+  grid-template-columns: minmax(16rem, 1.1fr) minmax(17rem, 1fr) minmax(18rem, 0.9fr);
+  align-items: start;
+}
+
+.imagen-producto {
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 1rem;
+  padding: 0.75rem;
+}
+
+.imagen-producto__reserva {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  gap: 0.75rem;
+  min-height: 0;
+  border-radius: var(--radio-chico);
+  background: var(--cabecera);
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.imagen-producto .boton {
+  width: 100%;
+}
+
+.imagen-producto__vista {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radio-chico);
+  object-fit: cover;
+  background: var(--cabecera);
+}
+
+.imagen-producto input[type='file']:focus-visible + label {
+  outline: 2.4px solid var(--azul, #1d4ed8);
+  outline-offset: 2px;
+}
+
+.datos-producto textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.columnas--edicion .imagen-producto,
+.columnas--edicion .datos-producto {
+  align-self: stretch;
+  height: 100%;
+}
+
+.precio {
+  position: relative;
+  max-width: 20rem;
+}
+
+.precio-estado {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1.5rem;
+}
+
+.estado-producto {
+  min-width: 8rem;
+}
+
+.campo__etiqueta {
+  font-weight: 650;
+}
+
+.interruptor {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3rem;
+  cursor: pointer;
+}
+
+.interruptor input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.interruptor__control {
+  position: relative;
+  width: 2.9rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: var(--texto-suave);
+  transition: background 150ms ease;
+}
+
+.interruptor__control::after {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  content: '';
+  transition: translate 150ms ease;
+}
+
+.interruptor input:checked + .interruptor__control {
+  background: var(--verde);
+}
+
+.interruptor input:checked + .interruptor__control::after {
+  translate: 1.25rem 0;
+}
+
+.interruptor input:focus-visible + .interruptor__control {
+  box-shadow: 0 0 0 2px var(--azul);
+}
+
+.informacion-producto .aviso a {
+  display: inline-block;
+  margin-top: 0.65rem;
+  text-decoration: none;
+}
+
+.acciones-producto {
+  display: grid;
+  grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.55fr);
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.acciones-producto .boton {
+  width: 100%;
+}
+
+.acciones-producto .boton--principal {
+  white-space: nowrap;
+}
+
+.precio span {
+  position: absolute;
+  left: 1.1rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--texto-suave);
+}
+
+.precio .control {
+  padding-left: 2.5rem;
+  font-weight: 600;
+}
+
+.par {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 1rem;
+}
+
+.insumo {
+  display: grid;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--borde);
+}
+
+.receta__encabezado {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.receta__encabezado span {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.insumo__cantidad {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+@media (max-width: 65rem) {
+  .columnas {
+    grid-template-columns: minmax(10rem, 0.65fr) minmax(20rem, 1.35fr);
+  }
+
+  .informacion-producto {
+    grid-column: 1 / -1;
+  }
+
+  .acciones-producto {
+    max-width: 100%;
+  }
+
+  .imagen-producto,
+  .datos-producto {
+    height: auto;
+  }
+}
+
+@media (max-width: 42rem) {
+  .columnas,
+  .precio-estado {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .informacion-producto {
+    grid-column: auto;
+  }
+
+  .acciones-producto {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: none;
+  }
+}

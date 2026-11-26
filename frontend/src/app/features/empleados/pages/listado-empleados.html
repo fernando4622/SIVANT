@@ -1,0 +1,84 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/inicio" aria-label="Volver a inicio"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>Gestionar empleados</h1>
+</div>
+
+<form class="filtros filtros--con-accion" role="search" [formGroup]="filtros" (ngSubmit)="listado.recargar()">
+  <div class="buscador">
+    <app-icono nombre="buscar" />
+    <input
+      class="control"
+      type="search"
+      formControlName="q"
+      placeholder="Buscar empleado…"
+      aria-label="Buscar por nombre o correo"
+      maxlength="150"
+    />
+  </div>
+  <select class="control" formControlName="rol" aria-label="Filtrar por cargo">
+    <option value="">Todos los cargos</option>
+    @for (rol of roles; track rol) {
+      <option [value]="rol">{{ nombreRol[rol] }}</option>
+    }
+  </select>
+  <select class="control" formControlName="estado" aria-label="Filtrar por estado">
+    <option value="">Todos los estados</option>
+    <option value="ACTIVO">Activo</option>
+    <option value="INACTIVO">Inactivo</option>
+  </select>
+  <a class="boton boton--principal" routerLink="/empleados/nuevo">
+    <app-icono nombre="mas" />
+    Nuevo empleado
+  </a>
+</form>
+
+<p class="mensaje"></p>
+
+@if (listado.vista().error; as error) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ error }}</p>
+      <button type="button" class="boton" (click)="listado.recargar()">Reintentar</button>
+    </div>
+  </div>
+} @else if (listado.pagina(); as datos) {
+  @if (datos.contenido.length) {
+    <ul class="empleados" [attr.aria-busy]="listado.vista().cargando">
+      @for (empleado of datos.contenido; track empleado.id) {
+        <li class="tarjeta empleado">
+          <div class="avatar" aria-hidden="true">{{ iniciales(empleado.nombreCompleto) }}</div>
+          <div class="empleado__contenido">
+            <div class="empleado__encabezado">
+              <span class="estado" [class.estado--inactivo]="empleado.estado === 'INACTIVO'">
+                {{ empleado.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}
+              </span>
+              <a
+                class="boton-icono"
+                [routerLink]="['/empleados', empleado.id]"
+                [attr.aria-label]="'Editar a ' + empleado.nombreCompleto"
+                title="Editar"
+              >
+                <app-icono nombre="editar" />
+              </a>
+            </div>
+            <div class="empleado__texto">
+              <h2>{{ empleado.nombreCompleto }}</h2>
+              <p>{{ empleado.correo }}</p>
+            </div>
+            <p class="empleado__cargo">
+              <img class="icono-cargo" [src]="imagenRol[empleado.rol]" alt="" />
+              {{ nombreRol[empleado.rol] }}
+            </p>
+          </div>
+        </li>
+      }
+    </ul>
+
+    <app-paginacion [datos]="datos" elementos="empleados" (ir)="listado.irA($event)" />
+  } @else {
+    <p class="tarjeta">No hay empleados que coincidan con la búsqueda.</p>
+  }
+} @else {
+  <p role="status">Cargando empleados…</p>
+}

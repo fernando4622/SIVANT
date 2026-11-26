@@ -1,0 +1,412 @@
+/* Sistema visual de SIVANT, tomado de las interfaces de referencia.
+   Las pantallas de las fases siguientes reutilizan estas variables y clases. */
+:root {
+  --marino: #222f46;
+  --marino-texto: #f4f6fb;
+  --marino-borde: #3d4a63;
+  --azul: #2456cf;
+  --azul-fuerte: #1c46ad;
+  --azul-aviso: #eaf0ff;
+  --azul-avatar: #e2e9ff;
+  --fondo: #fcfcfe;
+  --fondo-acceso: #eef0f5;
+  --superficie: #ffffff;
+  --cabecera: #edf0f8;
+  --borde: #e0e3ef;
+  /* Contraste mínimo 3:1 en los límites de controles. */
+  --borde-control: #868ea6;
+  --texto: #0f1a3a;
+  --texto-suave: #4a5573;
+  --verde: #0f7a45;
+  --verde-fondo: #e1f5ea;
+  --naranja: #9a4a00;
+  --naranja-fondo: #fff0e2;
+  --rojo: #c01f2e;
+  --rojo-fuerte: #9e1926;
+  --rojo-fondo: #fdecee;
+  --radio: 0.75rem;
+  --radio-chico: 0.5rem;
+  --sombra: 0 2px 10px rgb(15 26 58 / 8%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 12 pt equivalen a 16 px: es el tamaño mínimo de texto (RNF15). */
+html {
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: 'Inter Variable', system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem);
+  font-weight: 650;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+a {
+  color: var(--azul);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--azul);
+  outline-offset: 2px;
+}
+
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Botones */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.6rem 1.5rem;
+  border: 2px solid var(--borde-control);
+  border-radius: var(--radio-chico);
+  background: var(--superficie);
+  color: var(--texto);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.boton:hover {
+  background: var(--cabecera);
+}
+
+.boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.boton--principal {
+  border-color: var(--azul);
+  background: var(--azul);
+  color: #fff;
+}
+
+.boton--principal:hover:not(:disabled) {
+  border-color: var(--azul-fuerte);
+  background: var(--azul-fuerte);
+}
+
+.boton--peligro {
+  border-color: var(--rojo);
+  background: var(--rojo);
+  color: #fff;
+}
+
+.boton--peligro:hover:not(:disabled) {
+  border-color: var(--rojo-fuerte);
+  background: var(--rojo-fuerte);
+}
+
+.boton-icono {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: var(--radio-chico);
+  background: transparent;
+  color: var(--texto);
+  cursor: pointer;
+}
+
+.boton-icono:hover {
+  background: var(--cabecera);
+}
+
+.boton-icono--peligro {
+  color: var(--rojo);
+}
+
+.boton-icono--reactivar {
+  color: var(--azul);
+}
+
+/* Encabezado de pantalla */
+.pantalla__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid var(--borde);
+}
+
+.pantalla__encabezado h1 {
+  flex: 1 1 12rem;
+}
+
+/* Tarjetas y avisos */
+.tarjeta {
+  padding: 1.5rem;
+  border: 2px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+}
+
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radio);
+  background: var(--azul-aviso);
+}
+
+.aviso app-icono {
+  flex: none;
+  color: var(--azul);
+}
+
+.aviso--error {
+  background: var(--rojo-fondo);
+}
+
+.aviso--error app-icono {
+  color: var(--rojo);
+}
+
+/* Pestañas en forma de píldora */
+.pildoras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.pildora {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.4rem 1.4rem;
+  border-radius: 999px;
+  background: var(--cabecera);
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.pildora--activa {
+  background: var(--azul);
+  color: #fff;
+}
+
+/* Detalle en dos columnas */
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.pila {
+  display: grid;
+  gap: 1rem;
+}
+
+.datos-lista {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem 1.5rem;
+  margin: 1rem 0 0;
+}
+
+.datos-lista dt {
+  color: var(--texto-suave);
+}
+
+.datos-lista dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 60rem) {
+  .columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Etiquetas de estado */
+.etiqueta {
+  white-space: nowrap;
+}
+
+.numero {
+  font-variant-numeric: tabular-nums;
+}
+
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.estado::before {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--verde);
+  content: '';
+}
+
+.estado--inactivo::before,
+.estado--cancelado::before {
+  background: var(--rojo);
+}
+
+.etiqueta {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 0.25rem 0.85rem;
+  border-radius: 999px;
+  background: var(--cabecera);
+}
+
+.etiqueta--alerta {
+  background: var(--naranja-fondo);
+  color: var(--naranja);
+}
+
+.etiqueta--bien {
+  background: var(--verde-fondo);
+  color: var(--verde);
+}
+
+.etiqueta--mal {
+  background: var(--rojo-fondo);
+  color: var(--rojo);
+}
+
+.etiqueta--proceso {
+  background: var(--azul-avatar);
+  color: var(--azul-fuerte);
+}
+
+/* Formularios */
+.campo {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.campo > label {
+  font-weight: 600;
+}
+
+.control {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.6rem 1rem;
+  border: 2px solid var(--borde-control);
+  border-radius: var(--radio-chico);
+  background-color: var(--superficie);
+}
+
+.control:focus {
+  border-color: var(--azul);
+  outline: none;
+}
+
+select.control {
+  appearance: none;
+  padding-inline-end: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%230f1a3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 1rem;
+}
+
+@media (forced-colors: active) {
+  .control:focus {
+    border-color: Highlight;
+  }
+
+  select.control {
+    appearance: auto;
+    padding-inline-end: 1rem;
+    background-image: none;
+  }
+}
+
+textarea.control {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--rojo);
+}
+
+.control::placeholder {
+  color: var(--texto-suave);
+  opacity: 1;
+}
+
+.campo__error {
+  color: var(--rojo);
+}
+
+.campo__ayuda {
+  color: var(--texto-suave);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+@media (max-width: 30rem) {
+  .acciones .boton {
+    flex: 1 1 100%;
+  }
+
+  .tarjeta {
+    padding: 1.1rem;
+  }
+}

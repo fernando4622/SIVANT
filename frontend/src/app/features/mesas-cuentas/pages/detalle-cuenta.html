@@ -1,0 +1,181 @@
+<div class="pantalla__encabezado">
+  <a class="boton-icono" routerLink="/mesas" aria-label="Volver a mesas"><app-icono nombre="atras" [tamano]="30" /></a>
+  <h1>Cuenta {{ id() }}</h1>
+  @if (cuenta(); as c) {
+    <span class="mesa" [class.mesa--cerrada]="c.estado === 'CERRADA'">Mesa {{ c.mesa }}</span>
+  }
+</div>
+
+@if (errorCarga(); as mensaje) {
+  <div class="aviso aviso--error" role="alert">
+    <app-icono nombre="info" [tamano]="32" />
+    <div>
+      <p>{{ mensaje }}</p>
+      <button type="button" class="boton" (click)="cargar()">Reintentar</button>
+    </div>
+  </div>
+}
+
+<div role="status">
+  @if (servida(); as s) {
+    <div class="aviso">
+      <app-icono nombre="palomita" [tamano]="28" />
+      <p>
+        La comanda {{ s.comanda.id }} quedó servida.
+        @if (faltantes()) {
+          Se avisó a almacén por existencia insuficiente de: {{ faltantes() }}.
+        }
+      </p>
+    </div>
+  }
+</div>
+
+@if (cuenta(); as c) {
+  <div class="columnas">
+    <div class="pila">
+      <div class="seccion-encabezado">
+        <div>
+          <h2>Comandas</h2>
+          <p>Productos registrados en esta cuenta.</p>
+        </div>
+        <span>{{ c.comandas.length }}</span>
+      </div>
+      @for (comanda of c.comandas; track comanda.id) {
+        <app-tarjeta-comanda [comanda]="comanda">
+          @if (comanda.acciones.length) {
+            <div class="acciones">
+              @if (comanda.acciones.includes('EDITAR')) {
+                <a
+                  class="boton"
+                  [routerLink]="['/cuentas', c.id, 'comandas', comanda.id, 'modificar']"
+                  [attr.aria-label]="'Modificar comanda ' + comanda.id"
+                >
+                  <app-icono nombre="editar" />
+                  Modificar
+                </a>
+              }
+              @if (comanda.acciones.includes('SERVIR')) {
+                <button
+                  type="button"
+                  class="boton boton--principal"
+                  [attr.aria-label]="'Marcar servida la comanda ' + comanda.id"
+                  (click)="pedirServicio(comanda)"
+                >
+                  <app-icono nombre="palomita" />
+                  Marcar servida
+                </button>
+              }
+              @if (comanda.acciones.includes('CANCELAR')) {
+                <a
+                  class="boton boton--peligro"
+                  [routerLink]="['/cuentas', c.id, 'comandas', comanda.id, 'cancelar']"
+                  [attr.aria-label]="'Cancelar comanda ' + comanda.id"
+                >
+                  <app-icono nombre="basura" />
+                  Cancelar comanda
+                </a>
+              }
+            </div>
+          }
+        </app-tarjeta-comanda>
+      } @empty {
+        <div class="tarjeta estado-vacio">
+          <span><app-icono nombre="productos" [tamano]="28" /></span>
+          <div>
+            <h2>Aún no hay comandas</h2>
+            <p>Agrega productos para comenzar la cuenta.</p>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="pila panel-lateral">
+      <section class="tarjeta resumen-cuenta" aria-labelledby="titulo-cuenta">
+        <div class="resumen-titulo">
+          <span><app-icono nombre="ventas" [tamano]="26" /></span>
+          <div>
+            <h2 id="titulo-cuenta">Información de la cuenta</h2>
+            <p>Mesa {{ c.mesa }}</p>
+          </div>
+        </div>
+        <dl class="datos-lista">
+          <dt>Estado:</dt>
+          <dd>
+            <span class="estado-cuenta" [class.estado-cuenta--cerrada]="c.estado === 'CERRADA'">
+              {{ c.estado === 'ABIERTA' ? 'Abierta' : 'Cerrada' }}
+            </span>
+          </dd>
+          <dt>Mesero:</dt>
+          <dd>{{ c.mesero }}</dd>
+          <dt>Apertura:</dt>
+          <dd>{{ fechaHora(c.fechaHoraApertura) }}</dd>
+          @if (c.fechaHoraCierre; as cierre) {
+            <dt>Cierre:</dt>
+            <dd>{{ fechaHora(cierre) }}</dd>
+          }
+          @if (c.cobro; as cobro) {
+            <dt>Cobro:</dt>
+            <dd>{{ metodos[cobro.metodo] ?? cobro.metodo }}</dd>
+            @if (cobro.referenciaExterna; as referencia) {
+              <dt>Referencia:</dt>
+              <dd>{{ referencia }}</dd>
+            }
+            @if (cobro.estado === 'CANCELADA') {
+              <dt>Venta:</dt>
+              <dd>Cancelada</dd>
+            }
+          }
+        </dl>
+        <p class="total">
+          <span>Total</span>
+          <strong>{{ dinero(c.total) }}</strong>
+        </p>
+      </section>
+
+      @if (c.acciones.includes('COBRAR')) {
+        <a class="boton boton--principal accion-cuenta" [routerLink]="['/cuentas', c.id, 'cobro']">
+          <app-icono nombre="cobro" />
+          Cobrar {{ dinero(c.total) }}
+        </a>
+      } @else if (porServirAun()) {
+        <p class="campo__ayuda">Para cobrar, todas las comandas no canceladas deben estar servidas.</p>
+      }
+      @if (c.acciones.includes('ENVIAR_COMANDA')) {
+        <a class="boton boton--principal accion-cuenta" [routerLink]="['/cuentas', c.id, 'comandas', 'nueva']">
+          <app-icono nombre="mas" />
+          Nueva comanda
+        </a>
+      }
+      @if (c.acciones.includes('CERRAR_SIN_COBRO')) {
+        <button type="button" class="boton accion-cuenta" (click)="pedirCierre()">Cerrar sin cobro</button>
+      }
+    </div>
+  </div>
+} @else if (!errorCarga()) {
+  <p role="status">Cargando cuenta…</p>
+}
+
+<app-confirmacion
+  #servicio
+  titulo="Marcar servida"
+  accion="Marcar servida"
+  icono="palomita"
+  [peligro]="false"
+  [ocupado]="sirviendo()"
+  [error]="errorServicio()"
+  (confirmado)="servir()"
+>
+  La comanda {{ porServir()?.id }} se entregó al cliente. Se descontará del inventario y ya no podrá cancelarse.
+</app-confirmacion>
+
+<app-confirmacion
+  #cierre
+  titulo="Cerrar sin cobro"
+  accion="Cerrar cuenta"
+  icono="palomita"
+  [ocupado]="cerrando()"
+  [error]="errorCierre()"
+  (confirmado)="cerrar()"
+>
+  La cuenta no tiene comandas por cobrar. Se cerrará y la mesa quedará libre.
+</app-confirmacion>

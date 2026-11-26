@@ -49,14 +49,15 @@ public class VentasJdbc {
                 .params(cuenta, fecha, total).query(Long.class).single();
     }
 
-    /** Falso si la referencia ya se usó ese día con ese método. */
-    public boolean insertarPago(Long venta, Long mesero, OffsetDateTime fecha, BigDecimal monto, MetodoPago metodo,
+    /** Vacío si la referencia ya se usó ese día con ese método. */
+    public Optional<Long> insertarPago(Long venta, Long mesero, OffsetDateTime fecha, BigDecimal monto, MetodoPago metodo,
             String referencia) {
         return sql.sql("""
                 INSERT INTO sivant.pago (id_venta, id_mesero, fecha_hora, monto, metodo, referencia_externa)
                 VALUES (:venta, :mesero, :fecha, :monto, :metodo, CAST(:referencia AS text)) ON CONFLICT DO NOTHING
+                RETURNING id_pago
                 """).param("venta", venta).param("mesero", mesero).param("fecha", fecha).param("monto", monto)
-                .param("metodo", metodo.name()).param("referencia", referencia).update() > 0;
+                .param("metodo", metodo.name()).param("referencia", referencia).query(Long.class).optional();
     }
 
     public void bloquear(Long id) {

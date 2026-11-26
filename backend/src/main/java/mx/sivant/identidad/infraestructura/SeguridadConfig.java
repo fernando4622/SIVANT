@@ -71,6 +71,10 @@ class SeguridadConfig {
                         .requestMatchers(HttpMethod.GET, API + "/cocina/cola").hasAuthority("COCINERO")
                         .requestMatchers(HttpMethod.POST, API + "/comandas/*/preparacion", API + "/comandas/*/lista")
                         .hasAuthority("COCINERO")
+                        .requestMatchers(HttpMethod.GET, API + "/cuentas/*/fondo-cambio").hasAnyAuthority("MESERO", "CAJERO")
+                        .requestMatchers(HttpMethod.POST, API + "/cuentas/*/fondo-cambio",
+                                API + "/cuentas/*/fondo-cambio/anulacion").hasAuthority("CAJERO")
+                        .requestMatchers(API + "/caja/**").hasAuthority("CAJERO")
                         .requestMatchers(HttpMethod.GET, API + "/ventas/**").hasAnyAuthority("ADMINISTRADOR", "CAJERO")
                         .requestMatchers(HttpMethod.POST, API + "/ventas/*/cancelacion").hasAuthority("ADMINISTRADOR")
                         // Cada módulo nuevo declara aquí sus roles. Lo no declarado se rechaza.

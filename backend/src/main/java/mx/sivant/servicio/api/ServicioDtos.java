@@ -160,10 +160,13 @@ public final class ServicioDtos {
         }
     }
 
+    public record Fondo(String id, String monto, String estado, String cajero, OffsetDateTime fechaHora) {
+    }
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Cuenta(String id, String mesaId, int mesa, String mesero, EstadoCuenta estado,
             OffsetDateTime fechaHoraApertura, OffsetDateTime fechaHoraCierre, int version, String total,
-            List<Comanda> comandas, Cobro cobro, List<String> acciones) {
+            List<Comanda> comandas, Cobro cobro, Fondo fondo, List<String> acciones) {
 
         public static Cuenta de(DatosServicio.Cuenta c, EmpleadoPrincipal actor) {
             List<String> acciones = new ArrayList<>();
@@ -172,14 +175,23 @@ public final class ServicioDtos {
                 if (c.cobrable()) {
                     acciones.add("COBRAR");
                 }
-                if (!c.tieneComandasVigentes()) {
+                if (!c.tieneComandasVigentes() && !c.fondoPendiente()) {
                     acciones.add("CERRAR_SIN_COBRO");
+                }
+            }
+            if (c.abierta() && actor.rol().equals("CAJERO")) {
+                if (c.fondo() == null && c.tieneComandasVigentes() && c.total().signum() > 0) {
+                    acciones.add("ENTREGAR_FONDO");
+                } else if (c.fondoPendiente()) {
+                    acciones.add("ANULAR_FONDO");
                 }
             }
             return new Cuenta(c.id().toString(), c.mesaId().toString(), c.mesa(), c.mesero(), c.estado(),
                     c.fechaHoraApertura(), c.fechaHoraCierre(), c.version(), Decimales.dinero(c.total()),
                     c.comandas().stream().map(o -> Comanda.de(o, c.abierta(), actor)).toList(),
-                    c.cobro() == null ? null : Cobro.de(c.cobro()), acciones);
+                    c.cobro() == null ? null : Cobro.de(c.cobro()),
+                    c.fondo() == null ? null : new Fondo(c.fondo().id().toString(), Decimales.dinero(c.fondo().monto()),
+                            c.fondo().estado(), c.fondo().cajero(), c.fondo().fechaHora()), acciones);
         }
     }
 }

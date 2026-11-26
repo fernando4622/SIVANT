@@ -117,7 +117,7 @@ import { CLASE_VENTA, NOMBRE_METODO, NOMBRE_VENTA, Opciones, VentasApi } from '.
                 </td>
                 <td data-etiqueta="Mesero">
                   <span class="dato-icono">
-                    <app-icono nombre="persona" [tamano]="19" />
+                    <img class="dato-icono__rol" src="/cargo-mesero.png" alt="" />
                     {{ v.mesero }}
                   </span>
                 </td>
@@ -183,6 +183,13 @@ import { CLASE_VENTA, NOMBRE_METODO, NOMBRE_VENTA, Opciones, VentasApi } from '.
     .dato-icono app-icono {
       flex: none;
       color: var(--texto-suave);
+    }
+
+    .dato-icono__rol {
+      width: 1.65rem;
+      height: 1.65rem;
+      flex: none;
+      object-fit: contain;
     }
 
   `,

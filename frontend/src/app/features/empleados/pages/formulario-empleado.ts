@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { of, switchMap } from 'rxjs';
 import { NOMBRE_ROL, ROLES, Rol } from '../../../core/auth/rol';
 import { Sesion } from '../../../core/auth/sesion';
 import { leerProblema } from '../../../core/http/problema';
@@ -35,6 +36,7 @@ export class FormularioEmpleado implements OnInit {
     correo: ['', [Validators.required, Validators.pattern(CORREO), Validators.maxLength(254)]],
     contrasena: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
     rol: this.fb.control<Rol | ''>('', Validators.required),
+    activo: true,
   });
 
   protected readonly original = signal<Empleado | null>(null);
@@ -54,7 +56,7 @@ export class FormularioEmpleado implements OnInit {
       contrasena.updateValueAndValidity();
       this.cargar();
     }
-    for (const campo of Object.keys(this.formulario.controls) as Campo[]) {
+    for (const campo of ['nombreCompleto', 'correo', 'contrasena', 'rol'] as Campo[]) {
       this.formulario.controls[campo].valueChanges.subscribe(() =>
         this.erroresServidor.update((errores) => ({ ...errores, [campo]: undefined })),
       );
@@ -68,7 +70,7 @@ export class FormularioEmpleado implements OnInit {
       next: (empleado) => {
         const { nombreCompleto, correo, rol } = empleado;
         this.original.set(empleado);
-        this.formulario.patchValue({ nombreCompleto, correo, rol });
+        this.formulario.patchValue({ nombreCompleto, correo, rol, activo: empleado.estado === 'ACTIVO' });
         this.cargando.set(false);
       },
       error: (error: unknown) => {
@@ -109,18 +111,28 @@ export class FormularioEmpleado implements OnInit {
       this.enfocarPrimerError();
       return;
     }
-    const datos = this.formulario.getRawValue() as DatosEmpleado;
+    const valor = this.formulario.getRawValue();
+    const datos: DatosEmpleado = {
+      nombreCompleto: valor.nombreCompleto,
+      correo: valor.correo,
+      contrasena: valor.contrasena,
+      rol: valor.rol as Rol,
+    };
     const id = this.id();
     let operacion;
     if (id === undefined) {
       operacion = this.api.registrar(datos);
     } else {
       const cambios = this.cambios(datos);
-      if (Object.keys(cambios).length === 0) {
+      const cambiaEstado = valor.activo !== (this.original()?.estado === 'ACTIVO');
+      if (Object.keys(cambios).length === 0 && !cambiaEstado) {
         this.error.set('No hay cambios por guardar.');
         return;
       }
-      operacion = this.api.editar(id, cambios);
+      const estado = () => (valor.activo ? this.api.reactivar(id) : this.api.desactivar(id));
+      operacion = Object.keys(cambios).length
+        ? this.api.editar(id, cambios).pipe(switchMap((empleado) => (cambiaEstado ? estado() : of(empleado))))
+        : estado();
     }
     this.guardando.set(true);
     operacion.subscribe({

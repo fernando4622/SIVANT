@@ -32,7 +32,7 @@
   </a>
 </form>
 
-<p class="mensaje" role="status">{{ mensaje() }}</p>
+<p class="mensaje"></p>
 
 @if (listado.vista().error; as error) {
   <div class="aviso aviso--error" role="alert">
@@ -44,36 +44,15 @@
   </div>
 } @else if (listado.pagina(); as datos) {
   @if (datos.contenido.length) {
-    <table [attr.aria-busy]="listado.vista().cargando">
-      <caption class="solo-lector">
-        Empleados registrados
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">Nombre</th>
-          <th scope="col">Correo</th>
-          <th scope="col">Cargo</th>
-          <th scope="col">Estado</th>
-          <th scope="col">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (empleado of datos.contenido; track empleado.id) {
-          <tr>
-            <th scope="row">
-              <span class="nombre">
-                <span class="avatar" aria-hidden="true">{{ iniciales(empleado.nombreCompleto) }}</span>
-                {{ empleado.nombreCompleto }}
-              </span>
-            </th>
-            <td>{{ empleado.correo }}</td>
-            <td>{{ nombreRol[empleado.rol] }}</td>
-            <td>
+    <ul class="empleados" [attr.aria-busy]="listado.vista().cargando">
+      @for (empleado of datos.contenido; track empleado.id) {
+        <li class="tarjeta empleado">
+          <div class="avatar" aria-hidden="true">{{ iniciales(empleado.nombreCompleto) }}</div>
+          <div class="empleado__contenido">
+            <div class="empleado__encabezado">
               <span class="estado" [class.estado--inactivo]="empleado.estado === 'INACTIVO'">
                 {{ empleado.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}
               </span>
-            </td>
-            <td class="celda-acciones">
               <a
                 class="boton-icono"
                 [routerLink]="['/empleados', empleado.id]"
@@ -82,22 +61,19 @@
               >
                 <app-icono nombre="editar" />
               </a>
-              <button
-                type="button"
-                class="boton-icono"
-                [class.boton-icono--peligro]="empleado.estado === 'ACTIVO'"
-                [class.boton-icono--reactivar]="empleado.estado === 'INACTIVO'"
-                [attr.aria-label]="(empleado.estado === 'ACTIVO' ? 'Desactivar a ' : 'Reactivar a ') + empleado.nombreCompleto"
-                [title]="empleado.estado === 'ACTIVO' ? 'Desactivar' : 'Reactivar'"
-                (click)="pedirConfirmacion(empleado)"
-              >
-                <app-icono [nombre]="empleado.estado === 'ACTIVO' ? 'basura' : 'reactivar'" />
-              </button>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            </div>
+            <div class="empleado__texto">
+              <h2>{{ empleado.nombreCompleto }}</h2>
+              <p>{{ empleado.correo }}</p>
+            </div>
+            <p class="empleado__cargo">
+              <img class="icono-cargo" [src]="imagenRol[empleado.rol]" alt="" />
+              {{ nombreRol[empleado.rol] }}
+            </p>
+          </div>
+        </li>
+      }
+    </ul>
 
     <app-paginacion [datos]="datos" elementos="empleados" (ir)="listado.irA($event)" />
   } @else {
@@ -106,20 +82,3 @@
 } @else {
   <p role="status">Cargando empleados…</p>
 }
-
-<app-confirmacion
-  [titulo]="reactivacion() ? 'Reactivar empleado' : 'Desactivar empleado'"
-  [accion]="reactivacion() ? 'Reactivar' : 'Desactivar'"
-  [peligro]="!reactivacion()"
-  [icono]="reactivacion() ? 'reactivar' : 'basura'"
-  [ocupado]="actualizando()"
-  [error]="errorActualizacion()"
-  (confirmado)="cambiarEstado()"
->
-  <strong>{{ seleccionado()?.nombreCompleto }}</strong>
-  @if (reactivacion()) {
-    podrá volver a iniciar sesión con su cargo actual.
-  } @else {
-    perderá el acceso al sistema y se cerrarán sus sesiones abiertas. Sus datos e historial se conservan.
-  }
-</app-confirmacion>

@@ -92,18 +92,20 @@
           </select>
           <span id="rol-error" class="campo__error">{{ errorDe('rol') }}</span>
         </div>
+
+        @if (id()) {
+          <div class="campo estado-empleado">
+            <span class="campo__etiqueta">Estado</span>
+            <label class="interruptor">
+              <input type="checkbox" formControlName="activo" />
+              <span class="interruptor__control" aria-hidden="true"></span>
+              <span>{{ formulario.controls.activo.value ? 'Activo' : 'Inactivo' }}</span>
+            </label>
+          </div>
+        }
       </section>
 
       <div class="informacion">
-        @if (original(); as empleado) {
-          <section class="tarjeta" aria-labelledby="titulo-cuenta">
-            <h2 id="titulo-cuenta">Información de la cuenta</h2>
-            <dl>
-              <dt>Estado:</dt>
-              <dd>{{ empleado.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}</dd>
-            </dl>
-          </section>
-        }
         <div class="aviso">
           <app-icono nombre="info" [tamano]="32" />
           <p>

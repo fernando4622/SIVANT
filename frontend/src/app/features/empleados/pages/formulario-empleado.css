@@ -41,6 +41,60 @@ dd {
   margin: 0;
 }
 
+.campo__etiqueta {
+  font-weight: 650;
+}
+
+.interruptor {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3rem;
+  cursor: pointer;
+}
+
+.interruptor input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.interruptor__control {
+  position: relative;
+  width: 2.9rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: var(--texto-suave);
+  transition: background 150ms ease;
+}
+
+.interruptor__control::after {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  content: '';
+  transition: translate 150ms ease;
+}
+
+.interruptor input:checked + .interruptor__control {
+  background: var(--verde);
+}
+
+.interruptor input:checked + .interruptor__control::after {
+  translate: 1.25rem 0;
+}
+
+.interruptor input:focus-visible + .interruptor__control {
+  box-shadow: 0 0 0 2px var(--azul);
+}
+
 .aviso p {
   min-width: 0;
 }

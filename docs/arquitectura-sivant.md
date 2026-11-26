@@ -25,7 +25,7 @@ La TPV opera de forma externa. El mesero captura la referencia de un cargo ya ap
 |---|---|---|
 | Identidad | Inicio y cierre de sesión, principal y permisos | Consulta empleados activos |
 | Empleados | Alta, consulta, edición, desactivación | Identidad consulta su estado y rol |
-| Catálogo | Artículos, productos, subtipos y recetas | Inventario inicializa existencias para reventa. Comandas consulta precios. Inventario consulta receta al servir |
+| Catálogo | Artículos, productos, subtipos, recetas e imagen opcional del producto | Inventario inicializa existencias para reventa. Comandas consulta precios. Inventario consulta receta al servir |
 | Servicio | Mesas, cuentas, comandas, detalles, estados y cancelación de comanda | Cocina y ventas usan sus interfaces de aplicación. Al servir invoca inventario y notificaciones |
 | Cocina | Vista ordenada y acciones de preparación | Ejecuta transiciones en servicio y consulta notificaciones |
 | Ventas y caja | Cobro, pagos, cancelación de ventas, rendición de efectivo y cambio | Cobro bloquea y cierra la cuenta mediante servicio. Caja usa pagos en efectivo |
@@ -81,7 +81,7 @@ Usar componentes standalone, carga diferida por funcionalidad, formularios react
 | `/cocina` | Cocinero | Cola, inicio, listo y avisos de modificación o cancelación |
 | `/ventas`, `/ventas/:id` | Administrador, cajero | Historial, filtros, detalle. Cancelación solo para administrador |
 | `/caja/entregas` | Cajero | Pagos en efectivo pendientes, recepción con lo recibido y cambio |
-| `/productos` | Administrador. Mesero con catálogo operativo | Búsqueda y estado. Alta, edición y desactivación para administrador |
+| `/productos` | Administrador. Mesero con catálogo operativo | Búsqueda y estado, con la imagen del producto o un marcador si no tiene. Alta, edición, desactivación e imagen para administrador |
 | `/empleados` | Administrador | Listado, filtros y gestión |
 | `/inventario`, `/inventario/ajustes` | Almacenista, administrador | Existencias e historial. Almacenista registra movimientos y solicita ajustes. Administrador resuelve solicitudes |
 | `/notificaciones` | Sesión activa | Bandeja filtrada por destinatario autorizado |
@@ -120,7 +120,7 @@ Sesión de Spring Security con cookie `HttpOnly`, `Secure` en HTTPS y `SameSite=
 | Cancelar comanda | `CAJERO` |
 | Consultar cocina, iniciar preparación y marcar lista | `COCINERO` |
 | Consultar venta y cancelar venta | Consultar `ADMINISTRADOR` o `CAJERO`. Cancelar `ADMINISTRADOR` |
-| Gestionar empleados y productos | `ADMINISTRADOR`. Mesero puede consultar productos activos |
+| Gestionar empleados y productos | `ADMINISTRADOR`, incluida la imagen del producto. Mesero puede consultar productos activos. Cualquier sesión puede ver la imagen de un producto |
 | Consultar inventario y resolver ajuste | Consultar `ADMINISTRADOR` o `ALMACENISTA`. Resolver `ADMINISTRADOR` |
 | Registrar movimiento manual y solicitar ajuste | `ALMACENISTA` |
 | Registrar recepción de efectivo y cambio | `CAJERO` |
@@ -142,7 +142,8 @@ Los DTO públicos continúan usando el nombre del rol, por ejemplo `MESERO` o `C
 | RF03 | `POST /comandas/:id/cancelacion` | `version` y `justificacion`. Devuelve comanda cancelada |
 | RF04, RF05 | `POST /cuentas/:id/cobro` | `versionCuenta, metodo, referenciaExterna, totalEsperado`. Devuelve venta, pago y cuenta cerrada |
 | RF06 | `GET /ventas`, `GET /ventas/:id` | Filtros `desde,hasta,estado,metodo,meseroId,mesaId`. Detalle con pago y cancelación |
-| RF07, RF08, RF09, RF10 | `POST /productos`, `GET /productos`, `GET /productos/:id`, `PATCH /productos/:id`, `POST /productos/:id/desactivacion` | Alta con `nombre,descripcion,precioVenta,tipo,unidadMedida` y receta o nivel mínimo según tipo. Filtros `q,activo,tipo`. Edición de nombre, descripción y precio |
+| RF07, RF08, RF09, RF10 | `POST /productos`, `GET /productos`, `GET /productos/:id`, `PATCH /productos/:id`, `POST /productos/:id/desactivacion` | Alta con `nombre,descripcion,precioVenta,tipo,unidadMedida` y receta o nivel mínimo según tipo. Filtros `q,activo,tipo`. Edición de nombre, descripción y precio. La consulta incluye `imagen`: ruta con la huella como versión, o nula |
+| RF07, RF09 (imagen) | `PUT /productos/:id/imagen`, `DELETE /productos/:id/imagen`, `GET /productos/:id/imagen` | `PUT` en `multipart/form-data` con el campo `archivo`. Devuelve el producto. `GET` sirve los bytes con su tipo, `ETag` igual a la huella y caché privada |
 | RF11, RF12, RF13, RF14 | `POST /empleados`, `GET /empleados`, `GET /empleados/:id`, `PATCH /empleados/:id`, `POST /empleados/:id/desactivacion` | Alta con `nombreCompleto,correo,contrasena,rol`. Filtros `nombre,correo,rol,estado`. Edición parcial. Desactivación con `confirmado` |
 | RF15 | `POST /inventario/ajustes/:id/resolucion` | `decision` igual a `AUTORIZADA` o `RECHAZADA`. Devuelve solicitud resuelta |
 | RF16 | `GET /inventario/existencias`, `GET /inventario/existencias/:id/movimientos` | Filtros `q,tipo,nivelBajo` para existencias y fechas para movimientos. Incluye unidad, cantidad y mínimo |
@@ -226,6 +227,7 @@ Crear el esquema `sivant`. Usar nombres `snake_case`, IDs `bigint GENERATED BY D
 | Empleado → cuenta | 1 a N | FK de responsable. Rol y acceso en backend |
 | Cuenta → comanda → detalle | 1 a N en ambos niveles | Una cuenta puede estar vacía. Una comanda tiene al menos un detalle. Identidad de línea única por comanda, producto y observaciones normalizadas |
 | Producto → detalle | 1 a N | FK. Precio aplicado persistido en detalle |
+| Producto → imagen | 1 a 0..1 | PK compartida con FK a producto y FK al empleado que la subió. `CHECK` de tipo y tamaño |
 | Comanda → historial / cancelación | 1 a N / 1 a 0..1 | Un evento por transición. Cancelación única por comanda |
 | Cuenta → venta → pago | 1 a 0..1 / 1 a 1 | `UNIQUE` en ambas FKs. Transacción garantiza pago y coincidencia con total |
 | Venta → cancelación | 1 a 0..1 | FK única. La cancelación referencia al administrador y conserva importe y referencia |
@@ -292,4 +294,5 @@ CREATE UNIQUE INDEX uq_consumo_detalle_existencia
 | Edición de comanda | Se editan cantidades o se eliminan líneas existentes. Para retirar todas las líneas se usa cancelación por cajero. Para agregar consumo se crea otra comanda |
 | Ajuste | La cantidad solicitada es la existencia final deseada. Si cambió la existencia desde la solicitud, se requiere una solicitud con la base actualizada para autorizar |
 | Cocina y alertas | WebSocket distribuye eventos confirmados. REST conserva el estado autoritativo y permite recuperar cambios después de una reconexión. La lectura de avisos es independiente por usuario |
+| Imagen de producto | Se guarda en PostgreSQL (`bytea`), en una tabla aparte para no cargar la consulta de productos. Solo JPEG, PNG o WebP de hasta 2 MB; el tipo se valida por los primeros bytes del archivo y no por su nombre. No se aceptan SVG. Se sirve con `X-Content-Type-Options: nosniff`. No se exige al dar de alta un producto |
 | Valores operativos | Moneda MXN y zona America/Mexico_City como configuración inicial. Se usa una sola operación de restaurante, con catálogo y existencias compartidos |

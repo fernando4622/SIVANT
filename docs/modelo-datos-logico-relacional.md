@@ -151,6 +151,16 @@ erDiagram
         decimal precio_venta
     }
 
+    PRODUCTO_IMAGEN {
+        int id_producto PK,FK
+        binary contenido
+        string tipo_contenido
+        int tamano_bytes
+        string huella
+        int id_empleado FK
+        datetime fecha_actualizacion
+    }
+
     PRODUCTO_PREPARADO {
         int id_producto PK,FK
     }
@@ -248,6 +258,8 @@ erDiagram
     EMPLEADO ||--o{ FONDO_CAMBIO : ""
 
     ARTICULO ||--o| PRODUCTO : ""
+    PRODUCTO ||--o| PRODUCTO_IMAGEN : ""
+    EMPLEADO ||--o{ PRODUCTO_IMAGEN : ""
     ARTICULO ||--o| INSUMO : ""
     PRODUCTO ||--o| PRODUCTO_PREPARADO : ""
     PRODUCTO ||--o| PRODUCTO_REVENTA : ""
@@ -344,6 +356,10 @@ Sí se almacena `VENTA.total`, porque representa el importe histórico al moment
 - Un producto de reventa no necesita receta y tiene exactamente una existencia.
 - No puede repetirse el mismo insumo en la receta de un producto.
 - `cantidad_requerida` debe ser mayor que cero.
+- Un producto puede tener como máximo una imagen. Es opcional y no interviene en ventas, recetas ni inventario.
+- La imagen solo puede ser JPEG, PNG o WebP (`tipo_contenido` igual a `image/jpeg`, `image/png` o `image/webp`), de hasta 2 MB, con `tamano_bytes` igual al tamaño de `contenido`.
+- `huella` es el SHA-256 del contenido; identifica la versión de la imagen.
+- Reemplazar la imagen sustituye la anterior y registra al empleado y la fecha; quitarla elimina el registro.
 
 ### Inventario
 
